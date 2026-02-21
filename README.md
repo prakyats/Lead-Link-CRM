@@ -93,11 +93,11 @@ Visit **http://localhost:5173**
 
 ### Default Login Credentials
 
-| Role    | Email              | Password |
-|---------|--------------------|----------|
-| Admin   | admin@crm.com      | 123456   |
-| Manager | manager@crm.com    | 123456   |
-| Sales   | sales@crm.com      | 123456   |
+| Role    | Email              |  Password  |
+|---------|--------------------|------------|
+| Admin   | admin@crm.com      |  admin123  |
+| Manager | manager@crm.com    | manager123 |
+| Sales   | sales@crm.com      |  sales123  |
 
 ## Role-Based Access Control
 
