@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@layer components {
+
+  /* Page Layout */
+  .crm-page-container {
+    @apply p-8 space-y-8 min-h-screen bg-gray-50 overflow-auto;
+  }
+
+  .crm-page-title {
+    @apply text-3xl font-extrabold text-gray-900 tracking-tight;
+  }
+
+  .crm-page-subtitle {
+    @apply text-sm font-medium text-gray-500 uppercase tracking-widest;
+  }
+
+  /* Card System */
+  .crm-card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-200;
+  }
+
+  .crm-card-hover {
+    @apply hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 hover:border-blue-100;
+  }
+
+  /* Button System */
+  .crm-btn {
+    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2;
+  }
+
+  .crm-btn-primary {
+    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .crm-btn-secondary {
+    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300;
+  }
+
+  .crm-btn-danger {
+    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-red-600 text-white shadow-lg shadow-red-100 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  /* Badge System */
+  .crm-badge {
+    @apply px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full;
+  }
+
+  /* Stage Colors */
+  .badge-stage-new {
+    @apply bg-gray-100 text-gray-600;
+  }
+
+  .badge-stage-contacted {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  .badge-stage-qualified {
+    @apply bg-purple-100 text-purple-700;
+  }
+
+  .badge-stage-proposal {
+    @apply bg-amber-100 text-amber-700;
+  }
+
+  .badge-stage-converted {
+    @apply bg-green-100 text-green-700;
+  }
+
+  .badge-stage-lost {
+    @apply bg-red-100 text-red-700;
+  }
+
+  /* Priority Colors */
+  .badge-priority-high {
+    @apply bg-red-100 text-red-700;
+  }
+
+  .badge-priority-medium {
+    @apply bg-yellow-100 text-yellow-700;
+  }
+
+  .badge-priority-low {
+    @apply bg-green-100 text-green-700;
+  }
+
+  /* Table System */
+  .crm-table-container {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden;
+  }
+
+  .crm-table {
+    @apply w-full text-left border-collapse;
+  }
+
+  .crm-table-thead {
+    @apply bg-gray-50/50;
+  }
+
+  .crm-table-th {
+    @apply px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100;
+  }
+
+  .crm-table-tr {
+    @apply hover:bg-gray-50/50 transition-colors border-b last:border-b-0 border-gray-50;
+  }
+
+  .crm-table-td {
+    @apply px-6 py-4 text-sm;
+  }
+
+  /* Form System */
+  .crm-input {
+    @apply w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all;
+  }
+
+  .crm-label {
+    @apply text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2;
+  }
+}

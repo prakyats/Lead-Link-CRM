@@ -1,0 +1,142 @@
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import api from '../utils/api';
+import { useAuth } from './AuthContext';
+import { hasPermission } from '../utils/permissions';
+import { Role } from '../utils/roles';
+
+export interface Lead {
+    id: number;
+    company: string;
+    contact: string;
+    email: string;
+    phone: string;
+    value: number;
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+    stage: 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'PROPOSAL' | 'CONVERTED' | 'LOST';
+
+    leadScore: number;
+    lastInteraction: string;
+    createdAt: string;
+    assignedTo?: string; // Added for RBAC Scoping
+    risk?: 'high' | 'medium' | 'low';
+    interactions?: Interaction[];
+}
+
+export interface Interaction {
+    id: number;
+    leadId: number;
+    type: 'EMAIL' | 'CALL' | 'MEETING';
+    date: string;
+    notes: string;
+    performedBy: string;
+}
+
+interface LeadsContextType {
+    leads: Lead[];
+    loading: boolean;
+    fetchLeads: () => Promise<void>;
+    getLeadById: (id: number) => Promise<Lead | null>;
+    createLead: (lead: Partial<Lead>) => Promise<void>;
+    updateLead: (id: number, lead: Partial<Lead>) => Promise<void>;
+    updateLeadStage: (id: number, stage: Lead['stage']) => Promise<void>;
+    deleteLead: (id: number) => Promise<void>;
+}
+
+const LeadsContext = createContext<LeadsContextType | undefined>(undefined);
+
+export function LeadsProvider({ children }: { children: ReactNode }) {
+    const [leads, setLeads] = useState<Lead[]>([]);
+    const [loading, setLoading] = useState(true);
+    const { isAuthenticated, user } = useAuth();
+
+    const fetchLeads = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/leads');
+            setLeads(response.data);
+        } catch (error) {
+            console.error('Error fetching leads:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
+
+    const createLead = useCallback(async (lead: Partial<Lead>) => {
+        try {
+            const response = await api.post('/leads', lead);
+            setLeads(prev => [...prev, response.data]);
+        } catch (error) {
+            console.error('Error creating lead:', error);
+            throw error;
+        }
+    }, []);
+
+    const updateLead = useCallback(async (id: number, lead: Partial<Lead>) => {
+        try {
+            const response = await api.put(`/leads/${id}`, lead);
+            setLeads(prev => prev.map(l => l.id === id ? response.data : l));
+        } catch (error) {
+            console.error('Error updating lead:', error);
+            throw error;
+        }
+    }, []);
+
+    const updateLeadStage = useCallback(async (id: number, stage: Lead['stage']) => {
+        try {
+            const response = await api.put(`/leads/${id}/stage`, { stage });
+            setLeads(prev => prev.map(l => l.id === id ? response.data : l));
+        } catch (error) {
+            console.error('Error updating lead stage:', error);
+            throw error;
+        }
+    }, []);
+
+    const deleteLead = useCallback(async (id: number) => {
+        try {
+            await api.delete(`/leads/${id}`);
+            setLeads(prev => prev.filter(l => l.id !== id));
+        } catch (error) {
+            console.error('Error deleting lead:', error);
+            throw error;
+        }
+    }, []);
+
+    const getLeadById = useCallback(async (id: number): Promise<Lead | null> => {
+        try {
+            const response = await api.get(`/leads/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching lead:', error);
+            return null;
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchLeads();
+        } else {
+            setLoading(false);
+        }
+    }, [isAuthenticated, fetchLeads]);
+
+    const value = useMemo(() => ({
+        leads,
+        loading,
+        fetchLeads,
+        getLeadById,
+        createLead,
+        updateLead,
+        updateLeadStage,
+        deleteLead
+    }), [leads, loading]);
+
+    return <LeadsContext.Provider value={value}>{children}</LeadsContext.Provider>;
+}
+
+export function useLeads() {
+    const context = useContext(LeadsContext);
+    if (context === undefined) {
+        throw new Error('useLeads must be used within a LeadsProvider');
+    }
+    return context;
+}

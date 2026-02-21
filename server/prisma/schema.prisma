@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  password     String
+  role         Role
+  createdAt    DateTime      @default(now())
+  interactions Interaction[] @relation("UserInteractions")
+  leads        Lead[]        @relation("UserLeads")
+  tasks        Task[]        @relation("UserTasks")
+
+  @@index([role])
+}
+
+model Lead {
+  id              Int           @id @default(autoincrement())
+  company         String
+  contactName     String
+  email           String
+  phone           String?
+  value           Float
+  priority        Priority
+  stage           Stage
+  leadScore       Int
+  lastInteraction DateTime?
+  createdAt       DateTime      @default(now())
+  assignedToId    Int
+  interactions    Interaction[]
+  assignedTo      User          @relation("UserLeads", fields: [assignedToId], references: [id])
+  tasks           Task[]
+
+  @@index([assignedToId])
+  @@index([stage])
+}
+
+model Task {
+  id           Int        @id @default(autoincrement())
+  title        String
+  description  String?
+  dueDate      DateTime?
+  status       TaskStatus @default(PENDING)
+  priority     Priority
+  createdAt    DateTime   @default(now())
+  completedAt  DateTime?
+  leadId       Int
+  assignedToId Int
+  assignedTo   User       @relation("UserTasks", fields: [assignedToId], references: [id])
+  lead         Lead       @relation(fields: [leadId], references: [id])
+
+  @@index([assignedToId])
+  @@index([leadId])
+  @@index([assignedToId, status])
+}
+
+model Interaction {
+  id            Int             @id @default(autoincrement())
+  type          InteractionType
+  date          DateTime
+  notes         String?
+  createdAt     DateTime        @default(now())
+  leadId        Int
+  performedById Int
+  lead          Lead            @relation(fields: [leadId], references: [id])
+  performedBy   User            @relation("UserInteractions", fields: [performedById], references: [id])
+
+  @@index([leadId])
+  @@index([performedById])
+  @@index([leadId, date])
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  SALES
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Stage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  CONVERTED
+  LOST
+}
+
+enum TaskStatus {
+  PENDING
+  COMPLETED
+}
+
+enum InteractionType {
+  EMAIL
+  CALL
+  MEETING
+}
