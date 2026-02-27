@@ -34,28 +34,30 @@ function LeadCard({ lead }: LeadCardProps) {
   return (
     <div
       ref={drag as any}
-      className={`group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-100 transition-all cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'
-        }`}
+      className={`group rounded-2xl p-5 transition-all cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
+      style={{ background: 'var(--crm-slate)', border: '1px solid var(--crm-border)' }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,212,170,0.15)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.08)'; e.currentTarget.style.boxShadow = 'none'; }}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xs border border-blue-100">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs" style={{ background: 'rgba(0,212,170,0.15)', color: '#00D4AA', border: '1px solid rgba(0,212,170,0.2)' }}>
             {lead.company.charAt(0)}
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors uppercase tracking-tight">{lead.company}</h3>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{lead.contact}</p>
+            <h3 className="text-sm font-bold leading-tight uppercase tracking-tight transition-colors" style={{ color: 'var(--crm-white)' }}>{lead.company}</h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--crm-muted-dim)' }}>{lead.contact}</p>
           </div>
         </div>
-        <button className="text-gray-300 hover:text-gray-500 transition-colors">
+        <button className="transition-colors" style={{ color: 'var(--crm-muted-dim)' }}>
           <MoreHorizontal className="w-4 h-4" />
         </button>
       </div>
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 font-bold text-gray-900 text-sm">
-            <span className="text-gray-400">$</span>
+          <div className="flex items-center gap-1 font-bold text-sm" style={{ color: 'var(--crm-white)' }}>
+            <span style={{ color: 'var(--crm-muted-dim)' }}>$</span>
             {lead.value.toLocaleString()}
           </div>
           <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
@@ -66,12 +68,12 @@ function LeadCard({ lead }: LeadCardProps) {
           </span>
         </div>
 
-        <div className="pt-3 border-t border-gray-50 flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+        <div className="pt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest" style={{ borderTop: '1px solid var(--crm-border)', color: 'var(--crm-muted-dim)' }}>
           <div className="flex items-center gap-1.5">
             <Clock className="w-3 h-3" />
             <span>{formatRelativeTime(lead.lastInteraction || lead.createdAt)}</span>
           </div>
-          <Link to="/leads" className="text-blue-600 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Link to="/leads" className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#00D4AA' }}>
             Details →
           </Link>
         </div>
@@ -103,37 +105,39 @@ function Column({ title, stage, leads, count, color, onDrop }: ColumnProps) {
   }));
 
   const colorVariants: Record<string, string> = {
-    blue: 'bg-blue-600 shadow-blue-100',
-    amber: 'bg-amber-500 shadow-amber-100',
-    purple: 'bg-purple-600 shadow-purple-100',
-    green: 'bg-green-600 shadow-green-100',
-    indigo: 'bg-indigo-600 shadow-indigo-100'
+    teal: '#00D4AA',
+    amber: '#FBBF24',
+    purple: '#C084FC',
+    green: '#4ADE80',
+    blue: '#60A5FA',
   };
+
+  const dotColor = colorVariants[color] || colorVariants.teal;
 
   return (
     <div className="flex-shrink-0 w-[320px] flex flex-col h-full">
       <div className="flex items-center justify-between px-2 mb-4">
         <div className="flex items-center gap-2.5">
-          <div className={`w-2.5 h-2.5 rounded-full ${colorVariants[color].split(' ')[0]}`} />
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-widest">{title}</h2>
-          <span className="bg-white border border-gray-100 shadow-sm text-gray-500 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: dotColor }} />
+          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--crm-white)' }}>{title}</h2>
+          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(148,163,184,0.06)', color: '#94A3B8', border: '1px solid rgba(148,163,184,0.08)' }}>
             {count}
           </span>
         </div>
-        <Plus className="w-4 h-4 text-gray-300 hover:text-gray-500 cursor-pointer transition-colors" />
+        <Plus className="w-4 h-4 cursor-pointer transition-colors" style={{ color: 'var(--crm-muted-dim)' }} />
       </div>
 
       <div
         ref={drop as any}
-        className={`flex-1 p-2 rounded-2xl transition-all duration-300 space-y-3 min-h-[500px] ${isOver ? 'bg-blue-50/50 ring-2 ring-inset ring-blue-100' : 'bg-gray-100/40'
-          }`}
+        className={`flex-1 p-2 rounded-2xl transition-all duration-300 space-y-3 min-h-[500px]`}
+        style={isOver ? { background: 'rgba(0,212,170,0.05)', boxShadow: 'inset 0 0 0 2px rgba(0,212,170,0.15)' } : { background: 'rgba(148,163,184,0.03)' }}
       >
         {leads.map((lead) => (
           <LeadCard key={lead.id} lead={lead} />
         ))}
         {leads.length === 0 && (
-          <div className="h-24 border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No Leads</p>
+          <div className="h-24 rounded-2xl flex items-center justify-center" style={{ border: '2px dashed rgba(148,163,184,0.1)' }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--crm-muted-dim)' }}>No Leads</p>
           </div>
         )}
       </div>
@@ -157,18 +161,18 @@ function KanbanContent() {
   };
 
   const columns = [
-    { title: 'New Capture', stage: 'NEW' as const, color: 'blue' },
-    { title: 'Qualifying', stage: 'QUALIFIED' as const, color: 'indigo' },
+    { title: 'New Capture', stage: 'NEW' as const, color: 'teal' },
+    { title: 'Qualifying', stage: 'QUALIFIED' as const, color: 'blue' },
     { title: 'Engagement', stage: 'CONTACTED' as const, color: 'amber' },
     { title: 'Proposal', stage: 'PROPOSAL' as const, color: 'purple' },
     { title: 'Contracted', stage: 'CONVERTED' as const, color: 'green' },
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--crm-navy)' }}>
       <Sidebar />
 
-      <main className="flex-1 bg-gray-50 flex flex-col h-full overflow-hidden">
+      <main className="flex-1 flex flex-col h-full overflow-hidden" style={{ background: 'var(--crm-navy)' }}>
         <div className="p-8 pb-4 shrink-0">
           <div className="flex justify-between items-end mb-6">
             <div className="space-y-1">
@@ -178,8 +182,8 @@ function KanbanContent() {
             <div className="flex items-center gap-3">
               <div className="flex -space-x-2">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center overflow-hidden">
-                    <User2 className="w-5 h-5 text-gray-400" />
+                  <div key={i} className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden" style={{ border: '2px solid var(--crm-navy)', background: 'var(--crm-slate-light)' }}>
+                    <User2 className="w-5 h-5" style={{ color: 'var(--crm-muted-dim)' }} />
                   </div>
                 ))}
               </div>
@@ -187,10 +191,10 @@ function KanbanContent() {
             </div>
           </div>
 
-          <div className="crm-card !p-3 !flex-row bg-white/50 backdrop-blur-sm flex items-center gap-3 mb-2">
-            <AlertCircle className="w-4 h-4 text-blue-500" />
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-              Operational Intelligence: <span className="text-gray-900">Drag cards between tiers to automate stage progression protocols</span>
+          <div className="crm-card !p-3 !flex-row flex items-center gap-3 mb-2" style={{ background: 'rgba(0,212,170,0.05)' }}>
+            <AlertCircle className="w-4 h-4" style={{ color: '#00D4AA' }} />
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--crm-muted)' }}>
+              Operational Intelligence: <span style={{ color: 'var(--crm-white)' }}>Drag cards between tiers to automate stage progression protocols</span>
             </p>
           </div>
         </div>

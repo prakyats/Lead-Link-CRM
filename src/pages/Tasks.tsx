@@ -35,7 +35,7 @@ export default function Tasks() {
   const completedCount = tasks.filter((t) => t.status === 'COMPLETED').length;
 
   return (
-    <div className="flex bg-gray-50 min-h-screen">
+    <div className="flex min-h-screen" style={{ background: 'var(--crm-navy)' }}>
       <Sidebar />
       <main className="flex-1 crm-page-container">
         <div className="max-w-7xl mx-auto space-y-8">
@@ -54,65 +54,68 @@ export default function Tasks() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="crm-card border-l-4 border-l-blue-500">
+            <div className="crm-card" style={{ borderLeft: '4px solid #00D4AA' }}>
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Assignments</p>
-                  <p className="text-3xl font-bold text-gray-900">{tasks.length}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#64748B' }}>Total Assignments</p>
+                  <p className="text-3xl font-bold" style={{ color: '#F1F5F9' }}>{tasks.length}</p>
                 </div>
-                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,212,170,0.15)' }}>
+                  <CheckCircle2 className="w-5 h-5" style={{ color: '#00D4AA' }} />
                 </div>
               </div>
             </div>
-            <div className="crm-card border-l-4 border-l-amber-500">
+            <div className="crm-card" style={{ borderLeft: '4px solid #FBBF24' }}>
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pending Sync</p>
-                  <p className="text-3xl font-bold text-gray-900">{pendingCount}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#64748B' }}>Pending Sync</p>
+                  <p className="text-3xl font-bold" style={{ color: '#F1F5F9' }}>{pendingCount}</p>
                 </div>
-                <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-amber-600" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.15)' }}>
+                  <Clock className="w-5 h-5" style={{ color: '#FBBF24' }} />
                 </div>
               </div>
             </div>
-            <div className="crm-card border-l-4 border-l-green-500">
+            <div className="crm-card" style={{ borderLeft: '4px solid #4ADE80' }}>
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Resolutions</p>
-                  <p className="text-3xl font-bold text-gray-900">{completedCount}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#64748B' }}>Resolutions</p>
+                  <p className="text-3xl font-bold" style={{ color: '#F1F5F9' }}>{completedCount}</p>
                 </div>
-                <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(74,222,128,0.15)' }}>
+                  <CheckCircle2 className="w-5 h-5" style={{ color: '#4ADE80' }} />
                 </div>
               </div>
             </div>
           </div>
 
           <div className="crm-card !p-0 overflow-hidden">
-            <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
-              <div className="flex p-1 bg-gray-100 rounded-xl">
+            <div className="p-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(148,163,184,0.08)', background: 'rgba(148,163,184,0.03)' }}>
+              <div className="flex p-1 rounded-xl" style={{ background: '#0B1120' }}>
                 <button
                   onClick={() => setFilter('all')}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${filter === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+                  style={filter === 'all' ? { background: '#1A2332', color: '#00D4AA', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' } : { color: '#64748B' }}
                 >
                   All Registry
                 </button>
                 <button
                   onClick={() => setFilter('PENDING')}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${filter === 'PENDING' ? 'bg-white text-amber-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+                  style={filter === 'PENDING' ? { background: '#1A2332', color: '#FBBF24', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' } : { color: '#64748B' }}
                 >
                   Active Logs
                 </button>
                 <button
                   onClick={() => setFilter('COMPLETED')}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${filter === 'COMPLETED' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+                  style={filter === 'COMPLETED' ? { background: '#1A2332', color: '#4ADE80', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' } : { color: '#64748B' }}
                 >
                   Resolved
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-white rounded-lg transition-all text-gray-400 border border-transparent hover:border-gray-200">
+                <button className="p-2 rounded-lg transition-all" style={{ color: '#64748B', border: '1px solid transparent' }}>
                   <Filter className="w-4 h-4" />
                 </button>
               </div>
@@ -125,10 +128,10 @@ export default function Tasks() {
                   return (
                     <div
                       key={task.id}
-                      className={`group border rounded-2xl p-6 transition-all duration-300 ${task.status === 'COMPLETED' ? 'bg-gray-50/50 grayscale opacity-80' :
-                        taskOverdue ? 'bg-red-50/30 border-red-100' :
-                          'bg-white border-gray-100 hover:shadow-md hover:border-blue-100'
-                        }`}
+                      className="group rounded-2xl p-6 transition-all duration-300"
+                      style={task.status === 'COMPLETED' ? { background: 'rgba(148,163,184,0.03)', border: '1px solid rgba(148,163,184,0.06)', opacity: 0.6 } :
+                        taskOverdue ? { background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)' } :
+                          { background: 'rgba(148,163,184,0.03)', border: '1px solid rgba(148,163,184,0.08)' }}
                     >
                       <div className="flex items-start gap-6">
                         <button
@@ -137,11 +140,11 @@ export default function Tasks() {
                           className={`mt-1 transition-transform active:scale-90 ${!hasPermission(user?.role as Role, 'canOperationalControl') ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-110'}`}
                         >
                           {task.status === 'COMPLETED' ? (
-                            <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-100">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white" style={{ background: '#4ADE80', boxShadow: '0 0 12px rgba(74,222,128,0.3)' }}>
                               <CheckCircle2 className="w-4 h-4" />
                             </div>
                           ) : (
-                            <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${taskOverdue ? 'border-red-300 bg-red-50 text-red-500' : 'border-gray-200 text-transparent hover:border-blue-500'}`}>
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center transition-colors" style={taskOverdue ? { border: '2px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.1)', color: '#F87171' } : { border: '2px solid rgba(148,163,184,0.2)', color: 'transparent' }}>
                               <CheckCircle2 className="w-4 h-4" />
                             </div>
                           )}
@@ -150,10 +153,10 @@ export default function Tasks() {
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-3">
                             <div>
-                              <h3 className={`text-lg font-bold text-gray-900 tracking-tight transition-all ${task.status === 'COMPLETED' ? 'line-through text-gray-400' : ''}`}>
+                              <h3 className={`text-lg font-bold tracking-tight transition-all ${task.status === 'COMPLETED' ? 'line-through' : ''}`} style={{ color: task.status === 'COMPLETED' ? '#64748B' : '#F1F5F9' }}>
                                 {task.title}
                               </h3>
-                              <p className="text-sm text-gray-500 mt-1 leading-relaxed">{task.description}</p>
+                              <p className="text-sm mt-1 leading-relaxed" style={{ color: '#94A3B8' }}>{task.description}</p>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <span className={`crm-badge ${task.priority === 'HIGH' ? 'badge-priority-high' :
@@ -163,27 +166,27 @@ export default function Tasks() {
                                 {task.priority}
                               </span>
                               {taskOverdue && (
-                                <span className="px-2.5 py-1 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-red-100">
+                                <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest" style={{ background: 'rgba(239,68,68,0.2)', color: '#F87171' }}>
                                   Critical Delay
                                 </span>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-6 pt-4 border-t border-gray-50">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                          <div className="flex items-center gap-6 pt-4" style={{ borderTop: '1px solid rgba(148,163,184,0.06)' }}>
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>
+                              <Calendar className="w-3.5 h-3.5" style={{ color: '#00D4AA' }} />
                               <span>{formatDate(task.dueDate)}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                              <Clock className="w-3.5 h-3.5 text-blue-500" />
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>
+                              <Clock className="w-3.5 h-3.5" style={{ color: '#00D4AA' }} />
                               <span>{new Date(task.dueDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                              <User className="w-3.5 h-3.5 text-blue-500" />
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>
+                              <User className="w-3.5 h-3.5" style={{ color: '#00D4AA' }} />
                               <span>{task.assignedTo}</span>
                             </div>
-                            <div className="ml-auto text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-widest">
+                            <div className="ml-auto text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest" style={{ color: '#00D4AA', background: 'rgba(0,212,170,0.1)' }}>
                               Protocol: Follow-up
                             </div>
                           </div>
@@ -195,12 +198,12 @@ export default function Tasks() {
 
                 {filteredTasks.length === 0 && (
                   <div className="py-24 text-center space-y-4">
-                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
-                      <CheckCircle2 className="w-10 h-10 text-gray-200" />
+                    <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ background: 'rgba(148,163,184,0.06)' }}>
+                      <CheckCircle2 className="w-10 h-10" style={{ color: '#64748B' }} />
                     </div>
                     <div className="space-y-1">
-                      <h3 className="text-lg font-bold text-gray-900">Task Register Clear</h3>
-                      <p className="text-sm text-gray-400 font-medium">All operational protocols are currently up to date</p>
+                      <h3 className="text-lg font-bold" style={{ color: '#F1F5F9' }}>Task Register Clear</h3>
+                      <p className="text-sm font-medium" style={{ color: '#64748B' }}>All operational protocols are currently up to date</p>
                     </div>
                   </div>
                 )}

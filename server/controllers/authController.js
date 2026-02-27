@@ -9,16 +9,30 @@ const prisma = require('../utils/prisma');
  */
 async function login(req, res) {
     try {
-        const { email, password } = req.body;
+        const { email, password, organizationSlug } = req.body;
+        const orgSlug = (organizationSlug || 'demo').toString().trim().toLowerCase();
 
         // Validate input
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password are required' });
+        if (!orgSlug || !email || !password) {
+            return res.status(400).json({ error: 'Organization, email, and password are required' });
         }
 
-        // Find user by email
+        const org = await prisma.organization.findUnique({
+            where: { slug: orgSlug }
+        });
+
+        if (!org) {
+            return res.status(401).json({ error: 'Invalid organization or credentials' });
+        }
+
+        // Find user by org + email (multi-tenant)
         const user = await prisma.user.findUnique({
-            where: { email }
+            where: {
+                organizationId_email: {
+                    organizationId: org.id,
+                    email
+                }
+            }
         });
 
         if (!user) {
@@ -36,7 +50,9 @@ async function login(req, res) {
             {
                 id: user.id,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                organizationId: org.id,
+                organizationSlug: org.slug
             },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
@@ -49,7 +65,11 @@ async function login(req, res) {
         res.json({
             success: true,
             token,
-            user: userProfile
+            user: {
+                ...userProfile,
+                organizationId: org.id,
+                organizationSlug: org.slug
+            }
         });
 
     } catch (error) {
@@ -64,15 +84,24 @@ async function login(req, res) {
  */
 async function register(req, res) {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, organizationSlug } = req.body;
+        const orgSlug = (organizationSlug || 'demo').toString().trim().toLowerCase();
 
-        if (!name || !email || !password || !role) {
-            return res.status(400).json({ error: 'All fields are required' });
+        if (!orgSlug || !name || !email || !password || !role) {
+            return res.status(400).json({ error: 'Organization, name, email, password, and role are required' });
         }
 
-        // Check if user already exists
+        const org = await prisma.organization.findUnique({ where: { slug: orgSlug } });
+        if (!org) return res.status(400).json({ error: 'Organization not found' });
+
+        // Check if user already exists (per tenant)
         const existingUser = await prisma.user.findUnique({
-            where: { email }
+            where: {
+                organizationId_email: {
+                    organizationId: org.id,
+                    email
+                }
+            }
         });
 
         if (existingUser) {
@@ -89,7 +118,8 @@ async function register(req, res) {
                 name,
                 email,
                 password: hashedPassword,
-                role
+                role,
+                organizationId: org.id
             }
         });
 

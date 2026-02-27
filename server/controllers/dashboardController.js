@@ -32,8 +32,8 @@ function mapTaskToLegacy(task) {
  */
 async function getKPIs(req, res) {
     try {
-        const { role, id: userId } = req.user;
-        let where = {};
+        const { role, id: userId, organizationId } = req.user;
+        let where = { organizationId };
 
         // RBAC: SALES count only their own data
         if (role === 'SALES') {
@@ -95,8 +95,8 @@ async function getKPIs(req, res) {
  */
 async function getRecentLeads(req, res) {
     try {
-        const { role, id: userId } = req.user;
-        let where = {};
+        const { role, id: userId, organizationId } = req.user;
+        let where = { organizationId };
 
         if (role === 'SALES') {
             where.assignedToId = userId;
@@ -121,8 +121,8 @@ async function getRecentLeads(req, res) {
  */
 async function getUpcomingTasks(req, res) {
     try {
-        const { role, id: userId } = req.user;
-        let where = { status: 'PENDING' };
+        const { role, id: userId, organizationId } = req.user;
+        let where = { status: 'PENDING', organizationId };
 
         if (role === 'SALES') {
             where.assignedToId = userId;

@@ -12,10 +12,10 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center" style={{ background: '#0B1120' }}>
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 mx-auto" style={{ border: '4px solid rgba(0,212,170,0.2)', borderTopColor: '#00D4AA' }}></div>
+                    <p className="mt-4" style={{ color: '#94A3B8' }}>Loading...</p>
                 </div>
             </div>
         );

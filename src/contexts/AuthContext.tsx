@@ -6,12 +6,14 @@ interface User {
     email: string;
     name: string;
     role: string;
+    organizationId?: number;
+    organizationSlug?: string;
 }
 
 interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    login: (organizationSlug: string, email: string, password: string) => Promise<void>;
     logout: () => void;
     loading: boolean;
 }
@@ -39,9 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    const login = useCallback(async (email: string, password: string) => {
+    const login = useCallback(async (organizationSlug: string, email: string, password: string) => {
         try {
-            const response = await api.post('/auth/login', { email, password });
+            const response = await api.post('/auth/login', { organizationSlug, email, password });
             const { token, user: userData } = response.data;
 
             // Store token and user data

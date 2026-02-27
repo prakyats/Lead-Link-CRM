@@ -7,22 +7,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Organization {
+  id           Int           @id @default(autoincrement())
+  name         String
+  slug         String        @unique
+  createdAt    DateTime      @default(now())
+  users        User[]
+  leads        Lead[]
+  tasks        Task[]
+  interactions Interaction[]
+}
+
 model User {
   id           Int           @id @default(autoincrement())
   name         String
-  email        String        @unique
+  email        String
   password     String
   role         Role
   createdAt    DateTime      @default(now())
+  organizationId Int
+  organization Organization @relation(fields: [organizationId], references: [id])
   interactions Interaction[] @relation("UserInteractions")
   leads        Lead[]        @relation("UserLeads")
   tasks        Task[]        @relation("UserTasks")
 
+  @@unique([organizationId, email])
   @@index([role])
+  @@index([organizationId])
 }
 
 model Lead {
   id              Int           @id @default(autoincrement())
+  organizationId  Int
+  organization    Organization  @relation(fields: [organizationId], references: [id])
   company         String
   contactName     String
   email           String
@@ -38,12 +55,15 @@ model Lead {
   assignedTo      User          @relation("UserLeads", fields: [assignedToId], references: [id])
   tasks           Task[]
 
+  @@index([organizationId])
   @@index([assignedToId])
   @@index([stage])
 }
 
 model Task {
   id           Int        @id @default(autoincrement())
+  organizationId Int
+  organization Organization @relation(fields: [organizationId], references: [id])
   title        String
   description  String?
   dueDate      DateTime?
@@ -56,6 +76,7 @@ model Task {
   assignedTo   User       @relation("UserTasks", fields: [assignedToId], references: [id])
   lead         Lead       @relation(fields: [leadId], references: [id])
 
+  @@index([organizationId])
   @@index([assignedToId])
   @@index([leadId])
   @@index([assignedToId, status])
@@ -63,6 +84,8 @@ model Task {
 
 model Interaction {
   id            Int             @id @default(autoincrement())
+  organizationId Int
+  organization  Organization    @relation(fields: [organizationId], references: [id])
   type          InteractionType
   date          DateTime
   notes         String?
@@ -72,6 +95,7 @@ model Interaction {
   lead          Lead            @relation(fields: [leadId], references: [id])
   performedBy   User            @relation("UserInteractions", fields: [performedById], references: [id])
 
+  @@index([organizationId])
   @@index([leadId])
   @@index([performedById])
   @@index([leadId, date])
