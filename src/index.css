@@ -1,27 +1,124 @@
 @import "tailwindcss";
+@import "./styles/globals.css";
+
+/* ── Global Theme Variables (Light default, Dark via .dark) ── */
+:root {
+  /* CRM palette (light) */
+  --crm-navy: #f8fafc;
+  --crm-navy-deep: #ffffff;
+  --crm-slate: #ffffff;
+  --crm-slate-light: #f1f5f9;
+  --crm-slate-lighter: #e2e8f0;
+  --crm-teal: #00d4aa;
+  --crm-teal-glow: rgba(0, 212, 170, 0.15);
+  --crm-amber: #f59e0b;
+  --crm-amber-glow: rgba(245, 158, 11, 0.15);
+  --crm-white: #0b1120;
+  --crm-muted: #334155;
+  --crm-muted-dim: #64748b;
+  --crm-border: rgba(2, 6, 23, 0.08);
+  --crm-border-hover: rgba(2, 6, 23, 0.14);
+  --crm-glass: rgba(255, 255, 255, 0.65);
+
+  /* shadcn-ish tokens (mapped so components like Toaster work) */
+  --background: var(--crm-navy);
+  --foreground: var(--crm-white);
+  --card: var(--crm-slate);
+  --card-foreground: var(--crm-white);
+  --popover: var(--crm-slate);
+  --popover-foreground: var(--crm-white);
+  --muted: var(--crm-slate-light);
+  --muted-foreground: var(--crm-muted-dim);
+  --accent: var(--crm-slate-light);
+  --accent-foreground: var(--crm-white);
+  --border: var(--crm-border);
+  --input: transparent;
+  --ring: rgba(0, 212, 170, 0.35);
+  --primary: var(--crm-teal);
+  --primary-foreground: #0b1120;
+  --secondary: var(--crm-slate-light);
+  --secondary-foreground: var(--crm-white);
+}
+
+.dark {
+  /* CRM palette (dark — current app look) */
+  --crm-navy: #0B1120;
+  --crm-navy-deep: #060B15;
+  --crm-slate: #1A2332;
+  --crm-slate-light: #243044;
+  --crm-slate-lighter: #2D3A4F;
+  --crm-teal: #00D4AA;
+  --crm-teal-glow: rgba(0, 212, 170, 0.15);
+  --crm-amber: #F59E0B;
+  --crm-amber-glow: rgba(245, 158, 11, 0.15);
+  --crm-white: #F1F5F9;
+  --crm-muted: #94A3B8;
+  --crm-muted-dim: #64748B;
+  --crm-border: rgba(148, 163, 184, 0.08);
+  --crm-border-hover: rgba(148, 163, 184, 0.16);
+  --crm-glass: rgba(26, 35, 50, 0.6);
+
+  --background: var(--crm-navy);
+  --foreground: var(--crm-white);
+  --card: var(--crm-slate);
+  --card-foreground: var(--crm-white);
+  --popover: var(--crm-slate);
+  --popover-foreground: var(--crm-white);
+  --muted: var(--crm-slate-light);
+  --muted-foreground: var(--crm-muted-dim);
+  --accent: var(--crm-slate-light);
+  --accent-foreground: var(--crm-white);
+  --border: var(--crm-border);
+  --ring: rgba(0, 212, 170, 0.35);
+  --primary: var(--crm-teal);
+  --primary-foreground: #0b1120;
+  --secondary: var(--crm-slate-light);
+  --secondary-foreground: var(--crm-white);
+}
+
+body,
+html,
+#root {
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
 
 @layer components {
 
   /* Page Layout */
   .crm-page-container {
-    @apply p-8 space-y-8 min-h-screen bg-gray-50 overflow-auto;
+    @apply p-8 space-y-8 min-h-screen overflow-auto;
+    background: var(--crm-navy);
   }
 
   .crm-page-title {
-    @apply text-3xl font-extrabold text-gray-900 tracking-tight;
+    @apply text-3xl font-extrabold tracking-tight;
+    color: var(--crm-white);
+    font-family: 'Outfit', sans-serif;
   }
 
   .crm-page-subtitle {
-    @apply text-sm font-medium text-gray-500 uppercase tracking-widest;
+    @apply text-sm font-medium uppercase tracking-widest;
+    color: var(--crm-muted-dim);
   }
 
   /* Card System */
   .crm-card {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-200;
+    @apply rounded-2xl p-6 transition-all duration-200;
+    background: var(--crm-slate);
+    border: 1px solid var(--crm-border);
   }
 
   .crm-card-hover {
-    @apply hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 hover:border-blue-100;
+    @apply hover:-translate-y-1;
+
+    &:hover {
+      border-color: rgba(0, 212, 170, 0.15);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    }
   }
 
   /* Button System */
@@ -30,15 +127,28 @@
   }
 
   .crm-btn-primary {
-    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98];
+    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 text-white hover:scale-[1.02] active:scale-[0.98];
+    background: linear-gradient(135deg, #00D4AA, #00B894);
+    color: #0B1120;
+    box-shadow: 0 4px 24px rgba(0, 212, 170, 0.25);
   }
 
   .crm-btn-secondary {
-    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-gray-200 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300;
+    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2;
+    background: var(--crm-slate-light);
+    color: var(--crm-muted);
+    border: 1px solid var(--crm-border);
+
+    &:hover {
+      color: var(--crm-white);
+      border-color: var(--crm-border-hover);
+      background: var(--crm-slate-lighter);
+    }
   }
 
   .crm-btn-danger {
-    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-red-600 text-white shadow-lg shadow-red-100 hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98];
+    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-red-600 text-white hover:bg-red-700 hover:scale-[1.02] active:scale-[0.98];
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
   }
 
   /* Badge System */
@@ -46,47 +156,58 @@
     @apply px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full;
   }
 
-  /* Stage Colors */
+  /* Stage Colors (dark-adapted) */
   .badge-stage-new {
-    @apply bg-gray-100 text-gray-600;
+    background: rgba(148, 163, 184, 0.15);
+    color: #94A3B8;
   }
 
   .badge-stage-contacted {
-    @apply bg-blue-100 text-blue-700;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60A5FA;
   }
 
   .badge-stage-qualified {
-    @apply bg-purple-100 text-purple-700;
+    background: rgba(168, 85, 247, 0.15);
+    color: #C084FC;
   }
 
   .badge-stage-proposal {
-    @apply bg-amber-100 text-amber-700;
+    background: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
   }
 
   .badge-stage-converted {
-    @apply bg-green-100 text-green-700;
+    background: rgba(0, 212, 170, 0.15);
+    color: #00D4AA;
   }
 
   .badge-stage-lost {
-    @apply bg-red-100 text-red-700;
+    background: rgba(239, 68, 68, 0.15);
+    color: #F87171;
   }
 
-  /* Priority Colors */
+  /* Priority Colors (dark-adapted) */
   .badge-priority-high {
-    @apply bg-red-100 text-red-700;
+    background: rgba(239, 68, 68, 0.15);
+    color: #F87171;
   }
 
   .badge-priority-medium {
-    @apply bg-yellow-100 text-yellow-700;
+    background: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
   }
 
   .badge-priority-low {
-    @apply bg-green-100 text-green-700;
+    background: rgba(0, 212, 170, 0.15);
+    color: #00D4AA;
   }
 
   /* Table System */
   .crm-table-container {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden;
+    @apply rounded-2xl overflow-hidden;
+    background: var(--crm-slate);
+    border: 1px solid var(--crm-border);
   }
 
   .crm-table {
@@ -94,27 +215,52 @@
   }
 
   .crm-table-thead {
-    @apply bg-gray-50/50;
+    background: rgba(26, 35, 50, 0.5);
   }
 
   .crm-table-th {
-    @apply px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100;
+    @apply px-6 py-4 text-xs font-bold uppercase tracking-widest;
+    color: var(--crm-muted-dim);
+    border-bottom: 1px solid var(--crm-border);
   }
 
   .crm-table-tr {
-    @apply hover:bg-gray-50/50 transition-colors border-b last:border-b-0 border-gray-50;
+    @apply transition-colors;
+    border-bottom: 1px solid var(--crm-border);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    &:hover {
+      background: rgba(0, 212, 170, 0.03);
+    }
   }
 
   .crm-table-td {
     @apply px-6 py-4 text-sm;
+    color: var(--crm-muted);
   }
 
   /* Form System */
   .crm-input {
-    @apply w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all;
+    @apply w-full px-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none transition-all;
+    background: var(--crm-navy);
+    border: 1px solid var(--crm-border);
+    color: var(--crm-white);
+
+    &:focus {
+      border-color: rgba(0, 212, 170, 0.4);
+      box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
+    }
+
+    &::placeholder {
+      color: var(--crm-muted-dim);
+    }
   }
 
   .crm-label {
-    @apply text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2;
+    @apply text-[10px] font-bold uppercase tracking-widest block mb-2;
+    color: var(--crm-muted-dim);
   }
 }

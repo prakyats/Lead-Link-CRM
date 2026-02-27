@@ -58,6 +58,10 @@ JWT_SECRET=your_super_secret_jwt_key_here
 
 ```bash
 cd server
+
+# One-time (or whenever `prisma/schema.prisma` changes):
+# - generate: builds the Prisma Client used by the API code
+# - db push: syncs your local database schema to match Prisma schema
 npx prisma generate
 npx prisma db push
 ```
@@ -65,8 +69,8 @@ npx prisma db push
 Seed the database with initial users:
 
 ```bash
-# Run the seed script (if available)
-node prisma/seed.js
+# Seed (creates default users + sample data)
+npx prisma db seed
 ```
 
 ### 5. Start the Application
@@ -81,9 +85,8 @@ node prisma/seed.js
 **Option B: Manual start**
 
 ```bash
-# Terminal 1 - Backend
-cd server
-node server.js
+# Terminal 1 - Backend (from project root)
+npm run dev:api
 
 # Terminal 2 - Frontend
 npm run dev

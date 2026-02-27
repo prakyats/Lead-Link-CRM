@@ -53,8 +53,8 @@ function mapLeadToLegacy(lead) {
  */
 async function getAllLeads(req, res) {
     try {
-        const { role, id: userId } = req.user;
-        let where = {};
+        const { role, id: userId, organizationId } = req.user;
+        let where = { organizationId };
 
         if (role === 'SALES') {
             where.assignedToId = userId;
@@ -84,10 +84,10 @@ async function getAllLeads(req, res) {
 async function getLeadById(req, res) {
     try {
         const { id } = req.params;
-        const { role, id: userId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
 
-        const lead = await prisma.lead.findUnique({
-            where: { id: parseInt(id) },
+        const lead = await prisma.lead.findFirst({
+            where: { id: parseInt(id), organizationId },
             include: {
                 assignedTo: { select: { name: true } },
                 tasks: {
@@ -119,13 +119,14 @@ async function getLeadById(req, res) {
  */
 async function createLead(req, res) {
     try {
-        const { role, id: userId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
         const { company, contact, email, phone, value, priority, stage, leadScore } = req.body;
 
         const newLead = await prisma.lead.create({
             data: {
+                organizationId,
                 company,
                 contactName: contact,
                 email,
@@ -153,10 +154,10 @@ async function createLead(req, res) {
 async function updateLead(req, res) {
     try {
         const { id } = req.params;
-        const { role, id: userId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingLead = await prisma.lead.findUnique({ where: { id: parseInt(id) } });
+        const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingLead) return res.status(404).json({ error: 'Lead not found' });
         if (role === 'SALES' && existingLead.assignedToId !== userId) return res.status(403).json({ error: 'Access denied' });
 
@@ -170,9 +171,14 @@ async function updateLead(req, res) {
         if (data.stage) data.stage = data.stage.toUpperCase();
         data.lastInteraction = new Date();
 
-        const updatedLead = await prisma.lead.update({
-            where: { id: parseInt(id) },
-            data,
+        const updateRes = await prisma.lead.updateMany({
+            where: { id: parseInt(id), organizationId },
+            data
+        });
+        if (updateRes.count === 0) return res.status(404).json({ error: 'Lead not found' });
+
+        const updatedLead = await prisma.lead.findFirst({
+            where: { id: parseInt(id), organizationId },
             include: { assignedTo: { select: { name: true } } }
         });
 
@@ -190,19 +196,23 @@ async function updateLeadStage(req, res) {
     try {
         const { id } = req.params;
         const { stage } = req.body;
-        const { role, id: userId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingLead = await prisma.lead.findUnique({ where: { id: parseInt(id) } });
+        const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingLead) return res.status(404).json({ error: 'Lead not found' });
         if (role === 'SALES' && existingLead.assignedToId !== userId) return res.status(403).json({ error: 'Access denied' });
 
-        const updatedLead = await prisma.lead.update({
-            where: { id: parseInt(id) },
+        await prisma.lead.updateMany({
+            where: { id: parseInt(id), organizationId },
             data: {
                 stage: stage.toUpperCase(),
                 lastInteraction: new Date()
-            },
+            }
+        });
+
+        const updatedLead = await prisma.lead.findFirst({
+            where: { id: parseInt(id), organizationId },
             include: { assignedTo: { select: { name: true } } }
         });
 
@@ -219,10 +229,11 @@ async function updateLeadStage(req, res) {
 async function deleteLead(req, res) {
     try {
         const { id } = req.params;
-        const { role } = req.user;
+        const { role, organizationId } = req.user;
         if (role !== 'MANAGER') return res.status(403).json({ error: 'Only Managers can delete' });
 
-        await prisma.lead.delete({ where: { id: parseInt(id) } });
+        const delRes = await prisma.lead.deleteMany({ where: { id: parseInt(id), organizationId } });
+        if (delRes.count === 0) return res.status(404).json({ error: 'Lead not found' });
         res.json({ success: true, message: 'Lead deleted' });
     } catch (error) {
         console.error('Error deleting lead:', error);

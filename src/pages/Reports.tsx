@@ -3,10 +3,10 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { TrendingUp, Users, Target, Clock } from 'lucide-react';
 
 const leadDistributionData = [
-  { name: 'New', value: 35, color: '#3B82F6' },
-  { name: " "+'Contacted', value: 28, color: '#EAB308' },
-  { name: 'Proposal', value: 22, color: '#A855F7' },
-  { name: 'Converted', value: 15, color: '#22C55E' },
+  { name: 'New', value: 35, color: '#00D4AA' },
+  { name: " " + 'Contacted', value: 28, color: '#FBBF24' },
+  { name: 'Proposal', value: 22, color: '#C084FC' },
+  { name: 'Converted', value: 15, color: '#4ADE80' },
 ];
 
 const weeklyActivityData = [
@@ -37,69 +37,48 @@ const revenueData = [
   { month: 'Jun', revenue: 67000 },
 ];
 
+const tooltipStyle = {
+  contentStyle: { background: 'var(--crm-slate)', border: '1px solid var(--crm-border)', borderRadius: '12px', color: 'var(--crm-white)' },
+  labelStyle: { color: 'var(--crm-muted)' },
+};
+
 export default function Reports() {
   return (
-    <div className="flex">
+    <div className="flex" style={{ background: 'var(--crm-navy)' }}>
       <Sidebar />
-      
-      <main className="flex-1 bg-gray-50 overflow-auto">
+
+      <main className="flex-1 overflow-auto" style={{ background: 'var(--crm-navy)' }}>
         <div className="p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-            <p className="text-gray-600 mt-1">View performance metrics and insights</p>
+            <h1 className="text-3xl font-bold" style={{ color: 'var(--crm-white)', fontFamily: 'Outfit, sans-serif' }}>Reports & Analytics</h1>
+            <p className="mt-1" style={{ color: 'var(--crm-muted-dim)' }}>View performance metrics and insights</p>
           </div>
 
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-600" />
+            {[
+              { icon: Users, label: 'Total Leads', value: '1,247', trend: '+12.5%', iconBg: 'rgba(0,212,170,0.15)', iconColor: '#00D4AA', trendColor: '#4ADE80' },
+              { icon: Target, label: 'Conversion Rate', value: '18.5%', trend: '+8.2%', iconBg: 'rgba(74,222,128,0.15)', iconColor: '#4ADE80', trendColor: '#4ADE80' },
+              { icon: TrendingUp, label: 'Revenue', value: '$331K', trend: '+15.3%', iconBg: 'rgba(192,132,252,0.15)', iconColor: '#C084FC', trendColor: '#4ADE80' },
+              { icon: Clock, label: 'Avg. Response Time', value: '2.4h', trend: '+2.1%', iconBg: 'rgba(245,158,11,0.15)', iconColor: '#FBBF24', trendColor: '#F87171' },
+            ].map(({ icon: Icon, label, value, trend, iconBg, iconColor, trendColor }) => (
+              <div key={label} className="rounded-xl p-6" style={{ background: 'var(--crm-slate)', border: '1px solid var(--crm-border)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 rounded-lg" style={{ background: iconBg }}>
+                    <Icon className="w-6 h-6" style={{ color: iconColor }} />
+                  </div>
+                  <span className="text-sm font-medium" style={{ color: trendColor }}>{trend}</span>
                 </div>
-                <span className="text-sm text-green-600 font-medium">+12.5%</span>
+                <p className="text-sm mb-1" style={{ color: 'var(--crm-muted)' }}>{label}</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--crm-white)' }}>{value}</p>
               </div>
-              <p className="text-gray-600 text-sm mb-1">Total Leads</p>
-              <p className="text-2xl font-bold text-gray-900">1,247</p>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <Target className="w-6 h-6 text-green-600" />
-                </div>
-                <span className="text-sm text-green-600 font-medium">+8.2%</span>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Conversion Rate</p>
-              <p className="text-2xl font-bold text-gray-900">18.5%</p>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-purple-50 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
-                </div>
-                <span className="text-sm text-green-600 font-medium">+15.3%</span>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">$331K</p>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-orange-50 rounded-lg">
-                  <Clock className="w-6 h-6 text-orange-600" />
-                </div>
-                <span className="text-sm text-red-600 font-medium">+2.1%</span>
-              </div>
-              <p className="text-gray-600 text-sm mb-1">Avg. Response Time</p>
-              <p className="text-2xl font-bold text-gray-900">2.4h</p>
-            </div>
+            ))}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 p-3">
             {/* Lead Distribution */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Lead Distribution by Stage</h2>
+            <div className="rounded-xl p-3" style={{ background: 'var(--crm-slate)', border: '1px solid var(--crm-border)' }}>
+              <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--crm-white)' }}>Lead Distribution by Stage</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -116,30 +95,30 @@ export default function Reports() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip {...tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="grid grid-cols-2 gap-4 mt-6">
                 {leadDistributionData.map((item) => (
                   <div key={item.name} className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded" style={{ backgroundColor: item.color }}></div>
-                    <span className="text-sm text-gray-700">{item.name}: {item.value}%</span>
+                    <span className="text-sm" style={{ color: 'var(--crm-muted)' }}>{item.name}: {item.value}%</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Revenue Trend */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Revenue Trend</h2>
+            <div className="rounded-xl p-6" style={{ background: 'var(--crm-slate)', border: '1px solid var(--crm-border)' }}>
+              <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--crm-white)' }}>Revenue Trend</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-border)" />
+                  <XAxis dataKey="month" stroke="var(--crm-muted-dim)" />
+                  <YAxis stroke="var(--crm-muted-dim)" />
+                  <Tooltip formatter={(value) => `$${value.toLocaleString()}`} {...tooltipStyle} />
                   <Legend />
-                  <Line type="monotone" dataKey="revenue" stroke="#3B82F6" strokeWidth={2} name="Revenue" />
+                  <Line type="monotone" dataKey="revenue" stroke="#00D4AA" strokeWidth={2} name="Revenue" dot={{ fill: '#00D4AA' }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -147,34 +126,34 @@ export default function Reports() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Weekly Activity */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Weekly Activity</h2>
+            <div className="rounded-xl p-6" style={{ background: 'var(--crm-slate)', border: '1px solid var(--crm-border)' }}>
+              <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--crm-white)' }}>Weekly Activity</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={weeklyActivityData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-border)" />
+                  <XAxis dataKey="day" stroke="var(--crm-muted-dim)" />
+                  <YAxis stroke="var(--crm-muted-dim)" />
+                  <Tooltip {...tooltipStyle} />
                   <Legend />
-                  <Bar dataKey="calls" fill="#3B82F6" name="Calls" />
-                  <Bar dataKey="emails" fill="#A855F7" name="Emails" />
-                  <Bar dataKey="meetings" fill="#22C55E" name="Meetings" />
+                  <Bar dataKey="calls" fill="#00D4AA" name="Calls" />
+                  <Bar dataKey="emails" fill="#C084FC" name="Emails" />
+                  <Bar dataKey="meetings" fill="#FBBF24" name="Meetings" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
             {/* Follow-up Completion */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Follow-up Completion Rate</h2>
+            <div className="rounded-xl p-6" style={{ background: 'var(--crm-slate)', border: '1px solid var(--crm-border)' }}>
+              <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--crm-white)' }}>Follow-up Completion Rate</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={followUpCompletionData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-border)" />
+                  <XAxis dataKey="month" stroke="var(--crm-muted-dim)" />
+                  <YAxis stroke="var(--crm-muted-dim)" />
+                  <Tooltip {...tooltipStyle} />
                   <Legend />
-                  <Bar dataKey="completed" stackId="a" fill="#22C55E" name="Completed %" />
-                  <Bar dataKey="pending" stackId="a" fill="#EF4444" name="Pending %" />
+                  <Bar dataKey="completed" stackId="a" fill="#00D4AA" name="Completed %" />
+                  <Bar dataKey="pending" stackId="a" fill="#F87171" name="Pending %" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

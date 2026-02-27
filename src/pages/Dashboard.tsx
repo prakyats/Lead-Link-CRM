@@ -62,7 +62,7 @@ const Dashboard = () => {
         title: isPersonalScoped ? 'My Leads' : 'Total Leads',
         value: kpis.totalLeads.value,
         icon: Users,
-        color: 'blue',
+        color: 'teal',
         subtitle: 'Potential opportunities'
       },
       {
@@ -101,19 +101,26 @@ const Dashboard = () => {
     return Object.entries(distribution).map(([name, count]) => ({ name, count }));
   }, [leads, user]);
 
+  const colorMap: Record<string, { iconBg: string; iconColor: string }> = {
+    teal: { iconBg: 'rgba(0,212,170,0.15)', iconColor: '#00D4AA' },
+    green: { iconBg: 'rgba(34,197,94,0.15)', iconColor: '#4ADE80' },
+    amber: { iconBg: 'rgba(245,158,11,0.15)', iconColor: '#FBBF24' },
+    red: { iconBg: 'rgba(239,68,68,0.15)', iconColor: '#F87171' },
+  };
+
   if (loading) {
     return (
       <div className="flex">
         <Sidebar />
-        <main className="flex-1 bg-gray-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent shadow-lg shadow-blue-100"></div>
+        <main className="flex-1 flex items-center justify-center" style={{ background: 'var(--crm-navy)' }}>
+          <div className="animate-spin rounded-full h-12 w-12" style={{ border: '4px solid rgba(0,212,170,0.2)', borderTop: '4px solid #00D4AA' }}></div>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="flex bg-gray-50 min-h-screen">
+    <div className="flex min-h-screen" style={{ background: 'var(--crm-navy)' }}>
       <Sidebar />
       <main className="flex-1 crm-page-container">
         <div className="max-w-7xl mx-auto space-y-8">
@@ -127,7 +134,7 @@ const Dashboard = () => {
               </p>
             </div>
             {user?.role === 'ADMIN' && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 rounded-xl border border-blue-100 font-bold text-xs shadow-sm">
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs" style={{ background: 'rgba(0,212,170,0.1)', color: '#00D4AA', border: '1px solid rgba(0,212,170,0.2)' }}>
                 <Shield className="w-4 h-4" />
                 READ-ONLY MODE
               </div>
@@ -138,27 +145,21 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {dashboardKPIs.map((card) => {
               const Icon = card.icon;
-              const colorClasses: Record<string, string> = {
-                blue: 'bg-blue-50 text-blue-600 shadow-blue-100',
-                green: 'bg-green-50 text-green-600 shadow-green-100',
-                amber: 'bg-amber-50 text-amber-600 shadow-amber-100',
-                red: 'bg-red-50 text-red-600 shadow-red-100'
-              };
-
+              const colors = colorMap[card.color] || colorMap.teal;
               return (
                 <div key={card.title} className="crm-card crm-card-hover group">
                   <div className="flex justify-between items-start mb-4">
-                    <div className={`w-12 h-12 ${colorClasses[card.color]} rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110`}>
-                      <Icon className="w-6 h-6" />
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110" style={{ background: colors.iconBg }}>
+                      <Icon className="w-6 h-6" style={{ color: colors.iconColor }} />
                     </div>
-                    <div className="p-1.5 bg-gray-50 rounded-lg">
-                      <TrendingUp className="w-4 h-4 text-gray-400" />
+                    <div className="p-1.5 rounded-lg" style={{ background: 'rgba(148,163,184,0.06)' }}>
+                      <TrendingUp className="w-4 h-4" style={{ color: 'var(--crm-muted-dim)' }} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{card.title}</p>
-                    <p className="text-3xl font-bold text-gray-900 tracking-tight">{card.value}</p>
-                    <p className="text-xs text-gray-400 mt-2 font-medium">{card.subtitle}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--crm-muted-dim)' }}>{card.title}</p>
+                    <p className="text-3xl font-bold tracking-tight" style={{ color: 'var(--crm-white)' }}>{card.value}</p>
+                    <p className="text-xs mt-2 font-medium" style={{ color: 'var(--crm-muted-dim)' }}>{card.subtitle}</p>
                   </div>
                 </div>
               );
@@ -171,19 +172,21 @@ const Dashboard = () => {
               {hasPermission(user?.role as Role, 'canShowTeamOversight') && teamDistribution && (
                 <div className="crm-card">
                   <div className="flex items-center gap-3 mb-8">
-                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                      <Users2 className="w-5 h-5 text-blue-600" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,212,170,0.15)' }}>
+                      <Users2 className="w-5 h-5" style={{ color: '#00D4AA' }} />
                     </div>
-                    <h2 className="text-lg font-bold text-gray-900">Team Workload Distribution</h2>
+                    <h2 className="text-lg font-bold" style={{ color: 'var(--crm-white)' }}>Team Workload Distribution</h2>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {teamDistribution.map((item) => (
-                      <div key={item.name} className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 flex justify-between items-center group hover:bg-white hover:shadow-md hover:border-blue-100 transition-all duration-300">
+                      <div key={item.name} className="p-5 rounded-2xl flex justify-between items-center group transition-all duration-300" style={{ background: 'rgba(148,163,184,0.04)', border: '1px solid rgba(148,163,184,0.08)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,212,170,0.15)'; e.currentTarget.style.background = 'rgba(0,212,170,0.04)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.08)'; e.currentTarget.style.background = 'rgba(148,163,184,0.04)'; }}>
                         <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-blue-500" />
-                          <span className="font-bold text-gray-700">{item.name}</span>
+                          <div className="w-2 h-2 rounded-full" style={{ background: '#00D4AA' }} />
+                          <span className="font-bold" style={{ color: 'var(--crm-white)' }}>{item.name}</span>
                         </div>
-                        <span className="bg-white text-blue-600 border border-blue-50 px-3 py-1 rounded-full text-[10px] font-bold shadow-sm">{item.count} LEADS</span>
+                        <span className="px-3 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(0,212,170,0.15)', color: '#00D4AA' }}>{item.count} LEADS</span>
                       </div>
                     ))}
                   </div>
@@ -192,12 +195,12 @@ const Dashboard = () => {
 
               {/* Recent Activity */}
               <div className="crm-card !p-0 overflow-hidden">
-                <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+                <div className="p-8 flex items-center justify-between" style={{ borderBottom: '1px solid var(--crm-border)' }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                      <BarChart3 className="w-5 h-5 text-indigo-600" />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.15)' }}>
+                      <BarChart3 className="w-5 h-5" style={{ color: '#C084FC' }} />
                     </div>
-                    <h2 className="text-lg font-bold text-gray-900">
+                    <h2 className="text-lg font-bold" style={{ color: 'var(--crm-white)' }}>
                       {!hasPermission(user?.role as Role, 'canSeeAllLeads') ? 'My Recent Pipeline' : 'Latest Enterprise Activity'}
                     </h2>
                   </div>
@@ -209,13 +212,15 @@ const Dashboard = () => {
                 <div className="p-8">
                   <div className="space-y-4">
                     {recentLeads.length > 0 ? recentLeads.map((lead) => (
-                      <Link key={lead.id} to={`/leads`} className="flex items-center justify-between p-5 border border-gray-50 rounded-2xl hover:border-blue-100 hover:bg-blue-50/20 hover:shadow-sm transition-all group">
+                      <Link key={lead.id} to={`/leads`} className="flex items-center justify-between p-5 rounded-2xl transition-all group" style={{ border: '1px solid rgba(148,163,184,0.08)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,212,170,0.15)'; e.currentTarget.style.background = 'rgba(0,212,170,0.03)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.08)'; e.currentTarget.style.background = 'transparent'; }}>
                         <div className="flex items-center gap-5">
-                          <div className="w-12 h-12 bg-white text-blue-600 rounded-2xl flex items-center justify-center font-bold text-lg border border-gray-100 shadow-sm group-hover:scale-105 transition-transform">
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105" style={{ background: 'rgba(0,212,170,0.15)', color: '#00D4AA', border: '1px solid rgba(0,212,170,0.2)' }}>
                             {lead.company.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors text-lg tracking-tight">{lead.company}</p>
+                            <p className="font-bold text-lg tracking-tight transition-colors" style={{ color: 'var(--crm-white)' }}>{lead.company}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
                                 lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
@@ -226,8 +231,8 @@ const Dashboard = () => {
                                 }`}>
                                 {lead.stage}
                               </span>
-                              <span className="text-[10px] font-bold text-gray-400">•</span>
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">
+                              <span className="text-[10px] font-bold" style={{ color: 'var(--crm-muted-dim)' }}>•</span>
+                              <span className="text-[10px] font-bold uppercase tracking-widest leading-none" style={{ color: 'var(--crm-muted-dim)' }}>
                                 ${lead.value.toLocaleString()}
                               </span>
                             </div>
@@ -242,7 +247,7 @@ const Dashboard = () => {
                       </Link>
                     )) : (
                       <div className="py-12 text-center">
-                        <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No recent activity found</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--crm-muted-dim)' }}>No recent activity found</p>
                       </div>
                     )}
                   </div>
@@ -253,24 +258,30 @@ const Dashboard = () => {
             <div className="space-y-8">
               {/* Quick Actions */}
               {(hasPermission(user?.role as Role, 'canCreateLeads') || hasPermission(user?.role as Role, 'canOperationalControl')) ? (
-                <div className="crm-card bg-gray-900 text-white border-none shadow-xl shadow-gray-200">
-                  <h2 className="text-lg font-bold mb-6">Quick Actions</h2>
+                <div className="crm-card">
+                  <h2 className="text-lg font-bold mb-6" style={{ color: 'var(--crm-white)' }}>Quick Actions</h2>
                   <div className="space-y-3">
                     {hasPermission(user?.role as Role, 'canCreateLeads') && (
-                      <Link to="/leads" className="crm-btn-primary w-full shadow-none border border-blue-500">
+                      <Link to="/leads" className="crm-btn-primary w-full shadow-none" style={{ border: '1px solid rgba(0,212,170,0.3)' }}>
                         Add New Lead
                       </Link>
                     )}
-                    <Link to="/tasks" className="w-full h-[46px] flex items-center justify-center border border-gray-700 text-gray-300 rounded-xl hover:bg-gray-800 transition-all font-bold text-sm">
+                    <Link
+                      to="/tasks"
+                      className="w-full h-[46px] flex items-center justify-center rounded-xl transition-all font-bold text-sm"
+                      style={{ border: '1px solid var(--crm-border)', color: 'var(--crm-muted)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(148,163,184,0.06)'; e.currentTarget.style.color = 'var(--crm-white)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--crm-muted)'; }}
+                    >
                       Manage Daily Tasks
                     </Link>
                   </div>
                 </div>
               ) : (
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl shadow-xl shadow-blue-100 p-8 text-white relative overflow-hidden">
+                <div className="rounded-3xl p-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(0,212,170,0.15), rgba(168,85,247,0.1))', border: '1px solid rgba(0,212,170,0.1)' }}>
                   <BarChart3 className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 rotate-12" />
-                  <h2 className="text-lg font-bold mb-3 relative z-10 tracking-tight">Analytical View Agent</h2>
-                  <p className="text-blue-100 text-sm leading-relaxed relative z-10 opacity-90 font-medium">
+                  <h2 className="text-lg font-bold mb-3 relative z-10 tracking-tight" style={{ color: 'var(--crm-white)' }}>Analytical View Agent</h2>
+                  <p className="text-sm leading-relaxed relative z-10 opacity-90 font-medium" style={{ color: 'var(--crm-muted)' }}>
                     Restricted Operational access. System metrics are synchronized in real-time for compliance monitoring.
                   </p>
                 </div>
@@ -279,26 +290,26 @@ const Dashboard = () => {
               {/* Activity Feed */}
               <div className="crm-card">
                 <div className="flex items-center gap-3 mb-8">
-                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,212,170,0.15)' }}>
+                    <Clock className="w-5 h-5" style={{ color: '#00D4AA' }} />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">Upcoming Events</h3>
+                  <h3 className="text-lg font-bold" style={{ color: 'var(--crm-white)' }}>Upcoming Events</h3>
                 </div>
                 <div className="space-y-6">
                   {upcomingTasks.length > 0 ? upcomingTasks.slice(0, 4).map((task) => (
                     <div key={task.id} className="flex gap-4 group">
-                      <div className="mt-1 w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] shrink-0 transition-transform group-hover:scale-125" />
+                      <div className="mt-1 w-2.5 h-2.5 rounded-full shrink-0 transition-transform group-hover:scale-125" style={{ background: '#00D4AA', boxShadow: '0 0 8px rgba(0,212,170,0.5)' }} />
                       <div>
-                        <p className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">{task.title}</p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                        <p className="text-sm font-bold leading-snug transition-colors" style={{ color: 'var(--crm-white)' }}>{task.title}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2" style={{ color: 'var(--crm-muted-dim)' }}>
                           <Clock className="w-3 h-3" />
                           {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                     </div>
                   )) : (
-                    <div className="py-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No scheduled tasks</p>
+                    <div className="py-8 text-center rounded-2xl" style={{ background: 'rgba(148,163,184,0.04)', border: '2px dashed rgba(148,163,184,0.1)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--crm-muted-dim)' }}>No scheduled tasks</p>
                     </div>
                   )}
                 </div>

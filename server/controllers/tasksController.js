@@ -21,8 +21,8 @@ function mapTaskToLegacy(task) {
  */
 async function getAllTasks(req, res) {
     try {
-        const { role, id: userId } = req.user;
-        let where = {};
+        const { role, id: userId, organizationId } = req.user;
+        let where = { organizationId };
 
         if (role === 'SALES') {
             where.assignedToId = userId;
@@ -53,20 +53,33 @@ async function getAllTasks(req, res) {
  */
 async function createTask(req, res) {
     try {
-        const { role, id: userId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
         const { title, description, dueDate, priority, leadId, assignedToId } = req.body;
+        const parsedLeadId = parseInt(leadId);
+        const parsedAssignedToId = parseInt(assignedToId) || userId;
+
+        const lead = await prisma.lead.findFirst({
+            where: { id: parsedLeadId, organizationId }
+        });
+        if (!lead) return res.status(400).json({ error: 'Invalid lead for this organization' });
+
+        const assignee = await prisma.user.findFirst({
+            where: { id: parsedAssignedToId, organizationId }
+        });
+        if (!assignee) return res.status(400).json({ error: 'Invalid assignee for this organization' });
 
         const newTask = await prisma.task.create({
             data: {
+                organizationId,
                 title,
                 description,
                 dueDate: dueDate ? new Date(dueDate) : null,
                 priority: priority ? priority.toUpperCase() : 'MEDIUM',
                 status: 'PENDING',
-                leadId: parseInt(leadId),
-                assignedToId: parseInt(assignedToId) || userId
+                leadId: parsedLeadId,
+                assignedToId: parsedAssignedToId
             },
             include: { assignedTo: { select: { name: true } } }
         });
@@ -84,10 +97,10 @@ async function createTask(req, res) {
 async function updateTask(req, res) {
     try {
         const { id } = req.params;
-        const { role, id: userId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingTask = await prisma.task.findUnique({ where: { id: parseInt(id) } });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingTask) return res.status(404).json({ error: 'Task not found' });
         if (role === 'SALES' && existingTask.assignedToId !== userId) return res.status(403).json({ error: 'Access denied' });
 
@@ -99,9 +112,14 @@ async function updateTask(req, res) {
         if (updateData.status) updateData.status = updateData.status.toUpperCase();
         if (updateData.priority) updateData.priority = updateData.priority.toUpperCase();
 
-        const updatedTask = await prisma.task.update({
-            where: { id: parseInt(id) },
-            data: updateData,
+        const updateRes = await prisma.task.updateMany({
+            where: { id: parseInt(id), organizationId },
+            data: updateData
+        });
+        if (updateRes.count === 0) return res.status(404).json({ error: 'Task not found' });
+
+        const updatedTask = await prisma.task.findFirst({
+            where: { id: parseInt(id), organizationId },
             include: { assignedTo: { select: { name: true } } }
         });
 
@@ -118,20 +136,24 @@ async function updateTask(req, res) {
 async function toggleComplete(req, res) {
     try {
         const { id } = req.params;
-        const { role, id: userId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingTask = await prisma.task.findUnique({ where: { id: parseInt(id) } });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingTask) return res.status(404).json({ error: 'Task not found' });
         if (role === 'SALES' && existingTask.assignedToId !== userId) return res.status(403).json({ error: 'Access denied' });
 
         const newStatus = existingTask.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
-        const updatedTask = await prisma.task.update({
-            where: { id: parseInt(id) },
+        await prisma.task.updateMany({
+            where: { id: parseInt(id), organizationId },
             data: {
                 status: newStatus,
                 completedAt: newStatus === 'COMPLETED' ? new Date() : null
-            },
+            }
+        });
+
+        const updatedTask = await prisma.task.findFirst({
+            where: { id: parseInt(id), organizationId },
             include: { assignedTo: { select: { name: true } } }
         });
 
@@ -148,10 +170,11 @@ async function toggleComplete(req, res) {
 async function deleteTask(req, res) {
     try {
         const { id } = req.params;
-        const { role } = req.user;
+        const { role, organizationId } = req.user;
         if (role !== 'MANAGER') return res.status(403).json({ error: 'Only Managers can delete' });
 
-        await prisma.task.delete({ where: { id: parseInt(id) } });
+        const delRes = await prisma.task.deleteMany({ where: { id: parseInt(id), organizationId } });
+        if (delRes.count === 0) return res.status(404).json({ error: 'Task not found' });
         res.json({ success: true, message: 'Task deleted' });
     } catch (error) {
         console.error('Error deleting task:', error);

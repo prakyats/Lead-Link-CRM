@@ -33,12 +33,12 @@ export default function CustomerDetail() {
 
   if (loading) {
     return (
-      <div className="flex">
+      <div className="flex" style={{ background: '#0B1120' }}>
         <Sidebar />
-        <main className="flex-1 bg-gray-50 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center" style={{ background: '#0B1120' }}>
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading customer details...</p>
+            <div className="animate-spin rounded-full h-12 w-12 mx-auto" style={{ border: '4px solid rgba(0,212,170,0.2)', borderTop: '4px solid #00D4AA' }}></div>
+            <p className="mt-4" style={{ color: '#94A3B8' }}>Loading customer details...</p>
           </div>
         </main>
       </div>
@@ -47,11 +47,11 @@ export default function CustomerDetail() {
 
   if (!leadData) {
     return (
-      <div className="flex">
+      <div className="flex" style={{ background: '#0B1120' }}>
         <Sidebar />
-        <main className="flex-1 bg-gray-50 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center" style={{ background: '#0B1120' }}>
           <div className="text-center">
-            <p className="text-lg text-gray-600">Customer not found</p>
+            <p className="text-lg" style={{ color: '#94A3B8' }}>Customer not found</p>
           </div>
         </main>
       </div>
@@ -60,90 +60,91 @@ export default function CustomerDetail() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'high': return 'bg-red-100 text-red-700';
-      case 'medium': return 'bg-orange-100 text-orange-700';
-      case 'low': return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'high': return { bg: 'rgba(239,68,68,0.15)', color: '#F87171' };
+      case 'medium': return { bg: 'rgba(245,158,11,0.15)', color: '#FBBF24' };
+      case 'low': return { bg: 'rgba(74,222,128,0.15)', color: '#4ADE80' };
+      default: return { bg: 'rgba(148,163,184,0.1)', color: '#94A3B8' };
     }
   };
 
+  const riskStyle = getRiskColor(leadData.risk);
+
   return (
-    <div className="flex">
+    <div className="flex" style={{ background: '#0B1120' }}>
       <Sidebar />
 
-      <main className="flex-1 bg-gray-50 overflow-auto">
+      <main className="flex-1 overflow-auto" style={{ background: '#0B1120' }}>
         <div className="p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">{leadData.company}</h1>
-            <p className="text-gray-600 mt-1">Lead ID: #{id}</p>
+            <h1 className="text-3xl font-bold" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>{leadData.company}</h1>
+            <p className="mt-1" style={{ color: '#64748B' }}>Lead ID: #{id}</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Customer Profile */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <div className="rounded-xl p-6 mb-6" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-2xl font-bold">{leadData.company.charAt(0)}</span>
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)' }}>
+                    <span className="text-2xl font-bold" style={{ color: '#0B1120' }}>{leadData.company.charAt(0)}</span>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{leadData.contact}</h2>
-                    <p className="text-sm text-gray-500">{leadData.company}</p>
+                    <h2 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>{leadData.contact}</h2>
+                    <p className="text-sm" style={{ color: '#94A3B8' }}>{leadData.company}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4 mb-6">
-                  <div className="flex items-center gap-3 text-gray-700">
-                    <Mail className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm">{leadData.email}</span>
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-5 h-5" style={{ color: '#64748B' }} />
+                    <span className="text-sm" style={{ color: '#94A3B8' }}>{leadData.email}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-gray-700">
-                    <Phone className="w-5 h-5 text-gray-400" />
-                    <span className="text-sm">{leadData.phone || 'N/A'}</span>
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5" style={{ color: '#64748B' }} />
+                    <span className="text-sm" style={{ color: '#94A3B8' }}>{leadData.phone || 'N/A'}</span>
                   </div>
                 </div>
 
-                <div className="border-t border-gray-200 pt-4 space-y-3">
+                <div className="pt-4 space-y-3" style={{ borderTop: '1px solid rgba(148,163,184,0.08)' }}>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Lead Score</span>
+                    <span className="text-sm" style={{ color: '#64748B' }}>Lead Score</span>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                        <span className="font-semibold text-gray-900">{leadData.leadScore}/100</span>
+                        <Star className="w-4 h-4 fill-current" style={{ color: '#FBBF24' }} />
+                        <span className="font-semibold" style={{ color: '#F1F5F9' }}>{leadData.leadScore}/100</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Risk Status</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRiskColor(leadData.risk)}`}>
+                    <span className="text-sm" style={{ color: '#64748B' }}>Risk Status</span>
+                    <span className="px-3 py-1 rounded-full text-xs font-medium" style={{ background: riskStyle.bg, color: riskStyle.color }}>
                       {leadData.risk ? leadData.risk.toUpperCase() : 'LOW'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Deal Value</span>
-                    <span className="font-semibold text-gray-900">${leadData.value.toLocaleString()}</span>
+                    <span className="text-sm" style={{ color: '#64748B' }}>Deal Value</span>
+                    <span className="font-semibold" style={{ color: '#F1F5F9' }}>${leadData.value.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Stage</span>
-                    <span className="text-sm font-medium text-gray-900 capitalize">{leadData.stage}</span>
+                    <span className="text-sm" style={{ color: '#64748B' }}>Stage</span>
+                    <span className="text-sm font-medium capitalize" style={{ color: '#F1F5F9' }}>{leadData.stage}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Priority</span>
-                    <span className="text-sm text-gray-900">{leadData.priority}</span>
+                    <span className="text-sm" style={{ color: '#64748B' }}>Priority</span>
+                    <span className="text-sm" style={{ color: '#F1F5F9' }}>{leadData.priority}</span>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="space-y-3">
-                {/* ROLES: Using permission mapping for visibility */}
                 {hasPermission(user?.role as Role, 'canOperationalControl') && (
                   <>
-                    <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium">
+                    <button className="w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)', color: '#0B1120' }}>
                       <Plus className="w-5 h-5" />
                       Add Interaction
                     </button>
-                    <button className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 font-medium">
+                    <button className="w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" style={{ background: 'rgba(74,222,128,0.15)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.2)' }}>
                       <Calendar className="w-5 h-5" />
                       Schedule Follow-up
                     </button>
@@ -151,7 +152,8 @@ export default function CustomerDetail() {
                 )}
                 <Link
                   to={`/pdf-preview/${id}`}
-                  className="block w-full border-2 border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-colors text-center font-medium flex items-center justify-center gap-2"
+                  className="block w-full py-3 rounded-lg text-center font-medium flex items-center justify-center gap-2 transition-all"
+                  style={{ border: '1px solid rgba(148,163,184,0.15)', color: '#94A3B8' }}
                 >
                   <Download className="w-5 h-5" />
                   Download Summary
@@ -161,8 +163,8 @@ export default function CustomerDetail() {
 
             {/* Interaction Timeline */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Interaction Timeline</h2>
+              <div className="rounded-xl p-6" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
+                <h2 className="text-xl font-bold mb-6" style={{ color: '#F1F5F9' }}>Interaction Timeline</h2>
 
                 <div className="space-y-6">
                   {leadData.interactions && leadData.interactions.length > 0 ? (
@@ -173,40 +175,40 @@ export default function CustomerDetail() {
                             interaction.type === 'meeting' ? MessageSquare :
                               FileText;
 
+                      const iconColors: Record<string, { bg: string; color: string }> = {
+                        call: { bg: 'rgba(0,212,170,0.15)', color: '#00D4AA' },
+                        email: { bg: 'rgba(192,132,252,0.15)', color: '#C084FC' },
+                        meeting: { bg: 'rgba(74,222,128,0.15)', color: '#4ADE80' },
+                        default: { bg: 'rgba(148,163,184,0.1)', color: '#94A3B8' },
+                      };
+                      const colors = iconColors[interaction.type] || iconColors.default;
+
                       return (
                         <div key={interaction.id} className="flex gap-4">
                           <div className="flex flex-col items-center">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${interaction.type === 'call' ? 'bg-blue-100' :
-                              interaction.type === 'email' ? 'bg-purple-100' :
-                                interaction.type === 'meeting' ? 'bg-green-100' :
-                                  'bg-gray-100'
-                              }`}>
-                              <Icon className={`w-5 h-5 ${interaction.type === 'call' ? 'text-blue-600' :
-                                interaction.type === 'email' ? 'text-purple-600' :
-                                  interaction.type === 'meeting' ? 'text-green-600' :
-                                    'text-gray-600'
-                                }`} />
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: colors.bg }}>
+                              <Icon className="w-5 h-5" style={{ color: colors.color }} />
                             </div>
                             {index < leadData.interactions.length - 1 && (
-                              <div className="w-0.5 h-full bg-gray-200 mt-2"></div>
+                              <div className="w-0.5 h-full mt-2" style={{ background: 'rgba(148,163,184,0.08)' }}></div>
                             )}
                           </div>
 
                           <div className="flex-1 pb-6">
                             <div className="flex items-start justify-between mb-2">
-                              <h3 className="font-semibold text-gray-900">{interaction.type.charAt(0).toUpperCase() + interaction.type.slice(1)}</h3>
-                              <div className="flex items-center gap-1 text-gray-500 text-sm">
+                              <h3 className="font-semibold" style={{ color: '#F1F5F9' }}>{interaction.type.charAt(0).toUpperCase() + interaction.type.slice(1)}</h3>
+                              <div className="flex items-center gap-1 text-sm" style={{ color: '#64748B' }}>
                                 <Clock className="w-4 h-4" />
                                 <span>{formatRelativeTime(interaction.timestamp)}</span>
                               </div>
                             </div>
-                            <p className="text-gray-600 text-sm mb-2">{interaction.notes}</p>
+                            <p className="text-sm mb-2" style={{ color: '#94A3B8' }}>{interaction.notes}</p>
                           </div>
                         </div>
                       );
                     })
                   ) : (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12" style={{ color: '#64748B' }}>
                       <p>No interactions recorded yet</p>
                     </div>
                   )}

@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Kanban from "./pages/Kanban";
@@ -16,6 +17,10 @@ console.log('[Routes] Initializing browser router...');
 export const router = createBrowserRouter([
   {
     path: "/",
+    element: <LandingPage />,
+  },
+  {
+    path: "/login",
     element: <Login />,
   },
   {
