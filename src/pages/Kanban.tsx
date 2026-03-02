@@ -3,7 +3,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Link } from 'react-router';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Clock, AlertCircle, MoreHorizontal, Building2, User2, DollarSign, Plus } from 'lucide-react';
+import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus } from 'lucide-react';
 import { useLeads } from '../contexts/LeadsContext';
 import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
 
@@ -57,8 +57,8 @@ function LeadCard({ lead }: LeadCardProps) {
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 font-bold text-sm" style={{ color: 'var(--crm-white)' }}>
-            <span style={{ color: 'var(--crm-muted-dim)' }}>$</span>
-            {lead.value.toLocaleString()}
+            <span style={{ color: 'var(--crm-muted-dim)' }}>₹</span>
+            {lead.value.toLocaleString('en-IN')}
           </div>
           <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
             lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
@@ -176,8 +176,8 @@ function KanbanContent() {
         <div className="p-8 pb-4 shrink-0">
           <div className="flex justify-between items-end mb-6">
             <div className="space-y-1">
-              <h1 className="crm-page-title">Executive Pipeline</h1>
-              <p className="crm-page-subtitle">Real-time status synchronization across all deal stages</p>
+              <h1 className="crm-page-title">Pipeline Board</h1>
+              <p className="crm-page-subtitle">Drag and drop leads across stages to update their status</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex -space-x-2">
@@ -187,14 +187,14 @@ function KanbanContent() {
                   </div>
                 ))}
               </div>
-              <button className="crm-btn-secondary !text-xs !py-2">Manage Access</button>
+              <button className="crm-btn-secondary !text-xs !py-2">View Team</button>
             </div>
           </div>
 
           <div className="crm-card !p-3 !flex-row flex items-center gap-3 mb-2" style={{ background: 'rgba(0,212,170,0.05)' }}>
             <AlertCircle className="w-4 h-4" style={{ color: '#00D4AA' }} />
             <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--crm-muted)' }}>
-              Operational Intelligence: <span style={{ color: 'var(--crm-white)' }}>Drag cards between tiers to automate stage progression protocols</span>
+              Tip: <span style={{ color: 'var(--crm-white)' }}>Drag and drop cards to move leads between stages</span>
             </p>
           </div>
         </div>

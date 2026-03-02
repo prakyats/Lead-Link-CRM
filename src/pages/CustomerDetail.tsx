@@ -123,7 +123,7 @@ export default function CustomerDetail() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm" style={{ color: '#64748B' }}>Deal Value</span>
-                    <span className="font-semibold" style={{ color: '#F1F5F9' }}>${leadData.value.toLocaleString()}</span>
+                    <span className="font-semibold" style={{ color: '#F1F5F9' }}>₹{leadData.value.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm" style={{ color: '#64748B' }}>Stage</span>

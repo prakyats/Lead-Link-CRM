@@ -93,7 +93,7 @@ export default function PdfPreview() {
     doc.text('Deal Value:', 20, 128);
     doc.setTextColor(0, 212, 170); // Teal
     doc.setFontSize(14);
-    doc.text(`$${leadData.value.toLocaleString()}`, 60, 128);
+    doc.text(`₹${leadData.value.toLocaleString('en-IN')}`, 60, 128);
 
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
@@ -264,7 +264,7 @@ export default function PdfPreview() {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <p className="text-sm mb-1" style={{ color: '#64748B' }}>Deal Value</p>
-                    <p className="text-2xl font-bold" style={{ color: '#00D4AA' }}>${leadData.value.toLocaleString()}</p>
+                    <p className="text-2xl font-bold" style={{ color: '#00D4AA' }}>₹{leadData.value.toLocaleString('en-IN')}</p>
                   </div>
                   <div>
                     <p className="text-sm mb-1" style={{ color: '#64748B' }}>Priority</p>

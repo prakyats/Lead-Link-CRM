@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, DollarSign } from 'lucide-react';
+import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee } from 'lucide-react';
 import { useLeads, Lead } from '../contexts/LeadsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPermission } from '../utils/permissions';
@@ -69,7 +69,7 @@ export default function Leads() {
                                 className="crm-btn-primary"
                             >
                                 <Plus className="w-5 h-5" />
-                                <span>Capture Lead</span>
+                                <span>Add Lead</span>
                             </button>
                         )}
                     </div>
@@ -155,8 +155,8 @@ export default function Leads() {
                                             </td>
                                             <td className="crm-table-td">
                                                 <div className="flex items-center gap-1.5 font-bold" style={{ color: '#F1F5F9' }}>
-                                                    <span className="text-xs" style={{ color: '#64748B' }}>$</span>
-                                                    {lead.value.toLocaleString()}
+                                                    <span className="text-xs" style={{ color: '#64748B' }}>₹</span>
+                                                    {lead.value.toLocaleString('en-IN')}
                                                 </div>
                                             </td>
                                             <td className="crm-table-td text-xs font-bold uppercase tracking-tight" style={{ color: '#64748B' }}>
@@ -179,8 +179,8 @@ export default function Leads() {
                                     <Users className="w-10 h-10" style={{ color: '#64748B' }} />
                                 </div>
                                 <div className="space-y-2">
-                                    <h3 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>Clean Pipeline</h3>
-                                    <p className="font-medium text-sm" style={{ color: '#64748B' }}>Target leads and start building your sales momentum</p>
+                                    <h3 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>No Leads Yet</h3>
+                                    <p className="font-medium text-sm" style={{ color: '#64748B' }}>Add your first lead to start building your pipeline</p>
                                 </div>
                                 {canCreate && (
                                     <button
@@ -188,7 +188,7 @@ export default function Leads() {
                                         className="crm-btn-primary !mx-auto mt-6"
                                     >
                                         <Plus className="w-5 h-5" />
-                                        <span>Initial Capture</span>
+                                        <span>Add Lead</span>
                                     </button>
                                 )}
                             </div>
@@ -204,8 +204,8 @@ export default function Leads() {
                     <div className="rounded-[2rem] w-full max-w-2xl relative overflow-hidden transition-all scale-100 animate-in fade-in zoom-in duration-300" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}>
                         <div className="p-10 flex justify-between items-start" style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
                             <div>
-                                <h2 className="text-2xl font-bold tracking-tight" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>Capture Opportunity</h2>
-                                <p className="mt-1 font-medium text-sm tracking-tight" style={{ color: '#64748B' }}>Standardize new organization entry into the ecosystem</p>
+                                <h2 className="text-2xl font-bold tracking-tight" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>Add New Lead</h2>
+                                <p className="mt-1 font-medium text-sm tracking-tight" style={{ color: '#64748B' }}>Fill in the details to add a new lead to your pipeline</p>
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(false)}
@@ -218,38 +218,38 @@ export default function Leads() {
                         <form onSubmit={handleCreateSubmit} className="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-2">
-                                    <label className="crm-label">Legal Organization *</label>
+                                    <label className="crm-label">Company Name *</label>
                                     <div className="relative group">
                                         <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors" style={{ color: '#64748B' }} />
-                                        <input required type="text" className="crm-input !pl-11" placeholder="e.g. Global Tech Solutions" value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} />
+                                        <input required type="text" className="crm-input !pl-11" placeholder="e.g. Tata Consultancy Services" value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="crm-label">Point of Contact *</label>
+                                    <label className="crm-label">Contact Name *</label>
                                     <div className="relative group">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors" style={{ color: '#64748B' }} />
-                                        <input required type="text" className="crm-input !pl-11" placeholder="Lead stakeholder name" value={formData.contact} onChange={(e) => setFormData({ ...formData, contact: e.target.value })} />
+                                        <input required type="text" className="crm-input !pl-11" placeholder="Primary contact person" value={formData.contact} onChange={(e) => setFormData({ ...formData, contact: e.target.value })} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="crm-label">Corporate Email *</label>
+                                    <label className="crm-label">Email Address *</label>
                                     <div className="relative group">
                                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors" style={{ color: '#64748B' }} />
-                                        <input required type="email" className="crm-input !pl-11" placeholder="name@organization.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                                        <input required type="email" className="crm-input !pl-11" placeholder="contact@company.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="crm-label">Direct Communication</label>
+                                    <label className="crm-label">Phone Number</label>
                                     <div className="relative group">
                                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors" style={{ color: '#64748B' }} />
-                                        <input type="tel" className="crm-input !pl-11" placeholder="+1 (000) 000-0000" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                                        <input type="tel" className="crm-input !pl-11" placeholder="+91 98765 43210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="crm-label">Projected Valuation ($)</label>
+                                    <label className="crm-label">Projected Value (₹)</label>
                                     <div className="relative group">
-                                        <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors" style={{ color: '#64748B' }} />
-                                        <input required type="number" className="crm-input !pl-11" placeholder="Lead value" value={formData.value} onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })} />
+                                        <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors" style={{ color: '#64748B' }} />
+                                        <input required type="number" className="crm-input !pl-11" placeholder="Lead value in ₹" value={formData.value} onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
@@ -264,7 +264,7 @@ export default function Leads() {
 
                             <div className="flex gap-4 pt-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="crm-btn-secondary w-full !py-4">Cancel</button>
-                                <button type="submit" className="crm-btn-primary w-full !py-4">Initialize Lead</button>
+                                <button type="submit" className="crm-btn-primary w-full !py-4">Add Lead</button>
                             </div>
                         </form>
                     </div>
