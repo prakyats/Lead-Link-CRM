@@ -233,7 +233,7 @@ const Dashboard = () => {
                               </span>
                               <span className="text-[10px] font-bold" style={{ color: 'var(--crm-muted-dim)' }}>•</span>
                               <span className="text-[10px] font-bold uppercase tracking-widest leading-none" style={{ color: 'var(--crm-muted-dim)' }}>
-                                ${lead.value.toLocaleString()}
+                                ₹{lead.value.toLocaleString('en-IN')}
                               </span>
                             </div>
                           </div>
@@ -280,9 +280,9 @@ const Dashboard = () => {
               ) : (
                 <div className="rounded-3xl p-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(0,212,170,0.15), rgba(168,85,247,0.1))', border: '1px solid rgba(0,212,170,0.1)' }}>
                   <BarChart3 className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 rotate-12" />
-                  <h2 className="text-lg font-bold mb-3 relative z-10 tracking-tight" style={{ color: 'var(--crm-white)' }}>Analytical View Agent</h2>
+                  <h2 className="text-lg font-bold mb-3 relative z-10 tracking-tight" style={{ color: 'var(--crm-white)' }}>Read-Only View</h2>
                   <p className="text-sm leading-relaxed relative z-10 opacity-90 font-medium" style={{ color: 'var(--crm-muted)' }}>
-                    Restricted Operational access. System metrics are synchronized in real-time for compliance monitoring.
+                    You have view-only access. Contact your manager to make changes.
                   </p>
                 </div>
               )}

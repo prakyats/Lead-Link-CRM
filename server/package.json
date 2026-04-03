@@ -10,7 +10,7 @@
     "db:seed": "prisma db seed",
     "setup": "npm run prisma:generate && npm run db:push && npm run db:seed",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "prisma generate && nodemon server.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
