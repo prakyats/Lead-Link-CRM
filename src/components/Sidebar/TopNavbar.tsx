@@ -1,5 +1,6 @@
-import { Menu } from 'lucide-react';
+import { Menu, Layers } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { motion } from 'framer-motion';
 
 interface TopNavbarProps {
   onOpenMenu: () => void;
@@ -23,36 +24,40 @@ export function TopNavbar({ onOpenMenu }: TopNavbarProps) {
   };
 
   return (
-    <div className="md:hidden flex items-center justify-between px-6 py-4 sticky top-0 z-30 shadow-sm" style={{ background: 'var(--crm-navy-deep)', borderBottom: '1px solid var(--crm-border)' }}>
-      <div className="flex items-center gap-4">
-        <button 
+    <nav className="md:hidden flex items-center justify-between px-5 h-16 sticky top-0 z-50 border-b border-white/10 backdrop-blur-md bg-[#0B1120]/80">
+      <div className="flex items-center gap-3">
+        <motion.button 
+          whileTap={{ scale: 0.92 }}
           onClick={onOpenMenu}
-          className="p-2 -ml-2 rounded-xl text-muted-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00D4AA]"
+          className="w-11 h-11 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-white/5 transition-colors focus:outline-none"
           aria-label="Toggle mobile menu"
         >
           <Menu className="w-6 h-6" />
-        </button>
+        </motion.button>
         
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00D4AA, #6EE7B7)' }}>
-            <span className="font-extrabold text-xs" style={{ color: '#0B1120' }}>LL</span>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#00D4AA] to-[#6EE7B7]">
+            <Layers className="w-4 h-4 text-[#0B1120]" />
           </div>
-          <h1 className="text-lg font-bold tracking-tight" style={{ color: 'var(--crm-white)', fontFamily: 'Outfit, sans-serif' }}>LeadLink</h1>
+          <h1 className="text-lg font-bold tracking-tight text-white font-outfit">LeadLink</h1>
         </div>
       </div>
 
       {user && (
-        <div className="flex items-center gap-2">
-          <span className="hidden sm:inline-block px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
-            {getRoleLabel(user.role)}
-          </span>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0, 212, 170, 0.15)', border: '1px solid rgba(0, 212, 170, 0.2)' }}>
-            <span className="font-bold text-[10px] uppercase tracking-tight" style={{ color: '#00D4AA' }}>
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end mr-1 hidden sm:flex">
+             <span className="text-[10px] font-bold text-[#00D4AA] uppercase tracking-widest">{getRoleLabel(user.role)}</span>
+          </div>
+          <motion.div 
+            whileTap={{ scale: 0.95 }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#00D4AA]/10 border border-[#00D4AA]/20"
+          >
+            <span className="font-bold text-[10px] text-[#00D4AA] uppercase">
               {getInitials(user.name)}
             </span>
-          </div>
+          </motion.div>
         </div>
       )}
-    </div>
+    </nav>
   );
 }

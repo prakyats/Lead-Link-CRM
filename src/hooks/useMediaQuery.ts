@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 
+/**
+ * Custom hook to track window media queries.
+ * @param query The media query string to match (e.g., '(max-width: 768px)')
+ * @returns boolean indicating if the media query matches
+ */
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
 
@@ -8,9 +13,11 @@ export function useMediaQuery(query: string): boolean {
     if (media.matches !== matches) {
       setMatches(media.matches);
     }
+    
     const listener = () => setMatches(media.matches);
-    window.addEventListener('resize', listener);
-    return () => window.removeEventListener('resize', listener);
+    media.addEventListener('change', listener);
+    
+    return () => media.removeEventListener('change', listener);
   }, [matches, query]);
 
   return matches;

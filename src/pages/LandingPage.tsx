@@ -2,12 +2,13 @@ import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
 import {
   Users, Phone, ClipboardCheck, Activity,
-  ArrowRight, Menu, X, Shield, Database, GitBranch,
+  ArrowRight, Shield, Database, GitBranch,
   CheckCircle2, ChevronLeft, ChevronRight, Layers, Target,
   Package, Truck, Globe, Warehouse, ClipboardList
 } from 'lucide-react';
 import '../styles/landing.css';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { motion, AnimatePresence as FramerAnimatePresence } from 'framer-motion';
 
 /* ── Animated SVG Network Component ── */
 function NetworkSVG() {
@@ -86,7 +87,7 @@ function ScreenshotCarousel() {
   const resetTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      setCurrent(prev => (prev + 1) % slides.length);
+      setCurrent((prev: number) => (prev + 1) % slides.length);
     }, 4000);
   };
 
@@ -96,7 +97,7 @@ function ScreenshotCarousel() {
   }, []);
 
   const go = (dir: 1 | -1) => {
-    setCurrent(prev => (prev + dir + slides.length) % slides.length);
+    setCurrent((prev: number) => (prev + dir + slides.length) % slides.length);
     resetTimer();
   };
 
@@ -134,8 +135,6 @@ function ScreenshotCarousel() {
 
 /* ══════════  MAIN COMPONENT  ══════════ */
 export default function LandingPage() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
   /* Scroll-reveal observer */
   useEffect(() => {
     const els = document.querySelectorAll('.ll-reveal');
@@ -201,29 +200,10 @@ export default function LandingPage() {
               aria-label="Toggle theme"
             />
             <Link to="/login" className="ll-btn ll-btn-ghost">Sign In</Link>
-            <Link to="/login" className="ll-btn ll-btn-primary">View Demo</Link>
+            <Link to="/login" className="ll-btn ll-btn-primary ll-hide-mobile">View Demo</Link>
           </div>
-          <button className="ll-mobile-toggle" onClick={() => setMobileOpen(true)}>
-            <Menu size={24} />
-          </button>
         </div>
       </nav>
-
-      {/* Mobile Menu */}
-      <div className={`ll-mobile-menu ${mobileOpen ? 'open' : ''}`}>
-        <button className="ll-mobile-close" onClick={() => setMobileOpen(false)}>
-          <X size={28} />
-        </button>
-        <ThemeToggle
-          className="ll-btn ll-btn-ghost"
-          style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
-          aria-label="Toggle theme"
-        />
-        <a href="#features" onClick={() => setMobileOpen(false)}>Features</a>
-        <a href="#capabilities" onClick={() => setMobileOpen(false)}>System</a>
-        <a href="#why" onClick={() => setMobileOpen(false)}>Why LeadLink</a>
-        <Link to="/login" onClick={() => setMobileOpen(false)}>Sign In</Link>
-      </div>
 
       {/* ── HERO ── */}
       <section className="ll-hero">

@@ -4,6 +4,7 @@ import { isWithinDays } from '../utils/dateHelpers';
 import { useAuth } from './AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
+import { toast } from 'sonner';
 
 export interface Task {
     id: number;
@@ -69,14 +70,26 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const toggleComplete = useCallback(async (id: number) => {
+        const previousTasks = [...tasks];
+        // Optimistic Toggle
+        setTasks(prev => prev.map(t => 
+            t.id === id ? { ...t, status: t.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED' } : t
+        ));
+
         try {
             const response = await api.put(`/tasks/${id}/complete`, {});
+            // Sync with server
             setTasks(prev => prev.map(t => t.id === id ? response.data : t));
         } catch (error) {
             console.error('Error toggling task:', error);
+            // Rollback
+            setTasks(previousTasks);
+            toast.error('Failed to update task status.', {
+                description: 'We had trouble reaching the server. Your change has been reverted.'
+            });
             throw error;
         }
-    }, []);
+    }, [tasks]);
 
     const deleteTask = useCallback(async (id: number) => {
         try {
