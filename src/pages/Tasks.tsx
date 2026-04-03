@@ -59,9 +59,9 @@ export default function Tasks() {
   const completedCount = tasks.filter((t) => t.status === 'COMPLETED').length;
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
       <Sidebar />
-      <main className="flex-1 crm-page-container">
+      <main className="flex-1 min-w-0 crm-page-container">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex justify-between items-end">
             <div className="space-y-1">
@@ -158,11 +158,11 @@ export default function Tasks() {
                         'bg-muted/5 border-border'
                       }`}
                     >
-                      <div className="flex items-start gap-6">
+                      <div className="flex items-start gap-4 sm:gap-6 max-w-full">
                         <button
                           onClick={() => handleToggle(task.id)}
                           disabled={!hasPermission(user?.role as Role, 'canOperationalControl')}
-                          className={`mt-1 transition-transform active:scale-90 ${!hasPermission(user?.role as Role, 'canOperationalControl') ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-110'}`}
+                          className={`mt-1 transition-transform active:scale-90 shrink-0 ${!hasPermission(user?.role as Role, 'canOperationalControl') ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-110'}`}
                         >
                           {task.status === 'COMPLETED' ? (
                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-primary-foreground bg-[#4ADE80]">
@@ -175,43 +175,43 @@ export default function Tasks() {
                           )}
                         </button>
 
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h3 className={`text-lg font-bold tracking-tight transition-all ${task.status === 'COMPLETED' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-3 sm:gap-4">
+                            <div className="min-w-0 w-full sm:w-auto">
+                              <h3 className={`text-lg font-bold tracking-tight transition-all sm:truncate ${task.status === 'COMPLETED' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                                 {task.title}
                               </h3>
-                              <p className="text-sm mt-1 leading-relaxed text-muted-foreground">{task.description}</p>
+                              <p className="text-sm mt-1 leading-relaxed text-muted-foreground sm:truncate sm:max-w-[400px] block">{task.description}</p>
                             </div>
-                            <div className="flex items-center gap-3 shrink-0">
-                              <span className={`crm-badge ${task.priority === 'HIGH' ? 'badge-priority-high' :
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+                              <span className={`crm-badge whitespace-nowrap ${task.priority === 'HIGH' ? 'badge-priority-high' :
                                 task.priority === 'MEDIUM' ? 'badge-priority-medium' :
                                   'badge-priority-low'
                                 }`}>
                                 {task.priority}
                               </span>
                                {taskOverdue && (
-                                <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-red-500/20 text-red-400">
+                                <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-red-500/20 text-red-400 whitespace-nowrap">
                                   Critical Delay
                                 </span>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-6 pt-4 border-t border-border">
-                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                              <Calendar className="w-3.5 h-3.5 text-[#00D4AA]" />
+                          <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-4 border-t border-border">
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">
+                              <Calendar className="w-3.5 h-3.5 text-[#00D4AA] shrink-0" />
                               <span>{formatDate(task.dueDate)}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                              <Clock className="w-3.5 h-3.5 text-[#00D4AA]" />
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">
+                              <Clock className="w-3.5 h-3.5 text-[#00D4AA] shrink-0" />
                               <span>{new Date(task.dueDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                              <User className="w-3.5 h-3.5 text-[#00D4AA]" />
-                              <span>{task.assignedTo}</span>
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">
+                              <User className="w-3.5 h-3.5 text-[#00D4AA] shrink-0" />
+                              <span className="truncate max-w-[100px] sm:max-w-none">{task.assignedTo}</span>
                             </div>
-                            <div className="ml-auto text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-[#00D4AA]/10 text-[#00D4AA]">
+                            <div className="sm:ml-auto w-auto text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-[#00D4AA]/10 text-[#00D4AA] shrink-0">
                               Protocol: Follow-up
                             </div>
                           </div>

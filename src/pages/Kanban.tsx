@@ -7,6 +7,8 @@ import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus } from 'luci
 import { useLeads } from '../contexts/LeadsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import { MobileKanban } from '../components/Kanban/MobileKanban';
 
 interface Lead {
   id: number;
@@ -149,6 +151,7 @@ function KanbanContent() {
   const { leads, fetchLeads, updateLeadStage } = useLeads();
   const { user } = useAuth();
   const canDrag = user?.role !== 'ADMIN';
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   useEffect(() => {
     fetchLeads();
@@ -171,11 +174,13 @@ function KanbanContent() {
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-background">
       <Sidebar />
 
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-background">
-        <div className="p-8 pb-4 shrink-0">
+      <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-background">
+        
+        {/* Desktop Header */}
+        <div className="hidden md:block p-8 pb-4 shrink-0">
           <div className="flex justify-between items-end mb-6">
             <div className="space-y-1">
               <h1 className="crm-page-title">Pipeline Board</h1>
@@ -201,20 +206,32 @@ function KanbanContent() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-x-auto overflow-y-hidden px-8 pb-8 flex gap-6 custom-scrollbar">
-          {columns.map((column) => (
-            <Column
-              key={column.stage}
-              title={column.title}
-              stage={column.stage}
-              leads={leads.filter((lead: any) => lead.stage === column.stage)}
-              count={leads.filter((lead: any) => lead.stage === column.stage).length}
-              color={column.color}
-              onDrop={handleDrop}
-              canDrag={canDrag}
-            />
-          ))}
+        {/* Mobile Header */}
+        <div className="md:hidden p-6 pb-2 shrink-0">
+          <div className="space-y-0.5">
+             <h1 className="text-2xl font-bold tracking-tight text-foreground font-outfit">Pipeline Board</h1>
+             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tap a lead to update its stage</p>
+          </div>
         </div>
+
+        {isMobile ? (
+          <MobileKanban leads={leads} columns={columns} onUpdateStage={updateLeadStage} canDrag={canDrag} />
+        ) : (
+          <div className="flex-1 overflow-x-auto overflow-y-hidden px-8 pb-8 flex gap-6 custom-scrollbar">
+            {columns.map((column) => (
+              <Column
+                key={column.stage}
+                title={column.title}
+                stage={column.stage}
+                leads={leads.filter((lead: any) => lead.stage === column.stage)}
+                count={leads.filter((lead: any) => lead.stage === column.stage).length}
+                color={column.color}
+                onDrop={handleDrop}
+                canDrag={canDrag}
+              />
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );

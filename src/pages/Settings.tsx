@@ -139,9 +139,9 @@ export default function Settings() {
     `;
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background text-foreground">
+        <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-background text-foreground">
             <Sidebar />
-            <main className="flex-1 overflow-y-auto custom-scrollbar">
+            <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar">
                 <div className="p-8 max-w-5xl mx-auto">
                     <header className="mb-10">
                         <div className="flex items-center gap-2 text-[#00D4AA] mb-2 font-mono text-xs tracking-widest uppercase">
@@ -166,20 +166,20 @@ export default function Settings() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4">
-                                    <div className="relative group">
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+                                    <div className="relative group w-full sm:w-auto">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-[#00D4AA] transition-colors" />
                                         <input 
                                             type="text" 
                                             placeholder="Search directory..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="pl-9 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-[#00D4AA]/50 w-48 md:w-64 transition-all"
+                                            className="pl-9 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-[#00D4AA]/50 w-full sm:w-48 md:w-64 transition-all"
                                         />
                                     </div>
                                     <button 
                                         onClick={() => setShowCreateForm(!showCreateForm)}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[#00D4AA] text-primary-foreground hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[#00D4AA] text-primary-foreground hover:scale-[1.02] active:scale-[0.98] transition-all whitespace-nowrap"
                                     >
                                         <UserPlus className="w-4 h-4" />
                                         <span>Provision User</span>
@@ -304,42 +304,44 @@ export default function Settings() {
                                                         key={u.id}
                                                         initial={{ opacity: 0, scale: 0.98 }}
                                                         animate={{ opacity: 1, scale: 1 }}
-                                                        className="grid grid-cols-12 items-center px-6 py-4 rounded-2xl bg-muted/10 border border-border hover:border-[#00D4AA]/30 hover:bg-[#00D4AA]/[0.02] transition-all group"
+                                                        className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 rounded-2xl bg-muted/10 border border-border hover:border-[#00D4AA]/30 hover:bg-[#00D4AA]/[0.02] transition-all group"
                                                     >
-                                                        <div className="col-span-4 flex items-center gap-4">
-                                                            <div 
-                                                                className="w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold text-foreground relative flex-shrink-0"
-                                                                style={{ background: 'var(--crm-teal-glow)', border: '1px solid var(--crm-border)' }}
-                                                            >
-                                                                {getInitials(u.name)}
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <h4 className="font-bold text-foreground truncate text-sm">{u.name}</h4>
-                                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                                    <Mail className="w-3 h-3 flex-shrink-0" />
-                                                                    <span className="truncate">{u.email}</span>
+                                                        <div className="flex items-center justify-between w-full md:w-auto md:flex-1">
+                                                            <div className="flex items-center gap-4 min-w-0">
+                                                                <div 
+                                                                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold text-foreground relative flex-shrink-0"
+                                                                    style={{ background: 'var(--crm-teal-glow)', border: '1px solid var(--crm-border)' }}
+                                                                >
+                                                                    {getInitials(u.name)}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <h4 className="font-bold text-foreground truncate text-sm">{u.name}</h4>
+                                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                        <Mail className="w-3 h-3 flex-shrink-0" />
+                                                                        <span className="truncate">{u.email}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
+                                                            {/* Mobile Dot */}
+                                                            <div className="md:hidden inline-block w-2 h-2 rounded-full bg-[#00D4AA]" />
                                                         </div>
                                                         
-                                                        <div className="col-span-3">
-                                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                                                        <div className="flex items-center justify-between md:justify-end gap-4 sm:gap-6 w-full md:w-auto pt-2 md:pt-0 border-t border-border md:border-0">
+                                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shrink-0"
                                                                 style={{ background: rc.bg, color: rc.color }}>
                                                                 <RoleIcon className="w-3.5 h-3.5" />
                                                                 {u.role}
                                                             </div>
-                                                        </div>
 
-                                                        <div className="col-span-4">
-                                                            <span className="text-xs font-mono text-muted-foreground">
-                                                                {new Date(u.createdAt).toLocaleDateString('en-US', { 
-                                                                    month: 'short', day: 'numeric', year: 'numeric' 
-                                                                }).toUpperCase()}
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="col-span-1 text-right">
-                                                            <div className="inline-block w-2 h-2 rounded-full bg-[#00D4AA]" />
+                                                            <div className="flex items-center gap-4 shrink-0">
+                                                                <span className="text-xs font-mono text-muted-foreground">
+                                                                    {new Date(u.createdAt).toLocaleDateString('en-US', { 
+                                                                        month: 'short', day: 'numeric', year: 'numeric' 
+                                                                    }).toUpperCase()}
+                                                                </span>
+                                                                {/* Desktop Dot */}
+                                                                <div className="hidden md:inline-block w-2 h-2 rounded-full bg-[#00D4AA]" />
+                                                            </div>
                                                         </div>
                                                     </motion.div>
                                                 );

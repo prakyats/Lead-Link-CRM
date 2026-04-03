@@ -44,10 +44,10 @@ const tooltipStyle = {
 
 export default function Reports() {
   return (
-    <div className="flex" style={{ background: 'var(--crm-navy)' }}>
+    <div className="flex flex-col md:flex-row min-h-screen" style={{ background: 'var(--crm-navy)' }}>
       <Sidebar />
 
-      <main className="flex-1 overflow-auto" style={{ background: 'var(--crm-navy)' }}>
+      <main className="flex-1 min-w-0 overflow-auto" style={{ background: 'var(--crm-navy)' }}>
         <div className="p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold" style={{ color: 'var(--crm-white)', fontFamily: 'Outfit, sans-serif' }}>Reports & Analytics</h1>

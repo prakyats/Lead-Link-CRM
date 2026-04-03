@@ -120,9 +120,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
       <Sidebar />
-      <main className="flex-1 crm-page-container">
+      <main className="flex-1 min-w-0 crm-page-container">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex justify-between items-end">
             <div>
@@ -210,17 +210,17 @@ const Dashboard = () => {
                 <div className="p-8">
                   <div className="space-y-4">
                     {recentLeads.length > 0 ? recentLeads.map((lead) => (
-                      <Link key={lead.id} to={`/leads`} className="flex items-center justify-between p-5 rounded-2xl transition-all group" style={{ border: '1px solid rgba(148,163,184,0.08)' }}
+                      <Link key={lead.id} to={`/leads`} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl transition-all group gap-4" style={{ border: '1px solid rgba(148,163,184,0.08)' }}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,212,170,0.15)'; e.currentTarget.style.background = 'rgba(0,212,170,0.03)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.08)'; e.currentTarget.style.background = 'transparent'; }}>
-                        <div className="flex items-center gap-5">
-                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
+                        <div className="flex items-center gap-5 min-w-0">
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20 shrink-0">
                             {lead.company.charAt(0)}
                           </div>
-                          <div>
-                            <p className="font-bold text-lg tracking-tight transition-colors">{lead.company}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                          <div className="min-w-0">
+                            <p className="font-bold text-lg tracking-tight transition-colors truncate">{lead.company}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <span className={`crm-badge shrink-0 ${lead.stage === 'NEW' ? 'badge-stage-new' :
                                 lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
                                   lead.stage === 'QUALIFIED' ? 'badge-stage-qualified' :
                                     lead.stage === 'PROPOSAL' ? 'badge-stage-proposal' :
@@ -229,14 +229,14 @@ const Dashboard = () => {
                                 }`}>
                                 {lead.stage}
                               </span>
-                              <span className="text-[10px] font-bold" style={{ color: 'var(--crm-muted-dim)' }}>•</span>
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
+                              <span className="text-[10px] font-bold text-muted-foreground/30">•</span>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none whitespace-nowrap">
                                 ₹{lead.value.toLocaleString('en-IN')}
                               </span>
                             </div>
                           </div>
                         </div>
-                        <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                        <span className={`crm-badge self-start sm:self-center shrink-0 ${lead.priority === 'HIGH' ? 'badge-priority-high' :
                           lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
                             'badge-priority-low'
                           }`}>
@@ -273,7 +273,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-3xl p-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(0,212,170,0.15), rgba(168,85,247,0.1))', border: '1px solid rgba(0,212,170,0.1)' }}>
+                <div className="crm-card relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(0,212,170,0.15), rgba(168,85,247,0.15))' }}>
                   <BarChart3 className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 rotate-12" />
                   <h2 className="text-lg font-bold mb-3 relative z-10 tracking-tight" style={{ color: 'var(--crm-white)' }}>Read-Only View</h2>
                   <p className="text-sm leading-relaxed relative z-10 opacity-90 font-medium" style={{ color: 'var(--crm-muted)' }}>

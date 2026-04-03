@@ -174,10 +174,10 @@ export default function PdfPreview() {
   }
 
   return (
-    <div className="flex" style={{ background: '#0B1120', minHeight: '100vh' }}>
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden" style={{ background: '#0B1120', minHeight: '100vh' }}>
       <Sidebar />
 
-      <main className="flex-1 overflow-auto" style={{ background: '#0B1120' }}>
+      <main className="flex-1 min-w-0 overflow-auto" style={{ background: '#0B1120' }}>
         <div className="p-8">
           <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">

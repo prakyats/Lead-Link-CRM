@@ -88,9 +88,9 @@ export default function Leads() {
     });
 
     return (
-        <div className="flex min-h-screen bg-background text-foreground">
+        <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
             <Sidebar />
-            <main className="flex-1 crm-page-container">
+            <main className="flex-1 min-w-0 crm-page-container">
                 <div className="max-w-7xl mx-auto space-y-8">
                     <div className="flex justify-between items-end">
                         <div className="space-y-1">

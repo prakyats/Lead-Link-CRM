@@ -70,10 +70,10 @@ export default function CustomerDetail() {
   const riskStyle = getRiskColor(leadData.risk);
 
   return (
-    <div className="flex" style={{ background: '#0B1120' }}>
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden" style={{ background: '#0B1120' }}>
       <Sidebar />
 
-      <main className="flex-1 overflow-auto" style={{ background: '#0B1120' }}>
+      <main className="flex-1 min-w-0 overflow-auto" style={{ background: '#0B1120' }}>
         <div className="p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>{leadData.company}</h1>
