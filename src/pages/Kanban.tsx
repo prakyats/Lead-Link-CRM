@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { MobileKanban } from '../components/Kanban/MobileKanban';
+import { KanbanSkeleton } from '../components/ui/Skeleton';
 
 interface Lead {
   id: number;
@@ -148,7 +149,7 @@ function Column({ title, stage, leads, count, color, onDrop, canDrag }: ColumnPr
 }
 
 function KanbanContent() {
-  const { leads, fetchLeads, updateLeadStage } = useLeads();
+  const { leads, loading, fetchLeads, updateLeadStage } = useLeads();
   const { user } = useAuth();
   const canDrag = user?.role !== 'ADMIN';
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -208,13 +209,22 @@ function KanbanContent() {
 
         {/* Mobile Header */}
         <div className="md:hidden p-6 pb-2 shrink-0">
-          <div className="space-y-0.5">
-             <h1 className="text-2xl font-bold tracking-tight text-foreground font-outfit">Pipeline Board</h1>
-             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tap a lead to update its stage</p>
+          <div className="flex justify-between items-start">
+            <div className="space-y-0.5">
+               <h1 className="text-2xl font-bold tracking-tight text-white font-outfit uppercase">Pipeline Board</h1>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-[#00D4AA]">Manage Enterprise Leads</p>
+            </div>
+            <div className="px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-widest leading-none">
+              ⚠ Desktop
+            </div>
           </div>
         </div>
 
-        {isMobile ? (
+        {loading ? (
+          <div className="px-8 flex-1">
+            <KanbanSkeleton />
+          </div>
+        ) : isMobile ? (
           <MobileKanban leads={leads} columns={columns} onUpdateStage={updateLeadStage} canDrag={canDrag} />
         ) : (
           <div className="flex-1 overflow-x-auto overflow-y-hidden px-8 pb-8 flex gap-6 custom-scrollbar">

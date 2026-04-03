@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, X, Clock, User2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, X, Clock, User2, AlertCircle, Box } from 'lucide-react';
 import { formatRelativeTime } from '../../utils/dateHelpers';
 
 interface Lead {
@@ -51,8 +51,11 @@ export function MobileKanban({ leads, columns, onUpdateStage, canDrag }: MobileK
     <div className="flex-1 overflow-y-auto px-4 pb-20 custom-scrollbar md:hidden">
       
       {/* Mobile Hint */}
-      <div className="mb-6 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center gap-2">
-        <span className="text-amber-500 text-xs font-bold uppercase tracking-wide">💡 Hint: Drag & drop available on desktop</span>
+      <div className="mb-6 px-4 py-3 bg-red-500/5 border border-red-500/10 rounded-xl flex items-center justify-center gap-2">
+        <span className="text-red-400 text-[10px] font-bold uppercase tracking-[0.1em] flex items-center gap-2">
+          <AlertCircle className="w-3.5 h-3.5" />
+          ⚠ Desktop Recommended for Full Pipeline Control
+        </span>
       </div>
 
       <div className="space-y-4">
@@ -87,8 +90,12 @@ export function MobileKanban({ leads, columns, onUpdateStage, canDrag }: MobileK
                   >
                     <div className="p-3 space-y-3 bg-muted/10">
                       {columnLeads.length === 0 ? (
-                        <div className="py-8 text-center border-2 border-dashed border-border rounded-xl">
-                          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">No leads in this stage</p>
+                        <div className="py-10 text-center border-2 border-dashed border-border/50 rounded-2xl bg-muted/5">
+                          <div className="w-10 h-10 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-3">
+                            <Box className="w-5 h-5 text-muted-foreground/40" />
+                          </div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Clear Stage</p>
+                          <p className="text-[9px] text-muted-foreground/60 mt-1 uppercase">No active opportunities found</p>
                         </div>
                       ) : (
                         columnLeads.map(lead => (

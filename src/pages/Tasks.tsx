@@ -7,9 +7,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatDate, isOverdue } from '../utils/dateHelpers';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
+import { TaskSkeleton } from '../components/ui/Skeleton';
 
 export default function Tasks() {
-  const { tasks, fetchTasks, toggleComplete, createTask } = useTasks();
+  const { tasks, loading, fetchTasks, toggleComplete, createTask } = useTasks();
   const { user } = useAuth();
   const [filter, setFilter] = useState<'all' | 'PENDING' | 'COMPLETED'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -147,7 +148,9 @@ export default function Tasks() {
 
             <div className="p-8">
               <div className="space-y-4">
-                {filteredTasks.map((task) => {
+                {loading ? (
+                   <TaskSkeleton />
+                ) : filteredTasks.map((task) => {
                   const taskOverdue = task.status !== 'COMPLETED' && isOverdue(task.dueDate);
                   return (
                     <div
@@ -198,20 +201,20 @@ export default function Tasks() {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-4 border-t border-border">
-                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">
+                          <div className="flex flex-wrap items-center gap-y-3 gap-x-4 sm:gap-6 pt-4 border-t border-border">
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
                               <Calendar className="w-3.5 h-3.5 text-[#00D4AA] shrink-0" />
                               <span>{formatDate(task.dueDate)}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
                               <Clock className="w-3.5 h-3.5 text-[#00D4AA] shrink-0" />
                               <span>{new Date(task.dueDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0">
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
                               <User className="w-3.5 h-3.5 text-[#00D4AA] shrink-0" />
-                              <span className="truncate max-w-[100px] sm:max-w-none">{task.assignedTo}</span>
+                              <span className="truncate max-w-[80px] sm:max-w-none">{task.assignedTo}</span>
                             </div>
-                            <div className="sm:ml-auto w-auto text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-[#00D4AA]/10 text-[#00D4AA] shrink-0">
+                            <div className="sm:ml-auto text-[9px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-widest bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
                               Protocol: Follow-up
                             </div>
                           </div>
@@ -221,7 +224,7 @@ export default function Tasks() {
                   );
                 })}
 
-                {filteredTasks.length === 0 && (
+                {!loading && filteredTasks.length === 0 && (
                   <div className="py-24 text-center space-y-4">
                     <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto bg-muted/10">
                       <CheckCircle2 className="w-10 h-10 text-muted-foreground" />

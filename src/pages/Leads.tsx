@@ -7,6 +7,7 @@ import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { formatDate } from '../utils/dateHelpers';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TableSkeleton } from '../components/ui/Skeleton';
 
 export default function Leads() {
     const { leads, loading, fetchLeads, createLead, assignLead } = useLeads();
@@ -202,102 +203,175 @@ export default function Leads() {
                                 </div>
                             </motion.div>
                         )}
-                    </AnimatePresence>
-
-                    {/* Main Content Card (Table) */}
-                    <div className="crm-table-container">
+                    </AnimatePresence>                    {/* Main Content (Responsive Table / Cards) */}
+                    {/* Main Content (Responsive Table / Cards) */}
+                    <div className="min-h-[400px]">
                         {loading ? (
-                            <div className="flex flex-col items-center justify-center p-24 space-y-4">
-                                <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#00D4AA]/20 border-t-[#00D4AA]" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Synchronizing Pipeline...</p>
-                            </div>
+                            <TableSkeleton />
                         ) : filteredLeads.length > 0 ? (
-                            <table className="crm-table">
-                                <thead className="crm-table-thead">
-                                    <tr>
-                                        <th className="crm-table-th">Organization</th>
-                                        <th className="crm-table-th">Primary Contact</th>
-                                        <th className="crm-table-th">Pipeline Stage</th>
-                                        <th className="crm-table-th">Urgency</th>
-                                        <th className="crm-table-th">Projected Value</th>
-                                        {canAssign && <th className="crm-table-th">Assigned To</th>}
-                                        <th className="crm-table-th">Discovery Date</th>
-                                        <th className="crm-table-th"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <>
+                                {/* Desktop Table View - Hidden on Mobile */}
+                                <div className="hidden md:block crm-table-container">
+                                    <table className="crm-table">
+                                        <thead className="crm-table-thead">
+                                            <tr>
+                                                <th className="crm-table-th">Organization</th>
+                                                <th className="crm-table-th">Primary Contact</th>
+                                                <th className="crm-table-th">Pipeline Stage</th>
+                                                <th className="crm-table-th">Urgency</th>
+                                                <th className="crm-table-th">Projected Value</th>
+                                                {canAssign && <th className="crm-table-th">Assigned To</th>}
+                                                <th className="crm-table-th">Discovery Date</th>
+                                                <th className="crm-table-th"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredLeads.map((lead) => (
+                                                <tr key={lead.id} className="crm-table-tr group">
+                                                    <td className="crm-table-td">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-transform group-hover:scale-110 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
+                                                                {lead.company.charAt(0)}
+                                                            </div>
+                                                            <span className="font-bold uppercase tracking-tight transition-colors">{lead.company}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="crm-table-td">
+                                                        <div className="space-y-0.5">
+                                                            <p className="font-bold tracking-tight">{lead.contact}</p>
+                                                            <p className="text-[10px] font-medium flex items-center gap-1 text-muted-foreground">
+                                                                <Mail className="w-3 h-3" />
+                                                                {lead.email}
+                                                            </p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="crm-table-td">
+                                                        <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                                            lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
+                                                                lead.stage === 'QUALIFIED' ? 'badge-stage-qualified' :
+                                                                    lead.stage === 'PROPOSAL' ? 'badge-stage-proposal' :
+                                                                        lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
+                                                                            'badge-stage-lost'
+                                                            }`}>
+                                                            {lead.stage}
+                                                        </span>
+                                                    </td>
+                                                    <td className="crm-table-td">
+                                                        <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                                                            lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
+                                                                'badge-priority-low'
+                                                            }`}>
+                                                            {lead.priority}
+                                                        </span>
+                                                    </td>
+                                                    <td className="crm-table-td">
+                                                        <div className="flex items-center gap-1.5 font-bold">
+                                                            <span className="text-xs text-muted-foreground">₹</span>
+                                                            {lead.value.toLocaleString('en-IN')}
+                                                        </div>
+                                                    </td>
+                                                    <td className="crm-table-td text-xs font-bold uppercase tracking-tight text-muted-foreground">
+                                                        {formatDate(lead.createdAt)}
+                                                    </td>
+                                                    {canAssign && (
+                                                        <td className="crm-table-td">
+                                                            <span className="text-xs font-bold text-muted-foreground">{lead.assignedTo || 'Unassigned'}</span>
+                                                        </td>
+                                                    )}
+                                                    <td className="crm-table-td text-right">
+                                                        <div className="flex items-center gap-1 justify-end">
+                                                            {canAssign && (
+                                                                <button
+                                                                    onClick={() => { setAssignModal({ open: true, leadId: lead.id }); setSelectedAssignee(''); }}
+                                                                    className="p-2 rounded-lg transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400"
+                                                                    title="Assign Lead"
+                                                                >
+                                                                    <UserCheck className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                            <button className="p-2 rounded-lg transition-all text-muted-foreground hover:bg-[#00D4AA]/10 hover:text-[#00D4AA]">
+                                                                <MoreHorizontal className="w-5 h-5" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Card View - Shown on Mobile */}
+                                <div className="md:hidden space-y-4">
                                     {filteredLeads.map((lead) => (
-                                        <tr key={lead.id} className="crm-table-tr group">
-                                            <td className="crm-table-td">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-transform group-hover:scale-110 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
+                                        <div key={lead.id} className="crm-card border-border shadow-sm active:scale-[0.98] transition-transform">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-lg bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
                                                         {lead.company.charAt(0)}
                                                     </div>
-                                                    <span className="font-bold uppercase tracking-tight transition-colors">{lead.company}</span>
+                                                    <div>
+                                                        <h3 className="font-extrabold uppercase tracking-tight text-white leading-tight">{lead.company}</h3>
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#00D4AA] mt-0.5">{lead.contact}</p>
+                                                    </div>
                                                 </div>
-                                            </td>
-                                            <td className="crm-table-td">
-                                                <div className="space-y-0.5">
-                                                    <p className="font-bold tracking-tight">{lead.contact}</p>
-                                                    <p className="text-[10px] font-medium flex items-center gap-1 text-muted-foreground">
-                                                        <Mail className="w-3 h-3" />
-                                                        {lead.email}
-                                                    </p>
-                                                </div>
-                                            </td>
-                                            <td className="crm-table-td">
-                                                <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
-                                                    lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
-                                                        lead.stage === 'QUALIFIED' ? 'badge-stage-qualified' :
-                                                            lead.stage === 'PROPOSAL' ? 'badge-stage-proposal' :
-                                                                lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
-                                                                    'badge-stage-lost'
-                                                    }`}>
-                                                    {lead.stage}
-                                                </span>
-                                            </td>
-                                            <td className="crm-table-td">
-                                                <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
-                                                    lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
-                                                        'badge-priority-low'
-                                                    }`}>
-                                                    {lead.priority}
-                                                </span>
-                                            </td>
-                                            <td className="crm-table-td">
-                                                <div className="flex items-center gap-1.5 font-bold">
-                                                    <span className="text-xs text-muted-foreground">₹</span>
-                                                    {lead.value.toLocaleString('en-IN')}
-                                                </div>
-                                            </td>
-                                            <td className="crm-table-td text-xs font-bold uppercase tracking-tight text-muted-foreground">
-                                                {formatDate(lead.createdAt)}
-                                            </td>
-                                            {canAssign && (
-                                                <td className="crm-table-td">
-                                                    <span className="text-xs font-bold text-muted-foreground">{lead.assignedTo || 'Unassigned'}</span>
-                                                </td>
-                                            )}
-                                            <td className="crm-table-td text-right">
-                                                <div className="flex items-center gap-1 justify-end">
+                                                <div className="flex items-center gap-1">
                                                     {canAssign && (
-                                                        <button
+                                                        <button 
                                                             onClick={() => { setAssignModal({ open: true, leadId: lead.id }); setSelectedAssignee(''); }}
-                                                            className="p-2 rounded-lg transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400"
-                                                            title="Assign Lead"
+                                                            className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20"
                                                         >
                                                             <UserCheck className="w-4 h-4" />
                                                         </button>
                                                     )}
-                                                    <button className="p-2 rounded-lg transition-all text-muted-foreground hover:bg-[#00D4AA]/10 hover:text-[#00D4AA]">
-                                                        <MoreHorizontal className="w-5 h-5" />
+                                                    <button className="p-2.5 rounded-xl bg-muted/20 text-muted-foreground border border-border">
+                                                        <MoreHorizontal className="w-4 h-4" />
                                                     </button>
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                                <div className="p-3 rounded-xl bg-muted/10 border border-border">
+                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Pipeline Stage</p>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
+                                                        lead.stage === 'NEW' ? 'text-[#94A3B8]' :
+                                                        lead.stage === 'CONTACTED' ? 'text-[#60A5FA]' :
+                                                        lead.stage === 'CONVERTED' ? 'text-[#00D4AA]' :
+                                                        'text-[#FBBF24]'
+                                                    }`}>
+                                                        {lead.stage}
+                                                    </span>
+                                                </div>
+                                                <div className="p-3 rounded-xl bg-muted/10 border border-border text-right">
+                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Urgency</p>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
+                                                        lead.priority === 'HIGH' ? 'text-[#F87171]' :
+                                                        lead.priority === 'MEDIUM' ? 'text-[#FBBF24]' :
+                                                        'text-[#00D4AA]'
+                                                    }`}>
+                                                        {lead.priority}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between pt-4 border-t border-border">
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-widest">
+                                                        <Mail className="w-3 h-3 text-[#00D4AA]" />
+                                                        {lead.email}
+                                                    </p>
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                                        Assigned: <span className="text-white">{lead.assignedTo || 'Unassigned'}</span>
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-lg font-extrabold text-white">₹{lead.value.toLocaleString('en-IN')}</p>
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{formatDate(lead.createdAt)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
+                                </div>
+                            </>
                         ) : (
                             <div className="p-24 text-center space-y-4">
                                 <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto bg-muted/10 ring-8 ring-muted/5">
