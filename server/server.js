@@ -14,32 +14,39 @@ const interactionsRoutes = require('./routes/interactions');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
+// ✅ Allowed origins
 const allowedOrigins = [
-  'http://localhost:5173', // local dev
-  process.env.FRONTEND_URL // production frontend (set on Render)
+  'http://localhost:5173',
+  process.env.FRONTEND_URL // Render frontend URL
 ];
 
+// ✅ CORS middleware (robust)
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
+    // allow requests with no origin (like Postman)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.error("❌ Blocked by CORS:", origin);
+      return callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true
 }));
+
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware
+// Request logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// Mount routes
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/tasks', tasksRoutes);
@@ -47,17 +54,16 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/interactions', interactionsRoutes);
 
-// Health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'CRM Backend Server is running' });
 });
 
-// Error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  console.error('🔥 Error:', err.message);
   res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    error: err.message || 'Internal Server Error'
   });
 });
 
@@ -68,7 +74,7 @@ app.use((req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`✅ CRM Backend Server running on http://localhost:${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🔧 Ready to accept requests from http://localhost:5173`);
+  console.log(`✅ CRM Backend Server running on port ${PORT}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌐 Allowed Origin: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
 });
