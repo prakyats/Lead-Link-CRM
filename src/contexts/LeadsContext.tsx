@@ -17,7 +17,8 @@ export interface Lead {
     leadScore: number;
     lastInteraction: string;
     createdAt: string;
-    assignedTo?: string; // Added for RBAC Scoping
+    assignedTo?: string;
+    assignedToId?: number;
     risk?: 'high' | 'medium' | 'low';
     interactions?: Interaction[];
 }
@@ -40,6 +41,7 @@ interface LeadsContextType {
     updateLead: (id: number, lead: Partial<Lead>) => Promise<void>;
     updateLeadStage: (id: number, stage: Lead['stage']) => Promise<void>;
     deleteLead: (id: number) => Promise<void>;
+    assignLead: (id: number, assignedToId: number) => Promise<void>;
 }
 
 const LeadsContext = createContext<LeadsContextType | undefined>(undefined);
@@ -101,6 +103,16 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const assignLead = useCallback(async (id: number, assignedToId: number) => {
+        try {
+            const response = await api.put(`/leads/${id}/assign`, { assignedToId });
+            setLeads(prev => prev.map(l => l.id === id ? response.data : l));
+        } catch (error) {
+            console.error('Error assigning lead:', error);
+            throw error;
+        }
+    }, []);
+
     const getLeadById = useCallback(async (id: number): Promise<Lead | null> => {
         try {
             const response = await api.get(`/leads/${id}`);
@@ -127,7 +139,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         createLead,
         updateLead,
         updateLeadStage,
-        deleteLead
+        deleteLead,
+        assignLead
     }), [leads, loading]);
 
     return <LeadsContext.Provider value={value}>{children}</LeadsContext.Provider>;

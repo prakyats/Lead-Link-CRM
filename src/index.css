@@ -215,7 +215,7 @@ html,
   }
 
   .crm-table-thead {
-    background: rgba(26, 35, 50, 0.5);
+    background: var(--muted);
   }
 
   .crm-table-th {
