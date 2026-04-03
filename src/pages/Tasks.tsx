@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Calendar, Clock, User, CheckCircle2, Circle, AlertCircle, Filter, Plus } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle2, Circle, AlertCircle, Filter, Plus, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTasks } from '../contexts/TasksContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, isOverdue } from '../utils/dateHelpers';
@@ -8,9 +9,32 @@ import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 
 export default function Tasks() {
-  const { tasks, fetchTasks, toggleComplete } = useTasks();
+  const { tasks, fetchTasks, toggleComplete, createTask } = useTasks();
   const { user } = useAuth();
   const [filter, setFilter] = useState<'all' | 'PENDING' | 'COMPLETED'>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'MEDIUM' as const,
+    dueDate: new Date().toISOString().slice(0, 16)
+  });
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createTask(formData);
+      setIsModalOpen(false);
+      setFormData({
+        title: '',
+        description: '',
+        priority: 'MEDIUM',
+        dueDate: new Date().toISOString().slice(0, 16)
+      });
+    } catch (error) {
+      console.error('Failed to create task:', error);
+    }
+  };
 
   useEffect(() => {
     fetchTasks();
@@ -45,7 +69,10 @@ export default function Tasks() {
               <p className="crm-page-subtitle">Coordinate your team activities and client engagements</p>
             </div>
             {hasPermission(user?.role as Role, 'canOperationalControl') && (
-              <button className="crm-btn-primary">
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="crm-btn-primary"
+              >
                 <Plus className="w-5 h-5" />
                 <span>New Activity</span>
               </button>
@@ -210,6 +237,73 @@ export default function Tasks() {
           </div>
         </div>
       </main>
+
+      {/* New Activity Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 backdrop-blur-md bg-black/60"
+              onClick={() => setIsModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="rounded-[2rem] w-full max-w-2xl relative overflow-hidden bg-card border border-border shadow-2xl"
+            >
+              <div className="p-8 flex justify-between items-start border-b border-border">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>New Activity</h2>
+                  <p className="mt-1 font-medium text-sm tracking-tight text-muted-foreground">Schedule a follow-up or operational task.</p>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-2.5 rounded-xl transition-all group text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateSubmit} className="p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="crm-label">Task Title</label>
+                    <input required type="text" className="crm-input" placeholder="e.g. Discuss proposal details" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="crm-label">Description</label>
+                    <textarea required className="crm-input min-h-[100px] resize-none" placeholder="Provide additional details..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="crm-label">Due Date & Time</label>
+                      <input required type="datetime-local" className="crm-input" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="crm-label">Priority Tier</label>
+                      <select className="crm-input font-bold appearance-none cursor-pointer bg-background" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
+                        <option value="LOW">LOW PRIORITY</option>
+                        <option value="MEDIUM">MEDIUM PRIORITY</option>
+                        <option value="HIGH">HIGH PRIORITY</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="crm-btn-secondary w-full !py-4">Cancel</button>
+                  <button type="submit" className="crm-btn-primary w-full !py-4">Create Activity</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

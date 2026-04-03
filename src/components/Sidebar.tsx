@@ -106,7 +106,7 @@ export function Sidebar() {
                   onMouseLeave={(e) => {
                     if (!isActive) {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#94A3B8';
+                      e.currentTarget.style.color = 'var(--crm-muted)';
                     }
                   }}
                 >

@@ -5,6 +5,7 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus } from 'lucide-react';
 import { useLeads } from '../contexts/LeadsContext';
+import { useAuth } from '../contexts/AuthContext';
 import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
 
 interface Lead {
@@ -20,16 +21,18 @@ interface Lead {
 
 interface LeadCardProps {
   lead: Lead;
+  canDrag: boolean;
 }
 
-function LeadCard({ lead }: LeadCardProps) {
+function LeadCard({ lead, canDrag }: LeadCardProps) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'lead',
     item: { id: lead.id, stage: lead.stage },
+    canDrag: canDrag,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }));
+  }), [canDrag]);
 
   return (
     <div
@@ -86,9 +89,10 @@ interface ColumnProps {
   count: number;
   color: string;
   onDrop: (leadId: number, newStage: Lead['stage']) => void;
+  canDrag: boolean;
 }
 
-function Column({ title, stage, leads, count, color, onDrop }: ColumnProps) {
+function Column({ title, stage, leads, count, color, onDrop, canDrag }: ColumnProps) {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'lead',
     drop: (item: { id: number; stage: string }) => {
@@ -129,7 +133,7 @@ function Column({ title, stage, leads, count, color, onDrop }: ColumnProps) {
         className={`flex-1 p-2 rounded-2xl transition-all duration-300 space-y-3 min-h-[500px] ${isOver ? 'bg-[#00D4AA]/5 shadow-[inset_0_0_0_2px_rgba(0,212,170,0.15)]' : 'bg-muted/10'}`}
       >
         {leads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} />
+          <LeadCard key={lead.id} lead={lead} canDrag={canDrag} />
         ))}
         {leads.length === 0 && (
           <div className="h-24 rounded-2xl flex items-center justify-center border-2 border-dashed border-border">
@@ -143,6 +147,8 @@ function Column({ title, stage, leads, count, color, onDrop }: ColumnProps) {
 
 function KanbanContent() {
   const { leads, fetchLeads, updateLeadStage } = useLeads();
+  const { user } = useAuth();
+  const canDrag = user?.role !== 'ADMIN';
 
   useEffect(() => {
     fetchLeads();
@@ -205,6 +211,7 @@ function KanbanContent() {
               count={leads.filter((lead: any) => lead.stage === column.stage).length}
               color={column.color}
               onDrop={handleDrop}
+              canDrag={canDrag}
             />
           ))}
         </div>

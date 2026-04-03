@@ -7,7 +7,8 @@ const {
     createLead,
     updateLead,
     updateLeadStage,
-    deleteLead
+    deleteLead,
+    assignLead
 } = require('../controllers/leadsController');
 
 // All leads routes require authentication
@@ -27,6 +28,9 @@ router.put('/:id', updateLead);
 
 // PUT /api/leads/:id/stage - Update lead stage
 router.put('/:id/stage', updateLeadStage);
+
+// PUT /api/leads/:id/assign - Assign lead to user (MANAGER only)
+router.put('/:id/assign', assignLead);
 
 // DELETE /api/leads/:id - Delete lead
 router.delete('/:id', deleteLead);

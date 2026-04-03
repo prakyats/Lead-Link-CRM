@@ -241,11 +241,55 @@ async function deleteLead(req, res) {
     }
 }
 
+/**
+ * Assign lead to a user (MANAGER only)
+ */
+async function assignLead(req, res) {
+    try {
+        const { id } = req.params;
+        const { assignedToId } = req.body;
+        const { role, organizationId } = req.user;
+
+        if (role !== 'MANAGER') {
+            return res.status(403).json({ error: 'Only Managers can assign leads' });
+        }
+
+        if (!assignedToId) {
+            return res.status(400).json({ error: 'assignedToId is required' });
+        }
+
+        const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
+        if (!existingLead) return res.status(404).json({ error: 'Lead not found' });
+
+        // Verify target user exists in the same org
+        const targetUser = await prisma.user.findFirst({
+            where: { id: parseInt(assignedToId), organizationId }
+        });
+        if (!targetUser) return res.status(400).json({ error: 'Target user not found in this organization' });
+
+        await prisma.lead.update({
+            where: { id: parseInt(id) },
+            data: { assignedToId: parseInt(assignedToId) }
+        });
+
+        const updatedLead = await prisma.lead.findFirst({
+            where: { id: parseInt(id), organizationId },
+            include: { assignedTo: { select: { name: true } } }
+        });
+
+        res.json(mapLeadToLegacy(addRiskToLead(updatedLead)));
+    } catch (error) {
+        console.error('Error assigning lead:', error);
+        res.status(500).json({ error: 'Failed to assign lead' });
+    }
+}
+
 module.exports = {
     getAllLeads,
     getLeadById,
     createLead,
     updateLead,
     updateLeadStage,
-    deleteLead
+    deleteLead,
+    assignLead
 };

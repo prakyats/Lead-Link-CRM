@@ -103,7 +103,41 @@ async function createUser(req, res) {
     }
 }
 
+/**
+ * Get sales users in the organization (MANAGER/ADMIN)
+ * Used for populating assignee dropdowns
+ */
+async function getSalesUsers(req, res) {
+    try {
+        const { role, organizationId } = req.user;
+
+        if (role === 'SALES') {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const users = await prisma.user.findMany({
+            where: {
+                organizationId,
+                role: { in: ['SALES', 'MANAGER'] }
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true
+            },
+            orderBy: { name: 'asc' }
+        });
+
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching sales users:', error);
+        res.status(500).json({ error: 'Failed to fetch sales users' });
+    }
+}
+
 module.exports = {
     getAllUsers,
-    createUser
+    createUser,
+    getSalesUsers
 };

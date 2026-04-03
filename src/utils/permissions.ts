@@ -9,6 +9,8 @@ export interface Permissions {
     canOperationalControl: boolean; // Add interaction, schedule follow-up
     canSeeAllLeads: boolean;
     canShowTeamOversight: boolean;
+    canAssignLeads: boolean;
+    canAddInteractions: boolean;
 }
 
 export const PERMISSIONS: Record<Role, Permissions> = {
@@ -21,6 +23,8 @@ export const PERMISSIONS: Record<Role, Permissions> = {
         canOperationalControl: false,
         canSeeAllLeads: true,
         canShowTeamOversight: true,
+        canAssignLeads: false,
+        canAddInteractions: false,
     },
     [ROLES.MANAGER]: {
         canViewReports: true,
@@ -31,6 +35,8 @@ export const PERMISSIONS: Record<Role, Permissions> = {
         canOperationalControl: true,
         canSeeAllLeads: true,
         canShowTeamOversight: true,
+        canAssignLeads: true,
+        canAddInteractions: true,
     },
     [ROLES.SALES]: {
         canViewReports: false,
@@ -41,6 +47,8 @@ export const PERMISSIONS: Record<Role, Permissions> = {
         canOperationalControl: true,
         canSeeAllLeads: false,
         canShowTeamOversight: false,
+        canAssignLeads: false,
+        canAddInteractions: true,
     },
 };
 
@@ -51,3 +59,4 @@ export const hasPermission = (role: Role | string | undefined, permission: keyof
     if (!perms) return false;
     return perms[permission];
 };
+
