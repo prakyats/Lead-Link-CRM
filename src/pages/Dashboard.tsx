@@ -120,7 +120,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--crm-navy)' }}>
+    <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar />
       <main className="flex-1 crm-page-container">
         <div className="max-w-7xl mx-auto space-y-8">
@@ -134,7 +134,7 @@ const Dashboard = () => {
               </p>
             </div>
             {user?.role === 'ADMIN' && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs" style={{ background: 'rgba(0,212,170,0.1)', color: '#00D4AA', border: '1px solid rgba(0,212,170,0.2)' }}>
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
                 <Shield className="w-4 h-4" />
                 READ-ONLY MODE
               </div>
@@ -157,9 +157,9 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--crm-muted-dim)' }}>{card.title}</p>
-                    <p className="text-3xl font-bold tracking-tight" style={{ color: 'var(--crm-white)' }}>{card.value}</p>
-                    <p className="text-xs mt-2 font-medium" style={{ color: 'var(--crm-muted-dim)' }}>{card.subtitle}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-muted-foreground">{card.title}</p>
+                    <p className="text-3xl font-bold tracking-tight">{card.value}</p>
+                    <p className="text-xs mt-2 font-medium text-muted-foreground">{card.subtitle}</p>
                   </div>
                 </div>
               );
@@ -172,21 +172,19 @@ const Dashboard = () => {
               {hasPermission(user?.role as Role, 'canShowTeamOversight') && teamDistribution && (
                 <div className="crm-card">
                   <div className="flex items-center gap-3 mb-8">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,212,170,0.15)' }}>
-                      <Users2 className="w-5 h-5" style={{ color: '#00D4AA' }} />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#00D4AA]/10">
+                      <Users2 className="w-5 h-5 text-[#00D4AA]" />
                     </div>
-                    <h2 className="text-lg font-bold" style={{ color: 'var(--crm-white)' }}>Team Workload Distribution</h2>
+                    <h2 className="text-lg font-bold">Team Workload Distribution</h2>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {teamDistribution.map((item) => (
-                      <div key={item.name} className="p-5 rounded-2xl flex justify-between items-center group transition-all duration-300" style={{ background: 'rgba(148,163,184,0.04)', border: '1px solid rgba(148,163,184,0.08)' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,212,170,0.15)'; e.currentTarget.style.background = 'rgba(0,212,170,0.04)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.08)'; e.currentTarget.style.background = 'rgba(148,163,184,0.04)'; }}>
+                      <div key={item.name} className="p-5 rounded-2xl flex justify-between items-center group transition-all duration-300 bg-muted/20 border border-border hover:border-[#00D4AA]/30 hover:bg-[#00D4AA]/[0.02]">
                         <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full" style={{ background: '#00D4AA' }} />
-                          <span className="font-bold" style={{ color: 'var(--crm-white)' }}>{item.name}</span>
+                          <div className="w-2 h-2 rounded-full bg-[#00D4AA]" />
+                          <span className="font-bold">{item.name}</span>
                         </div>
-                        <span className="px-3 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(0,212,170,0.15)', color: '#00D4AA' }}>{item.count} LEADS</span>
+                        <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#00D4AA]/10 text-[#00D4AA]">{item.count} LEADS</span>
                       </div>
                     ))}
                   </div>
@@ -197,10 +195,10 @@ const Dashboard = () => {
               <div className="crm-card !p-0 overflow-hidden">
                 <div className="p-8 flex items-center justify-between" style={{ borderBottom: '1px solid var(--crm-border)' }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.15)' }}>
-                      <BarChart3 className="w-5 h-5" style={{ color: '#C084FC' }} />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/10">
+                      <BarChart3 className="w-5 h-5 text-purple-400" />
                     </div>
-                    <h2 className="text-lg font-bold" style={{ color: 'var(--crm-white)' }}>
+                    <h2 className="text-lg font-bold">
                       {!hasPermission(user?.role as Role, 'canSeeAllLeads') ? 'My Recent Pipeline' : 'Latest Enterprise Activity'}
                     </h2>
                   </div>
@@ -216,11 +214,11 @@ const Dashboard = () => {
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,212,170,0.15)'; e.currentTarget.style.background = 'rgba(0,212,170,0.03)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.08)'; e.currentTarget.style.background = 'transparent'; }}>
                         <div className="flex items-center gap-5">
-                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105" style={{ background: 'rgba(0,212,170,0.15)', color: '#00D4AA', border: '1px solid rgba(0,212,170,0.2)' }}>
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
                             {lead.company.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold text-lg tracking-tight transition-colors" style={{ color: 'var(--crm-white)' }}>{lead.company}</p>
+                            <p className="font-bold text-lg tracking-tight transition-colors">{lead.company}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
                                 lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
@@ -232,7 +230,7 @@ const Dashboard = () => {
                                 {lead.stage}
                               </span>
                               <span className="text-[10px] font-bold" style={{ color: 'var(--crm-muted-dim)' }}>•</span>
-                              <span className="text-[10px] font-bold uppercase tracking-widest leading-none" style={{ color: 'var(--crm-muted-dim)' }}>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
                                 ₹{lead.value.toLocaleString('en-IN')}
                               </span>
                             </div>
@@ -258,8 +256,8 @@ const Dashboard = () => {
             <div className="space-y-8">
               {/* Quick Actions */}
               {(hasPermission(user?.role as Role, 'canCreateLeads') || hasPermission(user?.role as Role, 'canOperationalControl')) ? (
-                <div className="crm-card">
-                  <h2 className="text-lg font-bold mb-6" style={{ color: 'var(--crm-white)' }}>Quick Actions</h2>
+                <div className="crm-card shadow-sm">
+                  <h2 className="text-lg font-bold mb-6">Quick Actions</h2>
                   <div className="space-y-3">
                     {hasPermission(user?.role as Role, 'canCreateLeads') && (
                       <Link to="/leads" className="crm-btn-primary w-full shadow-none" style={{ border: '1px solid rgba(0,212,170,0.3)' }}>
@@ -268,10 +266,7 @@ const Dashboard = () => {
                     )}
                     <Link
                       to="/tasks"
-                      className="w-full h-[46px] flex items-center justify-center rounded-xl transition-all font-bold text-sm"
-                      style={{ border: '1px solid var(--crm-border)', color: 'var(--crm-muted)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(148,163,184,0.06)'; e.currentTarget.style.color = 'var(--crm-white)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--crm-muted)'; }}
+                      className="w-full h-[46px] flex items-center justify-center rounded-xl transition-all font-bold text-sm border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       Manage Daily Tasks
                     </Link>
@@ -290,17 +285,17 @@ const Dashboard = () => {
               {/* Activity Feed */}
               <div className="crm-card">
                 <div className="flex items-center gap-3 mb-8">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,212,170,0.15)' }}>
-                    <Clock className="w-5 h-5" style={{ color: '#00D4AA' }} />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#00D4AA]/10">
+                    <Clock className="w-5 h-5 text-[#00D4AA]" />
                   </div>
-                  <h3 className="text-lg font-bold" style={{ color: 'var(--crm-white)' }}>Upcoming Events</h3>
+                  <h3 className="text-lg font-bold">Upcoming Events</h3>
                 </div>
                 <div className="space-y-6">
                   {upcomingTasks.length > 0 ? upcomingTasks.slice(0, 4).map((task) => (
                     <div key={task.id} className="flex gap-4 group">
-                      <div className="mt-1 w-2.5 h-2.5 rounded-full shrink-0 transition-transform group-hover:scale-125" style={{ background: '#00D4AA', boxShadow: '0 0 8px rgba(0,212,170,0.5)' }} />
+                      <div className="mt-1 w-2.5 h-2.5 rounded-full shrink-0 transition-transform group-hover:scale-125 bg-[#00D4AA]" />
                       <div>
-                        <p className="text-sm font-bold leading-snug transition-colors" style={{ color: 'var(--crm-white)' }}>{task.title}</p>
+                        <p className="text-sm font-bold leading-snug transition-colors">{task.title}</p>
                         <p className="text-[10px] font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2" style={{ color: 'var(--crm-muted-dim)' }}>
                           <Clock className="w-3 h-3" />
                           {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}

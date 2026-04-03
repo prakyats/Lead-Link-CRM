@@ -54,7 +54,7 @@ export default function Leads() {
     );
 
     return (
-        <div className="flex min-h-screen" style={{ background: '#0B1120' }}>
+        <div className="flex min-h-screen bg-background text-foreground">
             <Sidebar />
             <main className="flex-1 crm-page-container">
                 <div className="max-w-7xl mx-auto space-y-8">
@@ -75,13 +75,13 @@ export default function Leads() {
                     </div>
 
                     {/* Controls Section */}
-                    <div className="crm-card !p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-                        <div className="relative w-full md:w-96">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748B' }} />
+                    <div className="crm-card border border-border !p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
+                        <div className="relative w-full md:w-96 group">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-[#00D4AA] transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Search by company or contact..."
-                                className="crm-input !pl-11"
+                                className="crm-input !pl-11 bg-muted/20 border-border focus:border-[#00D4AA]/50"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -98,8 +98,8 @@ export default function Leads() {
                     <div className="crm-table-container">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center p-24 space-y-4">
-                                <div className="animate-spin rounded-full h-12 w-12" style={{ border: '4px solid rgba(0,212,170,0.2)', borderTop: '4px solid #00D4AA' }}></div>
-                                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>Synchronizing Pipeline...</p>
+                                <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#00D4AA]/20 border-t-[#00D4AA]" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Synchronizing Pipeline...</p>
                             </div>
                         ) : filteredLeads.length > 0 ? (
                             <table className="crm-table">
@@ -119,16 +119,16 @@ export default function Leads() {
                                         <tr key={lead.id} className="crm-table-tr group">
                                             <td className="crm-table-td">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-transform group-hover:scale-110" style={{ background: 'rgba(0,212,170,0.15)', color: '#00D4AA', border: '1px solid rgba(0,212,170,0.2)' }}>
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-transform group-hover:scale-110 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
                                                         {lead.company.charAt(0)}
                                                     </div>
-                                                    <span className="font-bold uppercase tracking-tight transition-colors" style={{ color: '#F1F5F9' }}>{lead.company}</span>
+                                                    <span className="font-bold uppercase tracking-tight transition-colors">{lead.company}</span>
                                                 </div>
                                             </td>
                                             <td className="crm-table-td">
                                                 <div className="space-y-0.5">
-                                                    <p className="font-bold tracking-tight" style={{ color: '#F1F5F9' }}>{lead.contact}</p>
-                                                    <p className="text-[10px] font-medium flex items-center gap-1" style={{ color: '#64748B' }}>
+                                                    <p className="font-bold tracking-tight">{lead.contact}</p>
+                                                    <p className="text-[10px] font-medium flex items-center gap-1 text-muted-foreground">
                                                         <Mail className="w-3 h-3" />
                                                         {lead.email}
                                                     </p>
@@ -154,18 +154,16 @@ export default function Leads() {
                                                 </span>
                                             </td>
                                             <td className="crm-table-td">
-                                                <div className="flex items-center gap-1.5 font-bold" style={{ color: '#F1F5F9' }}>
-                                                    <span className="text-xs" style={{ color: '#64748B' }}>₹</span>
+                                                <div className="flex items-center gap-1.5 font-bold">
+                                                    <span className="text-xs text-muted-foreground">₹</span>
                                                     {lead.value.toLocaleString('en-IN')}
                                                 </div>
                                             </td>
-                                            <td className="crm-table-td text-xs font-bold uppercase tracking-tight" style={{ color: '#64748B' }}>
+                                            <td className="crm-table-td text-xs font-bold uppercase tracking-tight text-muted-foreground">
                                                 {formatDate(lead.createdAt)}
                                             </td>
-                                            <td className="crm-table-td text-right">
-                                                <button className="p-2 rounded-lg transition-all" style={{ color: '#64748B' }}
-                                                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,212,170,0.1)'; e.currentTarget.style.color = '#00D4AA'; }}
-                                                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748B'; }}>
+                                            <td className="crm-table-td text-right text-muted-foreground">
+                                                <button className="p-2 rounded-lg transition-all hover:bg-[#00D4AA]/10 hover:text-[#00D4AA]">
                                                     <MoreHorizontal className="w-5 h-5" />
                                                 </button>
                                             </td>
@@ -200,16 +198,16 @@ export default function Leads() {
             {/* Creation Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
-                    <div className="absolute inset-0 backdrop-blur-md transition-opacity" style={{ background: 'rgba(6,11,21,0.8)' }} onClick={() => setIsModalOpen(false)} />
-                    <div className="rounded-[2rem] w-full max-w-2xl relative overflow-hidden transition-all scale-100 animate-in fade-in zoom-in duration-300" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}>
-                        <div className="p-10 flex justify-between items-start" style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
+                    <div className="absolute inset-0 backdrop-blur-md bg-black/60" onClick={() => setIsModalOpen(false)} />
+                    <div className="rounded-[2rem] w-full max-w-2xl relative overflow-hidden bg-card border border-border shadow-2xl animate-in zoom-in-95 duration-300">
+                        <div className="p-10 flex justify-between items-start border-b border-border">
                             <div>
-                                <h2 className="text-2xl font-bold tracking-tight" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>Add New Lead</h2>
-                                <p className="mt-1 font-medium text-sm tracking-tight" style={{ color: '#64748B' }}>Fill in the details to add a new lead to your pipeline</p>
+                                <h2 className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>Add New Lead</h2>
+                                <p className="mt-1 font-medium text-sm tracking-tight text-muted-foreground">Fill in the details to add a new lead to your pipeline</p>
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="p-2.5 rounded-xl transition-all group" style={{ color: '#64748B' }}
+                                className="p-2.5 rounded-xl transition-all group text-muted-foreground hover:text-foreground"
                             >
                                 <X className="w-5 h-5 group-hover:rotate-90 transition-transform" />
                             </button>
@@ -254,7 +252,7 @@ export default function Leads() {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="crm-label">Priority Tier</label>
-                                    <select className="crm-input font-bold appearance-none cursor-pointer" style={{ color: '#F1F5F9' }} value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
+                                    <select className="crm-input font-bold appearance-none cursor-pointer bg-background" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
                                         <option value="LOW">LOW PRIORITY</option>
                                         <option value="MEDIUM">MEDIUM PRIORITY</option>
                                         <option value="HIGH">HIGH PRIORITY</option>

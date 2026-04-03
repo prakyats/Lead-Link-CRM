@@ -22,7 +22,7 @@ async function login(req, res) {
         });
 
         if (!org) {
-            return res.status(401).json({ error: 'Invalid organization or credentials' });
+            return res.status(401).json({ error: 'Workspace not found' });
         }
 
         // Find user by org + email (multi-tenant)
@@ -36,13 +36,13 @@ async function login(req, res) {
         });
 
         if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'Account not found' });
         }
 
         // Check password using bcrypt
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'Incorrect password' });
         }
 
         // Generate JWT token
