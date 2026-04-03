@@ -59,8 +59,8 @@ function NetworkSVG() {
         [200, 500], [500, 550], [750, 450], [1000, 600]
       ].map(([cx, cy], i) => (
         <g key={i}>
-          <circle className="ll-network-node-ring" cx={cx} cy={cy} r={14} style={{ animationDelay: `${i * 0.4}s` }} />
-          <circle className="ll-network-node" cx={cx} cy={cy} r={4} style={{ animationDelay: `${i * 0.3}s` }} />
+          <circle className="ll-network-node-ring" cx={cx} cy={cy} r={10} style={{ animationDelay: `${i * 0.4}s` }} />
+          <circle className="ll-network-node" cx={cx} cy={cy} r={3} style={{ animationDelay: `${i * 0.3}s` }} />
         </g>
       ))}
     </svg>
@@ -123,19 +123,14 @@ export default function LandingPage() {
   const stat4 = useCounter(24);
 
   const features = [
-    { icon: <Users size={24} />, title: 'Lead Intelligence', desc: 'Capture, score, and nurture leads through your supply chain ecosystem with AI-powered prioritization.', color: 'teal' },
+    { icon: <Users size={24} />, title: 'Lead Intelligence', desc: 'Capture and nurture leads through your supply chain ecosystem with technical prioritization.', color: 'teal' },
     { icon: <Target size={24} />, title: 'Pipeline Orchestration', desc: 'Visual Kanban boards that map your entire vendor and client pipeline from first contact to contract.', color: 'amber' },
-    { icon: <Calendar size={24} />, title: 'Meeting Command', desc: 'Coordinate meetings across time zones with stakeholders, suppliers, and distribution partners seamlessly.', color: 'purple' },
-    { icon: <Phone size={24} />, title: 'Follow-up Automation', desc: 'Never miss a follow-up call. Smart reminders and automated sequences keep your supply chain relationships warm.', color: 'teal' },
-    { icon: <BarChart3 size={24} />, title: 'Supply Analytics', desc: 'Real-time dashboards tracking conversion rates, deal velocity, and supply chain performance metrics.', color: 'amber' },
-    { icon: <Handshake size={24} />, title: 'Partner Collaboration', desc: 'Shared workspaces for cross-functional teams to align on vendor negotiations and logistics coordination.', color: 'purple' },
+    { icon: <Calendar size={24} />, title: 'Meeting Command', desc: 'Coordinate meetings across stakeholders, suppliers, and distribution partners seamlessly.', color: 'purple' },
+    { icon: <Phone size={24} />, title: 'Follow-up Management', desc: 'Never miss a follow-up. Smart reminders and automated sequences keep your supply chain relationships organized.', color: 'teal' },
+    { icon: <BarChart3 size={24} />, title: 'Supply Analytics', desc: 'Real-time dashboards tracking conversion rates and supply chain performance metrics.', color: 'amber' },
+    { icon: <Handshake size={24} />, title: 'Partner Collaboration', desc: 'Centralized workspace for teams to align on vendor negotiations and logistics coordination.', color: 'purple' },
   ];
 
-  const testimonials = [
-    { text: "Lead Link transformed how we manage our supplier relationships. Our procurement pipeline efficiency improved by 40% within two months.", name: 'Sarah Chen', role: 'VP of Supply Chain, LogiCore Inc.', color: 'teal' },
-    { text: "The Kanban pipeline view gives us complete visibility into every vendor negotiation. Our team closed 3x more deals in Q4.", name: 'Marcus Rivera', role: 'Director of Procurement, FleetNova', color: 'amber' },
-    { text: "From first contact to signed contract, Lead Link tracks every touchpoint. It's the CRM supply chain professionals actually need.", name: 'Aisha Patel', role: 'Head of Logistics, SwiftRoute Global', color: 'purple' },
-  ];
 
   const companies = ['SwiftRoute', 'LogiCore', 'FleetNova', 'ChainSync', 'FreightPulse', 'VendorVault', 'SupplyEdge', 'CargoWise', 'ProcureHub', 'TradeLink'];
 
@@ -153,7 +148,7 @@ export default function LandingPage() {
           <div className="ll-nav-links">
             <a href="#features">Features</a>
             <a href="#how">How It Works</a>
-            <a href="#testimonials">Testimonials</a>
+
           </div>
           <div className="ll-nav-actions">
             <ThemeToggle
@@ -182,7 +177,7 @@ export default function LandingPage() {
         />
         <a href="#features" onClick={() => setMobileOpen(false)}>Features</a>
         <a href="#how" onClick={() => setMobileOpen(false)}>How It Works</a>
-        <a href="#testimonials" onClick={() => setMobileOpen(false)}>Testimonials</a>
+
         <Link to="/login" onClick={() => setMobileOpen(false)}>Sign In</Link>
       </div>
 
@@ -201,40 +196,40 @@ export default function LandingPage() {
         <div className="ll-hero-content">
           <div className="ll-hero-badge">
             <span className="ll-hero-badge-dot" />
-            Supply Chain CRM — Now in Beta
+            Lead Link — College Mini Project Showcase
           </div>
 
           <h1 className="ll-hero-title">
-            Manage Your <span style={{ background: 'linear-gradient(135deg, #00D4AA, #6EE7B7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Supply Chain</span> Relationships
+            Lead Link <span style={{ background: 'linear-gradient(135deg, #00D4AA, #6EE7B7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>CRM</span>
           </h1>
 
           <p className="ll-hero-subtitle">
-            From vendor sourcing to contract delivery — track every meeting, follow-up, and deal across your entire supply chain network in one powerful platform.
+            A comprehensive CRM platform for lead management, procurement orchestration, and relationship visibility — built from the ground up.
           </p>
 
           <div className="ll-hero-ctas">
             <Link to="/login" className="ll-btn ll-btn-primary ll-btn-large">
-              Start Free Trial <ArrowRight size={18} />
+              Get Started <ArrowRight size={18} />
             </Link>
             <a href="#features" className="ll-btn ll-btn-outline ll-btn-large">
-              Explore Features
+              Explore Tech Stack
             </a>
           </div>
 
           <div className="ll-hero-stats-row">
             <div className="ll-hero-stat-item">
-              <div className="ll-hero-stat-number">500+</div>
-              <div className="ll-hero-stat-label">Supply Partners</div>
+              <div className="ll-hero-stat-number">Lead</div>
+              <div className="ll-hero-stat-label">Scoring</div>
             </div>
             <div className="ll-hero-stat-divider" />
             <div className="ll-hero-stat-item">
-              <div className="ll-hero-stat-number">98%</div>
-              <div className="ll-hero-stat-label">Client Retention</div>
+              <div className="ll-hero-stat-number">Pipeline</div>
+              <div className="ll-hero-stat-label">Kanban</div>
             </div>
             <div className="ll-hero-stat-divider" />
             <div className="ll-hero-stat-item">
-              <div className="ll-hero-stat-number">2M+</div>
-              <div className="ll-hero-stat-label">Deals Tracked</div>
+              <div className="ll-hero-stat-number">Vendor</div>
+              <div className="ll-hero-stat-label">Tracking</div>
             </div>
           </div>
         </div>
@@ -250,7 +245,7 @@ export default function LandingPage() {
 
       {/* ── TRUSTED BY ── */}
       <section className="ll-trusted">
-        <p className="ll-trusted-label">Trusted by industry-leading supply chain companies</p>
+        <p className="ll-trusted-label">Core Modules & Technical Foundation</p>
         <div className="ll-marquee-wrapper">
           <div className="ll-marquee-track">
             {[...companies, ...companies].map((c, i) => (
@@ -278,7 +273,7 @@ export default function LandingPage() {
             <div key={i} className={`ll-feature-card ll-reveal ll-reveal-delay-${(i % 3) + 1}`}>
               <div className={`ll-feature-icon ${f.color}`}>{f.icon}</div>
               <h3 className="ll-feature-title">{f.title}</h3>
-              <p className="ll-feature-desc">{f.desc}</p>
+              <p className="ll-feature-desc" style={{ textAlign: 'left' }}>{f.desc}</p>
             </div>
           ))}
         </div>
@@ -289,21 +284,21 @@ export default function LandingPage() {
         <div className="ll-stats-network-bg" />
         <div className="ll-stats::before" />
         <div className="ll-stats-grid">
-          <div className="ll-stat-card ll-reveal" ref={stat1.ref}>
-            <div className="ll-stat-number teal">{stat1.count}+</div>
-            <div className="ll-stat-label">Supply Partners Managed</div>
+          <div className="ll-stat-card ll-reveal">
+            <div className="ll-stat-number teal">Neon DB</div>
+            <div className="ll-stat-label">Serverless Database</div>
           </div>
-          <div className="ll-stat-card ll-reveal ll-reveal-delay-1" ref={stat2.ref}>
-            <div className="ll-stat-number amber">{stat2.count}%</div>
-            <div className="ll-stat-label">Client Retention Rate</div>
+          <div className="ll-stat-card ll-reveal ll-reveal-delay-1">
+            <div className="ll-stat-number amber">Secure</div>
+            <div className="ll-stat-label">JWT Authentication</div>
           </div>
-          <div className="ll-stat-card ll-reveal ll-reveal-delay-2" ref={stat3.ref}>
-            <div className="ll-stat-number purple">{stat3.count}M+</div>
-            <div className="ll-stat-label">Supply Deals Tracked</div>
+          <div className="ll-stat-card ll-reveal ll-reveal-delay-2">
+            <div className="ll-stat-number purple">Vite</div>
+            <div className="ll-stat-label">React Framework</div>
           </div>
-          <div className="ll-stat-card ll-reveal ll-reveal-delay-3" ref={stat4.ref}>
-            <div className="ll-stat-number white">{stat4.count}/7</div>
-            <div className="ll-stat-label">Uptime Guarantee</div>
+          <div className="ll-stat-card ll-reveal ll-reveal-delay-3">
+            <div className="ll-stat-number white">Full</div>
+            <div className="ll-stat-label">Admin Control</div>
           </div>
         </div>
       </section>
@@ -331,46 +326,20 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
-      <section id="testimonials" className="ll-testimonials">
-        <div className="ll-testimonials-header ll-reveal">
-          <p className="ll-section-label">Testimonials</p>
-          <h2 className="ll-section-title">Trusted by Supply Chain Leaders</h2>
-          <p className="ll-section-subtitle">See how procurement and logistics teams accelerate their vendor relationships.</p>
-        </div>
-
-        <div className="ll-testimonials-grid">
-          {testimonials.map((t, i) => (
-            <div key={i} className={`ll-testimonial-card ll-reveal ll-reveal-delay-${i + 1}`}>
-              <div className="ll-testimonial-quote-mark">"</div>
-              <p className="ll-testimonial-text">{t.text}</p>
-              <div className="ll-testimonial-author">
-                <div className={`ll-testimonial-avatar ${t.color}`}>
-                  {t.name.split(' ').map(w => w[0]).join('')}
-                </div>
-                <div>
-                  <div className="ll-testimonial-name">{t.name}</div>
-                  <div className="ll-testimonial-role">{t.role}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ── CTA ── */}
       <section className="ll-cta">
         <div className="ll-cta-bg" />
         <div className="ll-cta-content ll-reveal">
-          <h2 className="ll-cta-title">Ready to Transform Your Supply Chain Relationships?</h2>
-          <p className="ll-cta-subtitle">Join hundreds of procurement and logistics teams who trust Lead Link to manage their vendor pipelines.</p>
+          <h2 className="ll-cta-title">Lead Link</h2>
+          <p className="ll-cta-subtitle">A comprehensive CRM project developed to streamline supply chain and procurement workflows.</p>
           <div className="ll-cta-buttons">
             <Link to="/login" className="ll-btn ll-btn-primary ll-btn-large">
-              Start Free Trial <ArrowRight size={18} />
+              Sign Up Now <ArrowRight size={18} />
             </Link>
-            <a href="#features" className="ll-btn ll-btn-ghost ll-btn-large">Learn More</a>
+            <a href="#features" className="ll-btn ll-btn-ghost ll-btn-large">Technical Docs</a>
           </div>
-          <p className="ll-cta-note">No credit card required · 14-day free trial · Cancel anytime</p>
+          <p className="ll-cta-note">Secure Sign-up · Neon DB Backend · React Frontend</p>
         </div>
       </section>
 
@@ -382,14 +351,14 @@ export default function LandingPage() {
               <div className="ll-nav-logo"><Package size={18} /></div>
               <span>Lead Link</span>
             </Link>
-            <p>Enterprise-grade CRM built specifically for supply chain, procurement, and logistics professionals.</p>
+            <p>A comprehensive CRM project developed to streamline supply chain and procurement workflows.</p>
           </div>
           <div>
             <h4 className="ll-footer-col-title">Product</h4>
             <ul className="ll-footer-links">
               <li><a href="#features">Features</a></li>
               <li><a href="#how">How It Works</a></li>
-              <li><a href="#testimonials">Testimonials</a></li>
+
             </ul>
           </div>
           <div>
@@ -411,7 +380,12 @@ export default function LandingPage() {
         </div>
 
         <div className="ll-footer-bottom">
-          <p>© 2026 Lead Link CRM. All rights reserved.</p>
+          <div>
+            <p>© 2026 Lead Link CRM. All rights reserved.</p>
+            <p style={{ fontSize: '0.72rem', marginTop: 4, color: 'var(--ll-muted-dim)' }}>
+              Developed by: Prakyat, Gayatri, Yasti, Pallavi
+            </p>
+          </div>
           <div className="ll-footer-social">
             {['𝕏', 'in', 'GH'].map((label, i) => (
               <a key={i} href="#">{label}</a>
