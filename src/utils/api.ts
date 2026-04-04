@@ -17,7 +17,7 @@ const api: AxiosInstance = axios.create({
 });
 
 const MAX_RETRIES = 2;
-const COLD_START_THRESHOLD = 1500; // 1.5s
+const COLD_START_THRESHOLD = 1200; // 1.2s
 
 // Request interceptor
 api.interceptors.request.use(
@@ -28,6 +28,8 @@ api.interceptors.request.use(
         }
         
         config._startTime = performance.now();
+        
+        // Only show global loading if not explicitly skipped
         setGlobalLoading(true);
 
         // Development logging
@@ -58,23 +60,26 @@ api.interceptors.response.use(
         // Cold start detection (Slow response or 503/504)
         const duration = config?._startTime ? (performance.now() - config._startTime) : 0;
         const isSlow = duration > COLD_START_THRESHOLD;
-        const isServerError = error.response?.status && error.response.status >= 500;
+        const isServerError = error.response?.status && [502, 503, 504].includes(error.response.status);
 
-        if (isSlow || isServerError) {
-            setGlobalColdStartMessage("Server is starting... this may take a few seconds.");
+        if (isServerError) {
+            setGlobalColdStartMessage("Server is initializing... this may take a few seconds.");
             
-            // Auto-retry for server errors (likely cold starts)
-            if (isServerError && (!config._retry || config._retry < MAX_RETRIES)) {
+            // Auto-retry for cold starts (GET requests only to be safe)
+            if (config.method?.toLowerCase() === 'get' && (!config._retry || config._retry < MAX_RETRIES)) {
                 config._retry = (config._retry || 0) + 1;
                 
                 if (import.meta.env.DEV) {
-                    console.warn(`[API] Retrying ${config.url} (${config._retry}/${MAX_RETRIES})`);
+                    console.warn(`[API] Retrying ${config.url} due to server cold start (${config._retry}/${MAX_RETRIES})`);
                 }
                 
                 // Wait 1s before retrying
                 await new Promise(res => setTimeout(res, 1000));
                 return api(config);
             }
+        } else if (isSlow) {
+            // If it's just slow but not fixed yet, we handle it but don't force a "Cold Start" UI unless it's a server error
+            setGlobalColdStartMessage(null);
         } else {
             setGlobalColdStartMessage(null);
         }

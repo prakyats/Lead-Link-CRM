@@ -50,11 +50,13 @@ export default function Tasks() {
     }
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === 'PENDING') return task.status === 'PENDING';
-    if (filter === 'COMPLETED') return task.status === 'COMPLETED';
-    return true;
-  });
+  const filteredTasks = tasks
+    .filter((task) => {
+      if (filter === 'PENDING') return task.status === 'PENDING';
+      if (filter === 'COMPLETED') return task.status === 'COMPLETED';
+      return true;
+    })
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   const pendingCount = tasks.filter((t) => t.status === 'PENDING').length;
   const completedCount = tasks.filter((t) => t.status === 'COMPLETED').length;
