@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { addRiskToLead } = require('../utils/riskCalculator');
+const { validateLeadBody, normalizeEmail, normalizePhone, sanitizeString } = require('../utils/validation');
 
 /**
  * Helper to map Prisma Lead to Legacy Frontend Format
@@ -124,13 +125,26 @@ async function createLead(req, res) {
 
         const { company, contact, email, phone, value, priority, stage, leadScore } = req.body;
 
+        // Validate
+        const { errors, isValid } = validateLeadBody({ company, contact, email, phone, value });
+        if (!isValid) {
+            const firstError = Object.values(errors)[0];
+            return res.status(400).json({ error: firstError, errors });
+        }
+
+        // Sanitize
+        const sanitizedEmail = normalizeEmail(email);
+        const sanitizedPhone = phone ? normalizePhone(phone) : null;
+        const sanitizedCompany = sanitizeString(company);
+        const sanitizedContact = sanitizeString(contact);
+
         const newLead = await prisma.lead.create({
             data: {
                 organizationId,
-                company,
-                contactName: contact,
-                email,
-                phone,
+                company: sanitizedCompany,
+                contactName: sanitizedContact,
+                email: sanitizedEmail,
+                phone: sanitizedPhone,
                 value: parseFloat(value) || 0,
                 priority: priority ? priority.toUpperCase() : 'MEDIUM',
                 stage: stage ? stage.toUpperCase() : 'NEW',

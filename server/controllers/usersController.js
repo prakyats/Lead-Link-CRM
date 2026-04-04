@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt');
 const prisma = require('../utils/prisma');
+const { validateUserBody, normalizeEmail, sanitizeString } = require('../utils/validation');
 
 /**
  * Get all users (ADMIN only)
@@ -46,29 +47,28 @@ async function createUser(req, res) {
 
         const { name, email, password, role: newUserRole } = req.body;
 
-        // Validate required fields
-        if (!name || !email || !password || !newUserRole) {
-            return res.status(400).json({ error: 'Name, email, password, and role are required' });
+        // Validate with centralized rules
+        const { errors, isValid } = validateUserBody({ name, email, password, role: newUserRole });
+        if (!isValid) {
+            const firstError = Object.values(errors)[0];
+            return res.status(400).json({ error: firstError, errors });
         }
 
-        // Validate role
-        const validRoles = ['ADMIN', 'MANAGER', 'SALES'];
-        if (!validRoles.includes(newUserRole.toUpperCase())) {
-            return res.status(400).json({ error: 'Invalid role. Must be ADMIN, MANAGER, or SALES' });
-        }
+        const sanitizedName = sanitizeString(name);
+        const sanitizedEmail = normalizeEmail(email);
 
         // Check if user already exists in this organization
         const existingUser = await prisma.user.findUnique({
             where: {
                 organizationId_email: {
                     organizationId,
-                    email
+                    email: sanitizedEmail
                 }
             }
         });
 
         if (existingUser) {
-            return res.status(400).json({ error: 'User with this email already exists' });
+            return res.status(400).json({ error: 'An account with this email already exists in this workspace' });
         }
 
         // Hash password
@@ -78,8 +78,8 @@ async function createUser(req, res) {
         // Create user
         const newUser = await prisma.user.create({
             data: {
-                name,
-                email,
+                name: sanitizedName,
+                email: sanitizedEmail,
                 password: hashedPassword,
                 role: newUserRole.toUpperCase(),
                 organizationId

@@ -8,12 +8,14 @@ import { formatDate, isOverdue } from '../utils/dateHelpers';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { TaskSkeleton } from '@/components/ui/skeleton';
+import { validateTaskForm, validateTaskTitle, validateDescription, type ValidationErrors } from '../utils/validation';
 
 export default function Tasks() {
   const { tasks, loading, fetchTasks, toggleComplete, createTask } = useTasks();
   const { user } = useAuth();
   const [filter, setFilter] = useState<'all' | 'PENDING' | 'COMPLETED'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -23,9 +25,15 @@ export default function Tasks() {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors = validateTaskForm(formData);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
     try {
       await createTask(formData);
       setIsModalOpen(false);
+      setFieldErrors({});
       setFormData({
         title: '',
         description: '',
@@ -34,6 +42,18 @@ export default function Tasks() {
       });
     } catch (error) {
       console.error('Failed to create task:', error);
+    }
+  };
+
+  const handleTaskFieldBlur = (field: 'title' | 'description' | 'dueDate') => {
+    if (field === 'title') {
+      const err = validateTaskTitle(formData.title);
+      setFieldErrors(prev => ({ ...prev, title: err || '' }));
+    } else if (field === 'description') {
+      const err = validateDescription(formData.description);
+      setFieldErrors(prev => ({ ...prev, description: err || '' }));
+    } else if (field === 'dueDate') {
+      setFieldErrors(prev => ({ ...prev, dueDate: formData.dueDate ? '' : 'Due date and time are required' }));
     }
   };
 
@@ -277,17 +297,50 @@ export default function Tasks() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="crm-label">Task Title</label>
-                    <input required type="text" className="crm-input" placeholder="e.g. Discuss proposal details" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+                    <input
+                      required
+                      type="text"
+                      className={`crm-input ${fieldErrors.title ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
+                      placeholder="e.g. Discuss proposal details"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      onBlur={() => handleTaskFieldBlur('title')}
+                      maxLength={100}
+                    />
+                    {fieldErrors.title && <p className="text-red-400 text-xs mt-1">{fieldErrors.title}</p>}
                   </div>
                   <div className="space-y-2">
                     <label className="crm-label">Description</label>
-                    <textarea required className="crm-input min-h-[100px] resize-none" placeholder="Provide additional details..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                    <textarea
+                      className={`crm-input min-h-[100px] resize-none ${fieldErrors.description ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
+                      placeholder="Provide additional details..."
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onBlur={() => handleTaskFieldBlur('description')}
+                      maxLength={500}
+                    />
+                    <div className="flex justify-between items-center">
+                      {fieldErrors.description
+                        ? <p className="text-red-400 text-xs">{fieldErrors.description}</p>
+                        : <span />}
+                      <span className={`text-xs ml-auto ${formData.description.length > 480 ? 'text-amber-400' : 'text-muted-foreground/50'}`}>
+                        {formData.description.length}/500
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="crm-label">Due Date & Time</label>
-                      <input required type="datetime-local" className="crm-input" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} />
+                      <input
+                        required
+                        type="datetime-local"
+                        className={`crm-input ${fieldErrors.dueDate ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
+                        value={formData.dueDate}
+                        onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                        onBlur={() => handleTaskFieldBlur('dueDate')}
+                      />
+                      {fieldErrors.dueDate && <p className="text-red-400 text-xs mt-1">{fieldErrors.dueDate}</p>}
                     </div>
                     <div className="space-y-2">
                       <label className="crm-label">Priority Tier</label>
@@ -301,7 +354,7 @@ export default function Tasks() {
                 </div>
 
                 <div className="flex gap-4 pt-4">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="crm-btn-secondary w-full !py-4">Cancel</button>
+                  <button type="button" onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4">Cancel</button>
                   <button type="submit" className="crm-btn-primary w-full !py-4">Create Activity</button>
                 </div>
               </form>
