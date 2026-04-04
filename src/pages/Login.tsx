@@ -4,6 +4,7 @@ import { Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2, Building2, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { validateLoginForm, validateEmail, validatePassword, validateRequired, normalizeEmail } from '../utils/validation';
 
 const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -34,24 +35,26 @@ export default function Login() {
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     const validateForm = () => {
-        const errors: Record<string, string> = {};
-        
-        if (!organizationSlug.trim()) {
-            errors.organization = 'Workspace ID is required';
-        }
-        
-        if (!email.trim()) {
-            errors.email = 'Email address is required';
-        } else if (!/\S+@\S+\.\S+/.test(email)) {
-            errors.email = 'Please enter a valid email address';
-        }
-        
-        if (!password.trim()) {
-            errors.password = 'Password is required';
-        }
-
+        const errors = validateLoginForm({
+            organizationSlug,
+            email,
+            password
+        });
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
+    };
+
+    const handleBlur = (field: 'organization' | 'email' | 'password') => {
+        if (field === 'organization') {
+            const err = validateRequired(organizationSlug, 'Workspace ID');
+            setFieldErrors(prev => ({ ...prev, organization: err || '' }));
+        } else if (field === 'email') {
+            const err = validateEmail(email);
+            setFieldErrors(prev => ({ ...prev, email: err || '' }));
+        } else if (field === 'password') {
+            const err = validatePassword(password);
+            setFieldErrors(prev => ({ ...prev, password: err || '' }));
+        }
     };
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -67,7 +70,7 @@ export default function Login() {
 
         try {
             localStorage.setItem('organizationSlug', organizationSlug);
-            await login(organizationSlug, email, password);
+            await login(organizationSlug, normalizeEmail(email), password);
             
             // Premium Success Sequence
             setIsSuccess(true);
@@ -162,10 +165,12 @@ export default function Login() {
                                         <input
                                             value={organizationSlug}
                                             onChange={(e) => setOrganizationSlug(e.target.value)}
+                                            onBlur={() => handleBlur('organization')}
                                             className={inputClasses('organization')}
                                             placeholder="demo"
                                             required
                                             autoFocus
+                                            maxLength={50}
                                         />
                                     </div>
                                     <AnimatePresence>
@@ -192,9 +197,11 @@ export default function Login() {
                                             type="email"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
+                                            onBlur={() => handleBlur('email')}
                                             className={inputClasses('email')}
                                             placeholder="admin@leadlink.com"
                                             required
+                                            maxLength={100}
                                         />
                                     </div>
                                     <AnimatePresence>
@@ -221,9 +228,11 @@ export default function Login() {
                                             type={showPassword ? "text" : "password"}
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
+                                            onBlur={() => handleBlur('password')}
                                             className={inputClasses('password')}
                                             placeholder="••••••••"
                                             required
+                                            maxLength={100}
                                         />
                                         <button 
                                             type="button"

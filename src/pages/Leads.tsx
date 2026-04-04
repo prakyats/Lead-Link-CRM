@@ -8,11 +8,13 @@ import { Role } from '../utils/roles';
 import { formatDate } from '../utils/dateHelpers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '@/components/ui/skeleton';
+import { validateLeadForm, validateCompany, validateName, validateEmail, validatePhone, type ValidationErrors } from '../utils/validation';
 
 export default function Leads() {
     const { leads, loading, fetchLeads, createLead, assignLead } = useLeads();
     const { user } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
     const [searchTerm, setSearchTerm] = useState('');
     const [assignModal, setAssignModal] = useState<{ open: boolean; leadId: number | null }>({ open: false, leadId: null });
     const [salesUsers, setSalesUsers] = useState<{ id: number; name: string; role: string }[]>([]);
@@ -55,9 +57,15 @@ export default function Leads() {
 
     const handleCreateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const errors = validateLeadForm(formData);
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors);
+            return;
+        }
         try {
             await createLead(formData);
             setIsModalOpen(false);
+            setFieldErrors({});
             setFormData({
                 company: '',
                 contact: '',
@@ -69,6 +77,22 @@ export default function Leads() {
             });
         } catch (error) {
             console.error('Failed to create lead:', error);
+        }
+    };
+
+    const handleLeadFieldBlur = (field: keyof typeof formData) => {
+        if (field === 'company') {
+            const err = validateCompany(formData.company);
+            setFieldErrors(prev => ({ ...prev, company: err || '' }));
+        } else if (field === 'contact') {
+            const err = validateName(formData.contact, 'Contact name');
+            setFieldErrors(prev => ({ ...prev, contact: err || '' }));
+        } else if (field === 'email') {
+            const err = validateEmail(formData.email);
+            setFieldErrors(prev => ({ ...prev, email: err || '' }));
+        } else if (field === 'phone') {
+            const err = validatePhone(String(formData.phone || ''));
+            setFieldErrors(prev => ({ ...prev, phone: err || '' }));
         }
     };
 
@@ -420,29 +444,68 @@ export default function Leads() {
                                     <label className="crm-label">Company Name *</label>
                                     <div className="relative group">
                                         <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input required type="text" className="crm-input !pl-11" placeholder="e.g. Tata Consultancy Services" value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} />
+                                        <input
+                                            required
+                                            type="text"
+                                            className={`crm-input !pl-11 ${fieldErrors.company ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
+                                            placeholder="e.g. Tata Consultancy Services"
+                                            value={formData.company}
+                                            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                                            onBlur={() => handleLeadFieldBlur('company')}
+                                            maxLength={100}
+                                        />
                                     </div>
+                                    {fieldErrors.company && <p className="text-red-400 text-xs mt-1">{fieldErrors.company}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="crm-label">Contact Name *</label>
                                     <div className="relative group">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input required type="text" className="crm-input !pl-11" placeholder="Primary contact person" value={formData.contact} onChange={(e) => setFormData({ ...formData, contact: e.target.value })} />
+                                        <input
+                                            required
+                                            type="text"
+                                            className={`crm-input !pl-11 ${fieldErrors.contact ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
+                                            placeholder="Primary contact person"
+                                            value={formData.contact}
+                                            onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                                            onBlur={() => handleLeadFieldBlur('contact')}
+                                            maxLength={50}
+                                        />
                                     </div>
+                                    {fieldErrors.contact && <p className="text-red-400 text-xs mt-1">{fieldErrors.contact}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="crm-label">Email Address *</label>
                                     <div className="relative group">
                                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input required type="email" className="crm-input !pl-11" placeholder="contact@company.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                                        <input
+                                            required
+                                            type="email"
+                                            className={`crm-input !pl-11 ${fieldErrors.email ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
+                                            placeholder="contact@company.com"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                            onBlur={() => handleLeadFieldBlur('email')}
+                                            maxLength={100}
+                                        />
                                     </div>
+                                    {fieldErrors.email && <p className="text-red-400 text-xs mt-1">{fieldErrors.email}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="crm-label">Phone Number</label>
                                     <div className="relative group">
                                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input type="tel" className="crm-input !pl-11" placeholder="+91 98765 43210" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                                        <input
+                                            type="tel"
+                                            className={`crm-input !pl-11 ${fieldErrors.phone ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
+                                            placeholder="9876543210"
+                                            value={formData.phone}
+                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                            onBlur={() => handleLeadFieldBlur('phone')}
+                                            maxLength={10}
+                                        />
                                     </div>
+                                    {fieldErrors.phone && <p className="text-red-400 text-xs mt-1">{fieldErrors.phone}</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <label className="crm-label">Projected Value (₹)</label>
@@ -462,7 +525,7 @@ export default function Leads() {
                             </div>
 
                             <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="crm-btn-secondary w-full !py-4">Cancel</button>
+                                <button type="button" onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4">Cancel</button>
                                 <button type="submit" className="crm-btn-primary w-full !py-4">Add Lead</button>
                             </div>
                         </form>

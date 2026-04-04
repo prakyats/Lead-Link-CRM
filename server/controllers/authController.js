@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const prisma = require('../utils/prisma');
+const { validateAuthBody, normalizeEmail } = require('../utils/validation');
 
 /**
  * Login Controller
@@ -13,9 +14,15 @@ async function login(req, res) {
         const orgSlug = (organizationSlug || 'demo').toString().trim().toLowerCase();
 
         // Validate input
-        if (!orgSlug || !email || !password) {
-            return res.status(400).json({ error: 'Organization, email, and password are required' });
+        if (!orgSlug) {
+            return res.status(400).json({ error: 'Workspace ID is required' });
         }
+        const { errors, isValid } = validateAuthBody({ email, password }, false);
+        if (!isValid) {
+            const firstError = Object.values(errors)[0];
+            return res.status(400).json({ error: firstError, errors });
+        }
+        const normalizedEmail = normalizeEmail(email);
 
         const org = await prisma.organization.findUnique({
             where: { slug: orgSlug }
@@ -30,7 +37,7 @@ async function login(req, res) {
             where: {
                 organizationId_email: {
                     organizationId: org.id,
-                    email
+                    email: normalizedEmail
                 }
             }
         });
@@ -87,9 +94,16 @@ async function register(req, res) {
         const { name, email, password, role, organizationSlug } = req.body;
         const orgSlug = (organizationSlug || 'demo').toString().trim().toLowerCase();
 
-        if (!orgSlug || !name || !email || !password || !role) {
-            return res.status(400).json({ error: 'Organization, name, email, password, and role are required' });
+        if (!orgSlug || !role) {
+            return res.status(400).json({ error: 'Organization and role are required' });
         }
+        const { errors, isValid } = validateAuthBody({ name, email, password }, true);
+        if (!isValid) {
+            const firstError = Object.values(errors)[0];
+            return res.status(400).json({ error: firstError, errors });
+        }
+        const normalizedEmail = normalizeEmail(email);
+        const trimmedName = name.trim();
 
         const org = await prisma.organization.findUnique({ where: { slug: orgSlug } });
         if (!org) return res.status(400).json({ error: 'Organization not found' });
@@ -99,13 +113,13 @@ async function register(req, res) {
             where: {
                 organizationId_email: {
                     organizationId: org.id,
-                    email
+                    email: normalizedEmail
                 }
             }
         });
 
         if (existingUser) {
-            return res.status(400).json({ error: 'User with this email already exists' });
+            return res.status(400).json({ error: 'An account with this email already exists in this workspace' });
         }
 
         // Hash password
@@ -115,8 +129,8 @@ async function register(req, res) {
         // Create user
         const newUser = await prisma.user.create({
             data: {
-                name,
-                email,
+                name: trimmedName,
+                email: normalizedEmail,
                 password: hashedPassword,
                 role,
                 organizationId: org.id

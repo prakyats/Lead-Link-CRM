@@ -31,8 +31,13 @@ export function SidebarContent({ onClose }: SidebarContentProps) {
   const { user, logout } = useAuth();
 
   const getInitials = (name: string) => {
-    const parts = name.split(' ');
-    return parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : name.substring(0, 2);
+    const trimmed = name.trim();
+    if (!trimmed) return '?';
+    const parts = trimmed.split(/\s+/);
+    if (parts.length > 1 && parts[1][0]) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return trimmed.charAt(0).toUpperCase();
   };
 
   const visibleMenuItems = MENU_ITEMS.filter(item => {

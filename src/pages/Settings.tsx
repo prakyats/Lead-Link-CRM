@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
+import { validateUserForm, validateName, validateEmail, validatePassword } from '../utils/validation';
 
 interface SystemUser {
     id: number;
@@ -38,8 +39,13 @@ export default function Settings() {
     const { user } = useAuth();
 
     const getInitials = (name: string) => {
-        const parts = name.split(' ');
-        return parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : name.substring(0, 2);
+        const trimmed = name.trim();
+        if (!trimmed) return '?';
+        const parts = trimmed.split(/\s+/);
+        if (parts.length > 1 && parts[1][0]) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return trimmed.charAt(0).toUpperCase();
     };
 
     // User list state
@@ -78,20 +84,26 @@ export default function Settings() {
     }, [fetchUsers]);
 
     const validateForm = () => {
-        const errors: Record<string, string> = {};
-        if (!formData.name.trim()) errors.name = 'Full name is required';
-        if (!formData.email.trim()) {
-            errors.email = 'Email is required';
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            errors.email = 'Invalid email format';
-        }
-        if (!formData.password.trim()) {
-            errors.password = 'Password is required';
-        } else if (formData.password.length < 6) {
-            errors.password = 'Min. 6 characters required';
-        }
+        const errors = validateUserForm({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+        });
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
+    };
+
+    const handleFieldBlur = (field: 'name' | 'email' | 'password') => {
+        if (field === 'name') {
+            const err = validateName(formData.name, 'Full name');
+            setFieldErrors(prev => ({ ...prev, name: err || '' }));
+        } else if (field === 'email') {
+            const err = validateEmail(formData.email);
+            setFieldErrors(prev => ({ ...prev, email: err || '' }));
+        } else if (field === 'password') {
+            const err = validatePassword(formData.password);
+            setFieldErrors(prev => ({ ...prev, password: err || '' }));
+        }
     };
 
     const handleCreateUser = async (e: React.FormEvent) => {
@@ -214,9 +226,11 @@ export default function Settings() {
                                                             className={inputClasses('name')}
                                                             value={formData.name}
                                                             onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                            onBlur={() => handleFieldBlur('name')}
                                                             placeholder="e.g. Satoshi Nakamoto"
+                                                            maxLength={50}
                                                         />
-                                                        {fieldErrors.name && <p className="text-red-400 text-xs ml-1">{fieldErrors.name}</p>}
+                                                        {fieldErrors.name && <p className="text-red-400 text-xs ml-1 mt-1">{fieldErrors.name}</p>}
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Encrypted Email</label>
@@ -225,9 +239,11 @@ export default function Settings() {
                                                             type="email"
                                                             value={formData.email}
                                                             onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                                            onBlur={() => handleFieldBlur('email')}
                                                             placeholder="identity@leadlink.com"
+                                                            maxLength={100}
                                                         />
-                                                        {fieldErrors.email && <p className="text-red-400 text-xs ml-1">{fieldErrors.email}</p>}
+                                                        {fieldErrors.email && <p className="text-red-400 text-xs ml-1 mt-1">{fieldErrors.email}</p>}
                                                     </div>
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Access Token (Password)</label>
@@ -237,7 +253,9 @@ export default function Settings() {
                                                                 type={showPassword ? "text" : "password"}
                                                                 value={formData.password}
                                                                 onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                                                onBlur={() => handleFieldBlur('password')}
                                                                 placeholder="••••••••"
+                                                                maxLength={100}
                                                             />
                                                             <button 
                                                                 type="button"

@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma');
+const { validateTaskBody, sanitizeString } = require('../utils/validation');
 
 /**
  * Helper to map Prisma Task to Legacy Frontend Format
@@ -57,6 +58,14 @@ async function createTask(req, res) {
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
         const { title, description, dueDate, priority, leadId, assignedToId } = req.body;
+
+        // Validate
+        const { errors, isValid } = validateTaskBody({ title, description });
+        if (!isValid) {
+            const firstError = Object.values(errors)[0];
+            return res.status(400).json({ error: firstError, errors });
+        }
+
         const parsedLeadId = leadId ? parseInt(leadId) : null;
         const parsedAssignedToId = parseInt(assignedToId) || userId;
 
@@ -76,8 +85,8 @@ async function createTask(req, res) {
         const newTask = await prisma.task.create({
             data: {
                 organizationId,
-                title,
-                description,
+                title: sanitizeString(title),
+                description: description ? sanitizeString(description) : null,
                 dueDate: dueDate ? new Date(dueDate) : null,
                 priority: priority ? priority.toUpperCase() : 'MEDIUM',
                 status: 'PENDING',
