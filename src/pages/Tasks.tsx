@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatDate, isOverdue } from '../utils/dateHelpers';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
-import { TaskSkeleton } from '../components/ui/Skeleton';
+import { TaskSkeleton } from '@/components/ui/skeleton';
 
 export default function Tasks() {
   const { tasks, loading, fetchTasks, toggleComplete, createTask } = useTasks();

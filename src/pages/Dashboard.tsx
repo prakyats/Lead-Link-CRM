@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLeads } from '../contexts/LeadsContext';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
-import { DashboardSkeleton } from '../components/ui/Skeleton';
+import { DashboardSkeleton } from '@/components/ui/skeleton';
 
 const Dashboard = () => {
   const { leads, loading: leadsLoading } = useLeads();

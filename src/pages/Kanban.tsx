@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { MobileKanban } from '../components/Kanban/MobileKanban';
-import { KanbanSkeleton } from '../components/ui/Skeleton';
+import { KanbanSkeleton } from '@/components/ui/skeleton';
 
 interface Lead {
   id: number;

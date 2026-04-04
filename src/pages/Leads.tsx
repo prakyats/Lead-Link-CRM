@@ -7,7 +7,7 @@ import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { formatDate } from '../utils/dateHelpers';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TableSkeleton } from '../components/ui/Skeleton';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 export default function Leads() {
     const { leads, loading, fetchLeads, createLead, assignLead } = useLeads();
