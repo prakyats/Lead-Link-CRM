@@ -3,6 +3,7 @@ import api from '../utils/api';
 import { useAuth } from './AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
+import { toast } from 'sonner';
 
 export interface Lead {
     id: number;
@@ -17,7 +18,8 @@ export interface Lead {
     leadScore: number;
     lastInteraction: string;
     createdAt: string;
-    assignedTo?: string; // Added for RBAC Scoping
+    assignedTo?: string;
+    assignedToId?: number;
     risk?: 'high' | 'medium' | 'low';
     interactions?: Interaction[];
 }
@@ -40,6 +42,7 @@ interface LeadsContextType {
     updateLead: (id: number, lead: Partial<Lead>) => Promise<void>;
     updateLeadStage: (id: number, stage: Lead['stage']) => Promise<void>;
     deleteLead: (id: number) => Promise<void>;
+    assignLead: (id: number, assignedToId: number) => Promise<void>;
 }
 
 const LeadsContext = createContext<LeadsContextType | undefined>(undefined);
@@ -82,14 +85,24 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const updateLeadStage = useCallback(async (id: number, stage: Lead['stage']) => {
+        const previousLeads = [...leads];
+        // Optimistic Update
+        setLeads(prev => prev.map(l => l.id === id ? { ...l, stage } : l));
+        
         try {
             const response = await api.put(`/leads/${id}/stage`, { stage });
+            // Sync with server response
             setLeads(prev => prev.map(l => l.id === id ? response.data : l));
         } catch (error) {
             console.error('Error updating lead stage:', error);
+            // Rollback
+            setLeads(previousLeads);
+            toast.error('Failed to update stage. Reverting changes.', {
+                description: 'The server might be waking up or experiencing an issue.'
+            });
             throw error;
         }
-    }, []);
+    }, [leads]);
 
     const deleteLead = useCallback(async (id: number) => {
         try {
@@ -97,6 +110,16 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
             setLeads(prev => prev.filter(l => l.id !== id));
         } catch (error) {
             console.error('Error deleting lead:', error);
+            throw error;
+        }
+    }, []);
+
+    const assignLead = useCallback(async (id: number, assignedToId: number) => {
+        try {
+            const response = await api.put(`/leads/${id}/assign`, { assignedToId });
+            setLeads(prev => prev.map(l => l.id === id ? response.data : l));
+        } catch (error) {
+            console.error('Error assigning lead:', error);
             throw error;
         }
     }, []);
@@ -127,7 +150,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         createLead,
         updateLead,
         updateLeadStage,
-        deleteLead
+        deleteLead,
+        assignLead
     }), [leads, loading]);
 
     return <LeadsContext.Provider value={value}>{children}</LeadsContext.Provider>;

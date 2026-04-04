@@ -107,7 +107,7 @@ html,
 
   /* Card System */
   .crm-card {
-    @apply rounded-2xl p-6 transition-all duration-200;
+    @apply rounded-2xl p-6 transition-all duration-200 active:scale-[0.99];
     background: var(--crm-slate);
     border: 1px solid var(--crm-border);
   }
@@ -123,7 +123,7 @@ html,
 
   /* Button System */
   .crm-btn {
-    @apply px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2;
+    @apply px-5 py-3 rounded-xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer min-h-[44px];
   }
 
   .crm-btn-primary {
@@ -215,7 +215,7 @@ html,
   }
 
   .crm-table-thead {
-    background: rgba(26, 35, 50, 0.5);
+    background: var(--muted);
   }
 
   .crm-table-th {
@@ -244,7 +244,7 @@ html,
 
   /* Form System */
   .crm-input {
-    @apply w-full px-4 py-2.5 rounded-xl text-sm font-medium focus:outline-none transition-all;
+    @apply w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none transition-all min-h-[44px];
     background: var(--crm-navy);
     border: 1px solid var(--crm-border);
     color: var(--crm-white);

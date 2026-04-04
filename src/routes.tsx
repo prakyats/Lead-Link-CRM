@@ -1,18 +1,27 @@
+import React, { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router";
 import LandingPage from "./pages/LandingPage";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Kanban from "./pages/Kanban";
-import CustomerDetail from "./pages/CustomerDetail";
-import Tasks from "./pages/Tasks";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
-import PdfPreview from "./pages/PdfPreview";
-import Leads from "./pages/Leads";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { ROLES, ALL_ROLES, ADMIN_MANAGER, ADMIN_ONLY } from './utils/roles';
+import { ALL_ROLES, ADMIN_MANAGER, ADMIN_ONLY } from './utils/roles';
+import { GlobalLoader } from "./components/GlobalLoader";
 
-console.log('[Routes] Initializing browser router...');
+// Lazy-load pages for performance
+const Login = lazy(() => import("./pages/Login"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Leads = lazy(() => import("./pages/Leads"));
+const Kanban = lazy(() => import("./pages/Kanban"));
+const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Settings = lazy(() => import("./pages/Settings"));
+const PdfPreview = lazy(() => import("./pages/PdfPreview"));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <GlobalLoader />
+  </div>
+);
 
 export const router = createBrowserRouter([
   {
@@ -21,13 +30,19 @@ export const router = createBrowserRouter([
   },
   {
     path: "/login",
-    element: <Login />,
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <Login />
+      </Suspense>
+    ),
   },
   {
     path: "/dashboard",
     element: (
       <ProtectedRoute allowedRoles={ALL_ROLES}>
-        <Dashboard />
+        <Suspense fallback={<PageLoader />}>
+          <Dashboard />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -35,7 +50,9 @@ export const router = createBrowserRouter([
     path: "/leads",
     element: (
       <ProtectedRoute allowedRoles={ALL_ROLES}>
-        <Leads />
+        <Suspense fallback={<PageLoader />}>
+          <Leads />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -43,7 +60,9 @@ export const router = createBrowserRouter([
     path: "/kanban",
     element: (
       <ProtectedRoute allowedRoles={ALL_ROLES}>
-        <Kanban />
+        <Suspense fallback={<PageLoader />}>
+          <Kanban />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -51,7 +70,9 @@ export const router = createBrowserRouter([
     path: "/customer/:id",
     element: (
       <ProtectedRoute allowedRoles={ALL_ROLES}>
-        <CustomerDetail />
+        <Suspense fallback={<PageLoader />}>
+          <CustomerDetail />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -59,7 +80,9 @@ export const router = createBrowserRouter([
     path: "/tasks",
     element: (
       <ProtectedRoute allowedRoles={ALL_ROLES}>
-        <Tasks />
+        <Suspense fallback={<PageLoader />}>
+          <Tasks />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -67,7 +90,9 @@ export const router = createBrowserRouter([
     path: "/reports",
     element: (
       <ProtectedRoute allowedRoles={ADMIN_MANAGER}>
-        <Reports />
+        <Suspense fallback={<PageLoader />}>
+          <Reports />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -75,7 +100,9 @@ export const router = createBrowserRouter([
     path: "/settings",
     element: (
       <ProtectedRoute allowedRoles={ADMIN_ONLY}>
-        <Settings />
+        <Suspense fallback={<PageLoader />}>
+          <Settings />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -83,10 +110,12 @@ export const router = createBrowserRouter([
     path: "/pdf-preview/:id",
     element: (
       <ProtectedRoute allowedRoles={ALL_ROLES}>
-        <PdfPreview />
+        <Suspense fallback={<PageLoader />}>
+          <PdfPreview />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
 ]);
 
-export { ROLES, ALL_ROLES, ADMIN_MANAGER, ADMIN_ONLY };
+export { ALL_ROLES, ADMIN_MANAGER, ADMIN_ONLY };

@@ -70,10 +70,10 @@ export default function CustomerDetail() {
   const riskStyle = getRiskColor(leadData.risk);
 
   return (
-    <div className="flex" style={{ background: '#0B1120' }}>
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden" style={{ background: '#0B1120' }}>
       <Sidebar />
 
-      <main className="flex-1 overflow-auto" style={{ background: '#0B1120' }}>
+      <main className="flex-1 min-w-0 overflow-auto" style={{ background: '#0B1120' }}>
         <div className="p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>{leadData.company}</h1>
@@ -123,7 +123,7 @@ export default function CustomerDetail() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm" style={{ color: '#64748B' }}>Deal Value</span>
-                    <span className="font-semibold" style={{ color: '#F1F5F9' }}>${leadData.value.toLocaleString()}</span>
+                    <span className="font-semibold" style={{ color: '#F1F5F9' }}>₹{leadData.value.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm" style={{ color: '#64748B' }}>Stage</span>

@@ -1,111 +1,390 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Shield, Users, Info, User } from 'lucide-react';
+import { 
+    Shield, Users, Info, User, UserPlus, AlertCircle, 
+    CheckCircle2, ChevronDown, Mail, Lock, X, Plus, 
+    ShieldCheck, Target, BarChart3, Search, Eye, EyeOff, Loader2
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../utils/api';
+
+interface SystemUser {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    createdAt: string;
+}
+
+const TableSkeleton = () => (
+    <div className="space-y-4 animate-pulse">
+        {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-4 py-4 px-6 rounded-xl bg-slate-800/20 border border-slate-800/10">
+                <div className="w-10 h-10 rounded-full bg-slate-800/40" />
+                <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-slate-800/40 rounded w-1/4" />
+                    <div className="h-3 bg-slate-800/40 rounded w-1/3" />
+                </div>
+                <div className="w-20 h-6 bg-slate-800/40 rounded-full" />
+                <div className="w-24 h-4 bg-slate-800/40 rounded" />
+            </div>
+        ))}
+    </div>
+);
 
 export default function Settings() {
     const { user } = useAuth();
 
+    const getInitials = (name: string) => {
+        const parts = name.split(' ');
+        return parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : name.substring(0, 2);
+    };
+
+    // User list state
+    const [users, setUsers] = useState<SystemUser[]>([]);
+    const [usersLoading, setUsersLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Create user form state
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'SALES' });
+    const [showPassword, setShowPassword] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [formLoading, setFormLoading] = useState(false);
+
     const riskThresholds = [
-        { level: 'High Risk', criteria: 'Last interaction >= 7 days', color: '#F87171', bg: 'rgba(239,68,68,0.1)' },
-        { level: 'Medium Risk', criteria: 'Last interaction 3-6 days', color: '#FBBF24', bg: 'rgba(245,158,11,0.1)' },
-        { level: 'Low Risk', criteria: 'Last interaction < 3 days', color: '#4ADE80', bg: 'rgba(74,222,128,0.1)' },
+        { level: 'High Risk', criteria: 'Last interaction >= 7 days', color: '#F87171', bg: 'rgba(239,68,68,0.1)', icon: AlertCircle },
+        { level: 'Medium Risk', criteria: 'Last interaction 3-6 days', color: '#FBBF24', bg: 'rgba(245,158,11,0.1)', icon: Info },
+        { level: 'Low Risk', criteria: 'Last interaction < 3 days', color: '#4ADE80', bg: 'rgba(74,222,128,0.1)', icon: CheckCircle2 },
     ];
 
-    const systemUsers = [
-        { name: 'System Admin', email: 'admin@crm.com', role: 'admin' },
-        { name: 'Sales Manager', email: 'manager@crm.com', role: 'manager' },
-        { name: 'Sales Executive', email: 'sales@crm.com', role: 'sales' },
-    ];
+    const fetchUsers = useCallback(async () => {
+        try {
+            setUsersLoading(true);
+            const response = await api.get('/users');
+            setUsers(response.data);
+        } catch (error: any) {
+            toast.error('Failed to sync user directory');
+            console.error('Failed to fetch users:', error);
+        } finally {
+            setUsersLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    const validateForm = () => {
+        const errors: Record<string, string> = {};
+        if (!formData.name.trim()) errors.name = 'Full name is required';
+        if (!formData.email.trim()) {
+            errors.email = 'Email is required';
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+            errors.email = 'Invalid email format';
+        }
+        if (!formData.password.trim()) {
+            errors.password = 'Password is required';
+        } else if (formData.password.length < 6) {
+            errors.password = 'Min. 6 characters required';
+        }
+        setFieldErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleCreateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validateForm()) return;
+
+        setFormLoading(true);
+        try {
+            await api.post('/users', formData);
+            toast.success('User Provisioned Successfully', {
+                description: `${formData.name} has been added to the system.`
+            });
+            setFormData({ name: '', email: '', password: '', role: 'SALES' });
+            setShowCreateForm(false);
+            fetchUsers();
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.error || 'System failed to create user';
+            toast.error('Provisions Failed', { description: errorMsg });
+            if (errorMsg.toLowerCase().includes('email')) {
+                setFieldErrors({ email: 'Email already in use' });
+            }
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
+    const filteredUsers = users.filter(u => 
+        u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        u.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const roleColors: Record<string, { bg: string; color: string; icon: any }> = {
+        ADMIN: { bg: 'rgba(0,212,170,0.15)', color: '#00D4AA', icon: ShieldCheck },
+        MANAGER: { bg: 'rgba(139,92,246,0.15)', color: '#A78BFA', icon: Target },
+        SALES: { bg: 'rgba(245,158,11,0.15)', color: '#FBBF24', icon: BarChart3 },
+    };
+
+    const inputClasses = (fieldName: string) => `
+        w-full px-4 py-2.5 rounded-xl text-sm transition-all duration-300 outline-none
+        ${fieldErrors[fieldName] 
+            ? 'border-red-500/40 bg-red-500/5 ring-4 ring-red-500/10' 
+            : 'border-border bg-muted/10 hover:bg-muted/20 focus:border-[#00D4AA] focus:ring-4 focus:ring-[#00D4AA]/10 focus:bg-background'
+        }
+        border text-foreground placeholder:text-muted-foreground/50
+    `;
 
     return (
-        <div className="flex" style={{ background: 'var(--crm-navy)' }}>
+        <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-background text-foreground">
             <Sidebar />
-            <main className="flex-1 overflow-auto" style={{ background: 'var(--crm-navy)' }}>
-                <div className="p-8 max-w-4xl mx-auto">
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>System Settings</h1>
-                        <p className="mt-1" style={{ color: '#64748B' }}>System-wide configurations and information (Admin Only)</p>
-                    </div>
+            <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar">
+                <div className="p-8 max-w-5xl mx-auto">
+                    <header className="mb-10">
+                        <div className="flex items-center gap-2 text-[#00D4AA] mb-2 font-mono text-xs tracking-widest uppercase">
+                            <Shield className="w-4 h-4" />
+                            System Administration
+                        </div>
+                        <h1 className="text-4xl font-bold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>Settings</h1>
+                        <p className="mt-2 text-muted-foreground">Manage your organization's infrastructure and team directory</p>
+                    </header>
 
-                    <div className="space-y-6">
-                        {/* Risk Calculation Rules */}
-                        <section className="rounded-xl overflow-hidden" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                            <div className="p-6 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
-                                <Shield className="w-5 h-5" style={{ color: '#00D4AA' }} />
-                                <h2 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>Risk Threshold Rules</h2>
+                    <div className="space-y-8">
+                        {/* User Management Section */}
+                        <section className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                            <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-[#00D4AA]/10 flex items-center justify-center text-[#00D4AA]">
+                                        <Users className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold">Team Directory</h2>
+                                        <p className="text-xs text-muted-foreground">{users.length} Active System Nodes</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+                                    <div className="relative group w-full sm:w-auto">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-[#00D4AA] transition-colors" />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search directory..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="pl-9 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-[#00D4AA]/50 w-full sm:w-48 md:w-64 transition-all"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={() => setShowCreateForm(!showCreateForm)}
+                                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[#00D4AA] text-primary-foreground hover:scale-[1.02] active:scale-[0.98] transition-all whitespace-nowrap"
+                                    >
+                                        <UserPlus className="w-4 h-4" />
+                                        <span>Provision User</span>
+                                    </button>
+                                </div>
                             </div>
-                            <div className="p-6">
-                                <p className="text-sm mb-4" style={{ color: '#94A3B8' }}>
-                                    Customer risk status is automatically calculated based on the number of days since the last recorded interaction.
-                                </p>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {riskThresholds.map((rule) => (
-                                        <div key={rule.level} className="p-4 rounded-lg" style={{ background: rule.bg }}>
-                                            <p className="font-bold mb-1" style={{ color: rule.color }}>{rule.level}</p>
-                                            <p className="text-sm" style={{ color: '#94A3B8' }}>{rule.criteria}</p>
+
+                            <AnimatePresence>
+                                {showCreateForm && (
+                                    <motion.div 
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="border-b border-border bg-muted/20"
+                                    >
+                                        <div className="p-6">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <h3 className="font-bold text-[#00D4AA] flex items-center gap-2">
+                                                    <Plus className="w-4 h-4" />
+                                                    Initialize New Node
+                                                </h3>
+                                                <button onClick={() => setShowCreateForm(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                                                    <X className="w-5 h-5" />
+                                                </button>
+                                            </div>
+
+                                            <form onSubmit={handleCreateUser} className="space-y-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Full Identity</label>
+                                                        <input 
+                                                            className={inputClasses('name')}
+                                                            value={formData.name}
+                                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                            placeholder="e.g. Satoshi Nakamoto"
+                                                        />
+                                                        {fieldErrors.name && <p className="text-red-400 text-xs ml-1">{fieldErrors.name}</p>}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Encrypted Email</label>
+                                                        <input 
+                                                            className={inputClasses('email')}
+                                                            type="email"
+                                                            value={formData.email}
+                                                            onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                                            placeholder="identity@leadlink.com"
+                                                        />
+                                                        {fieldErrors.email && <p className="text-red-400 text-xs ml-1">{fieldErrors.email}</p>}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Access Token (Password)</label>
+                                                        <div className="relative">
+                                                            <input 
+                                                                className={inputClasses('password')}
+                                                                type={showPassword ? "text" : "password"}
+                                                                value={formData.password}
+                                                                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                                                placeholder="••••••••"
+                                                            />
+                                                            <button 
+                                                                type="button"
+                                                                onClick={() => setShowPassword(!showPassword)}
+                                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#00D4AA] transition-colors"
+                                                            >
+                                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                            </button>
+                                                        </div>
+                                                        {fieldErrors.password && <p className="text-red-400 text-xs ml-1">{fieldErrors.password}</p>}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Access Clearance (Role)</label>
+                                                        <div className="relative">
+                                                            <select 
+                                                                className={inputClasses('role')}
+                                                                style={{ appearance: 'none' }}
+                                                                value={formData.role}
+                                                                onChange={(e) => setFormData({...formData, role: e.target.value})}
+                                                            >
+                                                                <option value="SALES">SALES - Frontline Operations</option>
+                                                                <option value="MANAGER">MANAGER - Oversight Control</option>
+                                                                <option value="ADMIN">ADMIN - Full Core Access</option>
+                                                            </select>
+                                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setShowCreateForm(false)}
+                                                        className="px-6 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted transition-colors font-bold"
+                                                    >
+                                                        Discard
+                                                    </button>
+                                                    <button 
+                                                        type="submit" 
+                                                        disabled={formLoading}
+                                                        className="px-8 py-2.5 rounded-xl text-sm font-bold bg-[#00D4AA] text-primary-foreground disabled:opacity-50 flex items-center gap-2"
+                                                    >
+                                                        {formLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                                                        Generate Node
+                                                    </button>
+                                                </div>
+                                            </form>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </section>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
-                        {/* User Directory */}
-                        <section className="rounded-xl overflow-hidden" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                            <div className="p-6 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
-                                <Users className="w-5 h-5" style={{ color: '#00D4AA' }} />
-                                <h2 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>System User Directory</h2>
-                            </div>
                             <div className="p-6">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="text-sm" style={{ borderBottom: '1px solid rgba(148,163,184,0.08)', color: '#64748B' }}>
-                                                <th className="pb-3 font-medium">Name</th>
-                                                <th className="pb-3 font-medium">Email</th>
-                                                <th className="pb-3 font-medium">Role</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {systemUsers.map((u) => (
-                                                <tr key={u.email} className="text-sm" style={{ borderBottom: '1px solid rgba(148,163,184,0.04)' }}>
-                                                    <td className="py-3 font-medium" style={{ color: '#F1F5F9' }}>{u.name}</td>
-                                                    <td className="py-3" style={{ color: '#94A3B8' }}>{u.email}</td>
-                                                    <td className="py-3">
-                                                        <span className="capitalize px-2 py-1 rounded text-xs" style={{ background: 'rgba(148,163,184,0.1)', color: '#94A3B8' }}>
-                                                            {u.role}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                {usersLoading ? (
+                                    <TableSkeleton />
+                                ) : (
+                                    <div className="space-y-2">
+                                        <AnimatePresence initial={false}>
+                                            {filteredUsers.map((u, idx) => {
+                                                const rc = roleColors[u.role] || roleColors.SALES;
+                                                const RoleIcon = rc.icon;
+                                                return (
+                                                    <motion.div 
+                                                        layout
+                                                        key={u.id}
+                                                        initial={{ opacity: 0, scale: 0.98 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 rounded-2xl bg-muted/10 border border-border hover:border-[#00D4AA]/30 hover:bg-[#00D4AA]/[0.02] transition-all group"
+                                                    >
+                                                        <div className="flex items-center justify-between w-full md:w-auto md:flex-1">
+                                                            <div className="flex items-center gap-4 min-w-0">
+                                                                <div 
+                                                                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold text-foreground relative flex-shrink-0"
+                                                                    style={{ background: 'var(--crm-teal-glow)', border: '1px solid var(--crm-border)' }}
+                                                                >
+                                                                    {getInitials(u.name)}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <h4 className="font-bold text-foreground truncate text-sm">{u.name}</h4>
+                                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                        <Mail className="w-3 h-3 flex-shrink-0" />
+                                                                        <span className="truncate">{u.email}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            {/* Mobile Dot */}
+                                                            <div className="md:hidden inline-block w-2 h-2 rounded-full bg-[#00D4AA]" />
+                                                        </div>
+                                                        
+                                                        <div className="flex items-center justify-between md:justify-end gap-4 sm:gap-6 w-full md:w-auto pt-2 md:pt-0 border-t border-border md:border-0">
+                                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shrink-0"
+                                                                style={{ background: rc.bg, color: rc.color }}>
+                                                                <RoleIcon className="w-3.5 h-3.5" />
+                                                                {u.role}
+                                                            </div>
+
+                                                            <div className="flex items-center gap-4 shrink-0">
+                                                                <span className="text-xs font-mono text-muted-foreground">
+                                                                    {new Date(u.createdAt).toLocaleDateString('en-US', { 
+                                                                        month: 'short', day: 'numeric', year: 'numeric' 
+                                                                    }).toUpperCase()}
+                                                                </span>
+                                                                {/* Desktop Dot */}
+                                                                <div className="hidden md:inline-block w-2 h-2 rounded-full bg-[#00D4AA]" />
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </AnimatePresence>
+                                        {filteredUsers.length === 0 && (
+                                            <div className="text-center py-20 bg-muted/10 border border-dashed border-border rounded-3xl">
+                                                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                                                <p className="text-muted-foreground text-sm font-medium">No system nodes found matching your criteria</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </section>
 
-                        {/* Profile Info */}
-                        <section className="rounded-xl overflow-hidden" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                            <div className="p-6 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
-                                <User className="w-5 h-5" style={{ color: '#00D4AA' }} />
-                                <h2 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>Your Admin Profile</h2>
-                            </div>
-                            <div className="p-6 flex items-center gap-6">
-                                <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold" style={{ background: 'rgba(0,212,170,0.15)', color: '#00D4AA' }}>
-                                    {user?.name?.substring(0, 2).toUpperCase()}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {riskThresholds.map((rule) => (
+                                <div key={rule.level} className="flex-1 p-4 rounded-2xl border border-border" style={{ background: rule.bg }}>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-background shadow-sm">
+                                            <rule.icon className="w-4 h-4" style={{ color: rule.color }} />
+                                        </div>
+                                        <h3 className="font-bold text-foreground mb-0">{rule.level}</h3>
+                                    </div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#00D4AA] opacity-70 mb-1">Trigger Criteria</p>
+                                    <p className="text-xs font-medium text-foreground opacity-90">{rule.criteria}</p>
                                 </div>
-                                <div>
-                                    <p className="text-lg font-bold" style={{ color: '#F1F5F9' }}>{user?.name}</p>
-                                    <p className="text-sm" style={{ color: '#94A3B8' }}>{user?.email}</p>
-                                    <p className="inline-block mt-2 px-3 py-1 text-xs font-bold rounded-full uppercase" style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)', color: '#0B1120' }}>
-                                        {user?.role}
-                                    </p>
-                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center group transition-all hover:border-[#00D4AA]/30">
+                            <div className="w-12 h-12 rounded-xl bg-[#00D4AA] flex items-center justify-center text-primary-foreground font-black group-hover:scale-110 transition-transform">
+                                LL
                             </div>
-                        </section>
-
-                        <div className="p-4 rounded-lg flex gap-3 text-sm" style={{ background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.15)', color: '#00D4AA' }}>
-                            <Info className="w-5 h-5 shrink-0" />
-                            <p>This page is informational for academic purposes. Dynamic configuration of roles and pipeline stages is not enabled in this version.</p>
+                            <div className="mt-4">
+                                <h4 className="text-sm font-bold text-foreground tracking-wide uppercase">Active Administrator</h4>
+                                <p className="text-xs text-muted-foreground mt-1">{user?.email}</p>
+                            </div>
+                            <div className="mt-6 pt-6 border-t border-border w-full">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Authority Level</p>
+                                <p className="text-xs font-bold text-foreground mt-1 uppercase tracking-widest">{user?.role}</p>
+                            </div>
                         </div>
                     </div>
                 </div>

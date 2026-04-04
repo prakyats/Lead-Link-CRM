@@ -44,10 +44,10 @@ const tooltipStyle = {
 
 export default function Reports() {
   return (
-    <div className="flex" style={{ background: 'var(--crm-navy)' }}>
+    <div className="flex flex-col md:flex-row min-h-screen" style={{ background: 'var(--crm-navy)' }}>
       <Sidebar />
 
-      <main className="flex-1 overflow-auto" style={{ background: 'var(--crm-navy)' }}>
+      <main className="flex-1 min-w-0 overflow-auto" style={{ background: 'var(--crm-navy)' }}>
         <div className="p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold" style={{ color: 'var(--crm-white)', fontFamily: 'Outfit, sans-serif' }}>Reports & Analytics</h1>
@@ -59,7 +59,7 @@ export default function Reports() {
             {[
               { icon: Users, label: 'Total Leads', value: '1,247', trend: '+12.5%', iconBg: 'rgba(0,212,170,0.15)', iconColor: '#00D4AA', trendColor: '#4ADE80' },
               { icon: Target, label: 'Conversion Rate', value: '18.5%', trend: '+8.2%', iconBg: 'rgba(74,222,128,0.15)', iconColor: '#4ADE80', trendColor: '#4ADE80' },
-              { icon: TrendingUp, label: 'Revenue', value: '$331K', trend: '+15.3%', iconBg: 'rgba(192,132,252,0.15)', iconColor: '#C084FC', trendColor: '#4ADE80' },
+              { icon: TrendingUp, label: 'Revenue', value: '₹33.1L', trend: '+15.3%', iconBg: 'rgba(192,132,252,0.15)', iconColor: '#C084FC', trendColor: '#4ADE80' },
               { icon: Clock, label: 'Avg. Response Time', value: '2.4h', trend: '+2.1%', iconBg: 'rgba(245,158,11,0.15)', iconColor: '#FBBF24', trendColor: '#F87171' },
             ].map(({ icon: Icon, label, value, trend, iconBg, iconColor, trendColor }) => (
               <div key={label} className="rounded-xl p-6" style={{ background: 'var(--crm-slate)', border: '1px solid var(--crm-border)' }}>
@@ -116,7 +116,7 @@ export default function Reports() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--crm-border)" />
                   <XAxis dataKey="month" stroke="var(--crm-muted-dim)" />
                   <YAxis stroke="var(--crm-muted-dim)" />
-                  <Tooltip formatter={(value) => `$${value.toLocaleString()}`} {...tooltipStyle} />
+                  <Tooltip formatter={(value) => `₹${Number(value).toLocaleString('en-IN')}`} {...tooltipStyle} />
                   <Legend />
                   <Line type="monotone" dataKey="revenue" stroke="#00D4AA" strokeWidth={2} name="Revenue" dot={{ fill: '#00D4AA' }} />
                 </LineChart>
