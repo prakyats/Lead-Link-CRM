@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import '../styles/landing.css';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { motion, AnimatePresence as FramerAnimatePresence } from 'framer-motion';
+
 
 /* ── Animated SVG Network Component ── */
 function NetworkSVG() {
