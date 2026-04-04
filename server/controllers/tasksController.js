@@ -57,13 +57,16 @@ async function createTask(req, res) {
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
         const { title, description, dueDate, priority, leadId, assignedToId } = req.body;
-        const parsedLeadId = parseInt(leadId);
+        const parsedLeadId = leadId ? parseInt(leadId) : null;
         const parsedAssignedToId = parseInt(assignedToId) || userId;
 
-        const lead = await prisma.lead.findFirst({
-            where: { id: parsedLeadId, organizationId }
-        });
-        if (!lead) return res.status(400).json({ error: 'Invalid lead for this organization' });
+        // Only validate lead if one is specified
+        if (parsedLeadId) {
+            const lead = await prisma.lead.findFirst({
+                where: { id: parsedLeadId, organizationId }
+            });
+            if (!lead) return res.status(400).json({ error: 'Invalid lead for this organization' });
+        }
 
         const assignee = await prisma.user.findFirst({
             where: { id: parsedAssignedToId, organizationId }
