@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
-import { setGlobalLoading, setGlobalColdStartMessage } from '../contexts/UIContext';
+import { setGlobalLoading, setGlobalColdStartMessage } from '@/contexts/UIContext';
 
 // Extend Axios request config for custom metadata
 interface CustomRequestConfig extends InternalAxiosRequestConfig {
