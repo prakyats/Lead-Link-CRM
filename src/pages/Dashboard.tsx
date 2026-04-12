@@ -2,62 +2,49 @@ import { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Link } from 'react-router';
 import { Users, UserCheck, Clock, AlertTriangle, ArrowRight, Shield, BarChart3, Users2, TrendingUp, CheckCircle2, Calendar, Target, Activity } from 'lucide-react';
-import api from '../utils/api';
-import { useTasks } from '../contexts/TasksContext';
+import { useQueryClient, useMutation, useQuery, QueryErrorResetBoundary } from '@tanstack/react-query';
+import { getDashboardKpis, getRecentLeads, getDashboardSummary } from '../api/dashboard';
+import { getTaskSummary, markTaskComplete } from '../api/tasks';
+import { getLeads, LeadType } from '../api/leads';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
-import { useLeads } from '../contexts/LeadsContext';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { DashboardSkeleton } from '@/components/ui/skeleton';
 
-const Dashboard = () => {
-  const { leads, loading: leadsLoading } = useLeads();
-  const { tasks, loading: tasksLoading, markAsComplete, getTaskSummary } = useTasks();
+const DashboardContent = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
-  // Sales specific data
-  const [kpis, setKpis] = useState<any>(null);
-  const [recentLeads, setRecentLeads] = useState<any[]>([]);
-  const [taskSummary, setTaskSummary] = useState<any>({ today: [], overdue: [], upcoming: [] });
   const [activeTaskTab, setActiveTaskTab] = useState<'today' | 'overdue' | 'upcoming'>('today');
   
-  // Manager specific data
-  const [managerSummary, setManagerSummary] = useState<any>(null);
-  
-  const [loading, setLoading] = useState(true);
+  const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const isManagerView = user?.role === 'MANAGER' || user?.role === 'ADMIN';
-      
-      if (isManagerView) {
-        const [summaryRes, recentRes] = await Promise.all([
-          api.get('/dashboard/summary'),
-          api.get('/dashboard/recent-leads')
-        ]);
-        setManagerSummary(summaryRes.data);
-        setRecentLeads(recentRes.data);
-      } else {
-        const [kpiRes, recentRes, summaryData] = await Promise.all([
-          api.get('/dashboard/kpis'),
-          api.get('/dashboard/recent-leads'),
-          getTaskSummary()
-        ]);
-        setKpis(kpiRes.data);
-        setRecentLeads(recentRes.data);
-        setTaskSummary(summaryData);
-      }
-    } catch (error) {
-      console.error('[Dashboard] Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: managerSummary, isLoading: managerLoading } = useQuery({
+    queryKey: ['dashboard', 'summary'],
+    queryFn: getDashboardSummary,
+    enabled: !!user && isManagerOrAdmin
+  });
 
-  useEffect(() => {
-    if (user) fetchDashboardData();
-  }, [user]);
+  const { data: recentLeads = [], isLoading: recentLoading } = useQuery({
+    queryKey: ['dashboard', 'recentLeads'],
+    queryFn: getRecentLeads,
+    enabled: !!user
+  });
+
+  const { data: kpis, isLoading: kpiLoading } = useQuery({
+    queryKey: ['dashboard', 'kpis'],
+    queryFn: getDashboardKpis,
+    enabled: !!user && !isManagerOrAdmin
+  });
+
+  const { data: taskSummary = { today: [], overdue: [], upcoming: [] }, isLoading: taskLoading } = useQuery({
+    queryKey: ['dashboard', 'taskSummary'],
+    queryFn: getTaskSummary,
+    enabled: !!user && !isManagerOrAdmin
+  });
+
+  const loading = (isManagerOrAdmin ? managerLoading : (kpiLoading || taskLoading)) || recentLoading;
 
   const salesKPIs = useMemo(() => {
     if (!kpis) return [];
@@ -102,21 +89,26 @@ const Dashboard = () => {
     purple: { iconBg: 'rgba(192,132,252,0.15)', iconColor: '#C084FC' },
   };
 
+  const completeTaskMutation = useMutation({
+    mutationFn: markTaskComplete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
+    }
+  });
+
   const handleCompleteTask = async (id: number) => {
     try {
-      await markAsComplete(id);
-      fetchDashboardData();
+      await completeTaskMutation.mutateAsync(id);
     } catch (error) {
       console.error('Error completing task:', error);
     }
   };
 
-  const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground" style={{ background: '#0B1120' }}>
-      <Sidebar />
-      <main className="flex-1 min-w-0 crm-page-container">
+    <main className="flex-1 min-w-0 crm-page-container">
         <div className="max-w-7xl mx-auto space-y-8 p-8">
           <div className="flex justify-between items-end">
             <div>
@@ -311,7 +303,7 @@ const Dashboard = () => {
                     </div>
                     <div className="p-8">
                       <div className="space-y-4">
-                        {recentLeads.length > 0 ? recentLeads.map((lead) => (
+                        {recentLeads.length > 0 ? recentLeads.map((lead: LeadType) => (
                           <Link key={lead.id} to={`/leads/${lead.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl transition-all group gap-4 border border-white/5 hover:border-[#00D4AA]/20 hover:bg-[#00D4AA]/5">
                             <div className="flex items-center gap-5 min-w-0">
                               <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20 shrink-0">
@@ -443,8 +435,20 @@ const Dashboard = () => {
           )}
         </div>
       </main>
+  );
+};
+
+export default function Dashboard() {
+  return (
+    <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground" style={{ background: '#0B1120' }}>
+      <Sidebar />
+      <QueryErrorResetBoundary>
+        {({ reset }) => (
+          <ErrorBoundary onReset={reset} message="Failed to load dashboard metrics">
+            <DashboardContent />
+          </ErrorBoundary>
+        )}
+      </QueryErrorResetBoundary>
     </div>
   );
 }
-
-export default Dashboard;
