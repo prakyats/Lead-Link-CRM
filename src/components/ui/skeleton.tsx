@@ -171,3 +171,54 @@ export function TaskSkeleton() {
     </div>
   );
 }
+
+export function ReportsSkeleton() {
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="crm-card h-40 bg-[#1A2332]/50 border-white/5">
+          <Skeleton className="h-3 w-32 mb-4" />
+          <Skeleton className="h-10 w-48 mb-6" />
+          <Skeleton className="h-6 w-24 rounded-full" />
+        </div>
+        <div className="crm-card h-40 bg-[#1A2332]/50 border-white/5">
+          <Skeleton className="h-3 w-32 mb-4" />
+          <Skeleton className="h-10 w-48 mb-6" />
+          <Skeleton className="h-6 w-24 rounded-full" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="crm-card h-[400px] bg-[#1A2332]/50 border-white/5">
+          <Skeleton className="h-6 w-48 mb-8" />
+          <div className="h-[250px] flex items-end justify-between gap-4 px-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="w-12 rounded-t-lg" style={{ height: `${20 + i * 12}%` }} />
+            ))}
+          </div>
+        </div>
+        <div className="crm-card h-[400px] bg-[#1A2332]/50 border-white/5 flex flex-col items-center justify-center">
+          <Skeleton className="h-6 w-48 absolute top-8 left-8" />
+          <Skeleton className="w-48 h-48 rounded-full border-8 border-white/5" />
+          <div className="mt-8 flex gap-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-3 w-16" />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="crm-card h-64 bg-[#1A2332]/50 border-white/5">
+        <Skeleton className="h-6 w-48 mb-8" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex justify-between border-t border-white/5 pt-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

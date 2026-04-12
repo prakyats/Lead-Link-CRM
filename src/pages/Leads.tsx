@@ -173,11 +173,9 @@ export default function Leads() {
                                             onChange={(e) => setFilterSettings({ ...filterSettings, stage: e.target.value })}
                                             className="crm-input text-xs font-bold bg-card border-border"
                                         >
-                                            <option value="ALL">ALL STAGES</option>
                                             <option value="NEW">NEW LEAD</option>
                                             <option value="CONTACTED">CONTACTED</option>
-                                            <option value="QUALIFIED">QUALIFIED</option>
-                                            <option value="PROPOSAL">PROPOSAL</option>
+                                            <option value="INTERESTED">INTERESTED</option>
                                             <option value="CONVERTED">CONVERTED</option>
                                             <option value="LOST">LOST LEAD</option>
                                         </select>
@@ -271,9 +269,8 @@ export default function Leads() {
                                                     </td>
                                                     <td className="crm-table-td">
                                                         <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
-                                                            lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
-                                                                lead.stage === 'QUALIFIED' ? 'badge-stage-qualified' :
-                                                                    lead.stage === 'PROPOSAL' ? 'badge-stage-proposal' :
+                                                                lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
+                                                                    lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
                                                                         lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
                                                                             'badge-stage-lost'
                                                             }`}>

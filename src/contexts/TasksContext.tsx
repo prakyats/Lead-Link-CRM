@@ -26,7 +26,9 @@ interface TasksContextType {
     createTask: (task: Partial<Task>) => Promise<void>;
     updateTask: (id: number, task: Partial<Task>) => Promise<void>;
     toggleComplete: (id: number) => Promise<void>;
+    markAsComplete: (id: number) => Promise<void>;
     deleteTask: (id: number) => Promise<void>;
+    getTaskSummary: () => Promise<any>;
     getUpcomingTasks: (days?: number) => Task[];
 }
 
@@ -91,6 +93,28 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         }
     }, [tasks]);
 
+    const markAsComplete = useCallback(async (id: number) => {
+        try {
+            await api.patch(`/tasks/${id}/complete`);
+            setTasks(prev => prev.map(t => t.id === id ? { ...t, status: 'COMPLETED' } : t));
+            toast.success('Task marked as complete');
+        } catch (error) {
+            console.error('Error completing task:', error);
+            toast.error('Failed to complete task');
+            throw error;
+        }
+    }, []);
+
+    const fetchTaskSummary = useCallback(async () => {
+        try {
+            const response = await api.get('/tasks/summary');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching task summary:', error);
+            return { today: [], overdue: [], upcoming: [] };
+        }
+    }, []);
+
     const deleteTask = useCallback(async (id: number) => {
         try {
             await api.delete(`/tasks/${id}`);
@@ -123,9 +147,11 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         createTask,
         updateTask,
         toggleComplete,
+        markAsComplete,
         deleteTask,
+        getTaskSummary: fetchTaskSummary,
         getUpcomingTasks
-    }), [tasks, loading]);
+    }), [tasks, loading, markAsComplete, fetchTaskSummary]);
 
     return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
 }

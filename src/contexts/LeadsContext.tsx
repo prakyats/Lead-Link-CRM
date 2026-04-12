@@ -13,7 +13,7 @@ export interface Lead {
     phone: string;
     value: number;
     priority: 'HIGH' | 'MEDIUM' | 'LOW';
-    stage: 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'PROPOSAL' | 'CONVERTED' | 'LOST';
+    stage: 'NEW' | 'CONTACTED' | 'INTERESTED' | 'CONVERTED' | 'LOST';
 
     leadScore: number;
     lastInteraction: string;
@@ -27,9 +27,12 @@ export interface Lead {
 export interface Interaction {
     id: number;
     leadId: number;
-    type: 'EMAIL' | 'CALL' | 'MEETING';
+    type: 'EMAIL' | 'CALL' | 'MEETING' | 'WHATSAPP' | 'OTHER';
     date: string;
-    notes: string;
+    notes?: string;
+    summary?: string;
+    outcome?: string;
+    followUpDate?: string;
     performedBy: string;
 }
 
@@ -43,6 +46,7 @@ interface LeadsContextType {
     updateLeadStage: (id: number, stage: Lead['stage']) => Promise<void>;
     deleteLead: (id: number) => Promise<void>;
     assignLead: (id: number, assignedToId: number) => Promise<void>;
+    addInteraction: (leadId: number, interaction: any) => Promise<void>;
 }
 
 const LeadsContext = createContext<LeadsContextType | undefined>(undefined);
@@ -134,6 +138,19 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const addInteraction = useCallback(async (leadId: number, interaction: any) => {
+        try {
+            await api.post('/interactions', { ...interaction, leadId });
+            // Refresh leads to get updated timeline and lastInteraction
+            await fetchLeads();
+            toast.success('Interaction logged successfully');
+        } catch (error: any) {
+            console.error('Error logging interaction:', error);
+            toast.error(error.response?.data?.error || 'Failed to log interaction');
+            throw error;
+        }
+    }, [fetchLeads]);
+
     useEffect(() => {
         if (isAuthenticated) {
             fetchLeads();
@@ -151,8 +168,9 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         updateLead,
         updateLeadStage,
         deleteLead,
-        assignLead
-    }), [leads, loading]);
+        assignLead,
+        addInteraction
+    }), [leads, loading, addInteraction]);
 
     return <LeadsContext.Provider value={value}>{children}</LeadsContext.Provider>;
 }

@@ -145,8 +145,161 @@ async function getUpcomingTasks(req, res) {
     }
 }
 
+/**
+ * GET Dashboard Summary (Manager snapshot)
+ * Sections: Task Health, Team Performance, Key Metrics, Alerts
+ */
+async function getDashboardSummary(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const now = new Date();
+        const todayStart = new Date(now.setHours(0, 0, 0, 0));
+        const idleThreshold = new Date();
+        idleThreshold.setDate(now.getDate() - 7);
+
+        const [tasks, leads, interactions, users] = await Promise.all([
+            prisma.task.findMany({ where: { organizationId } }),
+            prisma.lead.findMany({ where: { organizationId } }),
+            prisma.interaction.findMany({ 
+                where: { 
+                    organizationId,
+                    createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } 
+                } 
+            }),
+            prisma.user.findMany({ 
+                where: { organizationId, role: 'SALES' },
+                select: { id: true, name: true }
+            })
+        ]);
+
+        // 1. Task Health
+        const taskHealth = {
+            total: tasks.filter(t => t.createdAt >= todayStart).length, // Tasks created today
+            completed: tasks.filter(t => t.status === 'COMPLETED' && t.completedAt >= todayStart).length,
+            pending: tasks.filter(t => t.status === 'PENDING').length,
+            overdue: tasks.filter(t => t.status === 'PENDING' && t.dueDate && new Date(t.dueDate) < new Date()).length
+        };
+
+        // 2. Team Performance
+        const teamPerformance = users.map(u => {
+            const userTasks = tasks.filter(t => t.assignedToId === u.id);
+            const userInteractions = interactions.filter(i => i.performedById === u.id);
+            return {
+                id: u.id,
+                name: u.name,
+                pending: userTasks.filter(t => t.status === 'PENDING').length,
+                completed: userTasks.filter(t => t.status === 'COMPLETED').length,
+                overdue: userTasks.filter(t => t.status === 'PENDING' && t.dueDate && new Date(t.dueDate) < new Date()).length,
+                interactionsToday: userInteractions.filter(i => i.createdAt >= todayStart).length,
+                interactionsWeek: userInteractions.length
+            };
+        }).sort((a, b) => b.overdue - a.overdue);
+
+        // 3. Key Metrics
+        const interestedLeads = leads.filter(l => l.stage === 'INTERESTED').length;
+        const convertedLeads = leads.filter(l => l.stage === 'CONVERTED').length;
+        const activeLeads = leads.filter(l => l.stage !== 'CONVERTED' && l.stage !== 'LOST').length;
+        
+        const keyMetrics = {
+            taskCompletionRate: tasks.length > 0 ? (tasks.filter(t => t.status === 'COMPLETED').length / tasks.length) * 100 : 0,
+            activeLeads,
+            conversionRate: interestedLeads > 0 ? (convertedLeads / interestedLeads) * 100 : 0
+        };
+
+        // 4. Alerts
+        const alerts = [];
+        teamPerformance.filter(u => u.overdue > 0).forEach(u => {
+            alerts.push({ type: 'OVERDUE', message: `${u.name} has ${u.overdue} overdue follow-ups`, priority: 'HIGH' });
+        });
+
+        const idleLeads = leads.filter(l => {
+            if (l.stage === 'CONVERTED' || l.stage === 'LOST') return false;
+            return !l.lastInteraction || new Date(l.lastInteraction) < idleThreshold;
+        });
+        
+        if (idleLeads.length > 0) {
+            alerts.push({ type: 'IDLE', message: `${idleLeads.length} leads have no interaction in 7+ days`, priority: 'MEDIUM' });
+        }
+
+        res.json({ taskHealth, teamPerformance, keyMetrics, alerts });
+    } catch (error) {
+        console.error('Error fetching dashboard summary:', error);
+        res.status(500).json({ error: 'Failed to fetch dashboard summary' });
+    }
+}
+
+/**
+ * GET Reports Data
+ * Supports filtering: Today, Week, Month
+ */
+async function getReportsData(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const { filter } = req.query; // today, week, month
+
+        let startDate = new Date();
+        if (filter === 'today') startDate.setHours(0, 0, 0, 0);
+        else if (filter === 'week') startDate.setDate(startDate.getDate() - 7);
+        else startDate.setDate(startDate.getDate() - 30); // Default month
+
+        const [leads, tasks, interactions, users] = await Promise.all([
+            prisma.lead.findMany({ where: { organizationId } }),
+            prisma.task.findMany({ where: { organizationId, createdAt: { gte: startDate } } }),
+            prisma.interaction.findMany({ where: { organizationId, createdAt: { gte: startDate } } }),
+            prisma.user.findMany({ where: { organizationId, role: 'SALES' }, select: { id: true, name: true } })
+        ]);
+
+        // 1. Task Trends (Created vs Completed)
+        // Simplified: Total counts for the period
+        const taskTrends = {
+            created: tasks.length,
+            completed: tasks.filter(t => t.status === 'COMPLETED').length
+        };
+
+        // 2. Sales Performance Comparison
+        const salesComparison = users.map(u => {
+            const userLeads = leads.filter(l => l.assignedToId === u.id);
+            const userConverted = userLeads.filter(l => l.stage === 'CONVERTED').length;
+            const userInterested = userLeads.filter(l => l.stage === 'INTERESTED').length;
+
+            return {
+                name: u.name,
+                tasksCompleted: tasks.filter(t => t.assignedToId === u.id && t.status === 'COMPLETED').length,
+                overdue: tasks.filter(t => t.assignedToId === u.id && t.status === 'PENDING' && t.dueDate && new Date(t.dueDate) < new Date()).length,
+                interactions: interactions.filter(i => i.performedById === u.id).length,
+                conversionRate: userInterested > 0 ? (userConverted / userInterested) * 100 : 0
+            };
+        });
+
+        // 3. Revenue Insights
+        const actualRevenue = leads
+            .filter(l => l.stage === 'CONVERTED')
+            .reduce((sum, l) => sum + (l.value || 0), 0);
+        
+        const pipelineValue = leads
+            .filter(l => l.stage === 'INTERESTED')
+            .reduce((sum, l) => sum + (l.value || 0), 0);
+
+        // 4. Lead Flow (Funnel)
+        const leadFlow = {
+            new: leads.filter(l => l.stage === 'NEW').length,
+            contacted: leads.filter(l => l.stage === 'CONTACTED').length,
+            interested: leads.filter(l => l.stage === 'INTERESTED').length,
+            converted: leads.filter(l => l.stage === 'CONVERTED').length,
+            lost: leads.filter(l => l.stage === 'LOST').length
+        };
+
+        res.json({ taskTrends, salesComparison, revenue: { actualRevenue, pipelineValue }, leadFlow });
+    } catch (error) {
+        console.error('Error fetching reports data:', error);
+        res.status(500).json({ error: 'Failed to fetch reports data' });
+    }
+}
+
 module.exports = {
     getKPIs,
     getRecentLeads,
-    getUpcomingTasks
+    getUpcomingTasks,
+    getDashboardSummary,
+    getReportsData
 };

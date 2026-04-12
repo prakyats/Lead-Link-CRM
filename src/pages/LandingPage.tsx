@@ -167,7 +167,7 @@ export default function LandingPage() {
   ];
 
   const capabilities = [
-    '6-stage pipeline (NEW → CONTACTED → QUALIFIED → PROPOSAL → CONVERTED → LOST)',
+    '5-stage pipeline (NEW → CONTACTED → INTERESTED → CONVERTED → LOST)',
     'Server-side RBAC enforcement per route and action',
     'Lead → Task → Interaction relational schema',
     'JWT-based authentication with secure session handling',

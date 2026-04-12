@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus } from 'lucide-react';
@@ -10,6 +10,7 @@ import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { MobileKanban } from '../components/Kanban/MobileKanban';
 import { KanbanSkeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 interface Lead {
   id: number;
@@ -18,7 +19,7 @@ interface Lead {
   value: number;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   lastInteraction: string;
-  stage: 'NEW' | 'CONTACTED' | 'PROPOSAL' | 'CONVERTED' | 'LOST' | 'QUALIFIED';
+  stage: 'NEW' | 'CONTACTED' | 'INTERESTED' | 'CONVERTED' | 'LOST';
   createdAt: string;
 }
 
@@ -158,20 +159,31 @@ function KanbanContent() {
     fetchLeads();
   }, [fetchLeads]);
 
+  const navigate = useNavigate();
+
   const handleDrop = async (leadId: number, newStage: Lead['stage']) => {
     try {
       await updateLeadStage(leadId, newStage);
+      // Nudge after update
+      toast.success(`Stage updated to ${newStage}`, {
+        description: 'Would you like to log the interaction details now?',
+        action: {
+          label: 'Log Activity',
+          onClick: () => navigate(`/leads/${leadId}`)
+        },
+        duration: 5000,
+      });
     } catch (error) {
       console.error('Error updating lead stage:', error);
     }
   };
 
   const columns = [
-    { title: 'New Capture', stage: 'NEW' as const, color: 'teal' },
-    { title: 'Qualifying', stage: 'QUALIFIED' as const, color: 'blue' },
-    { title: 'Engagement', stage: 'CONTACTED' as const, color: 'amber' },
-    { title: 'Proposal', stage: 'PROPOSAL' as const, color: 'purple' },
-    { title: 'Contracted', stage: 'CONVERTED' as const, color: 'green' },
+    { title: 'New Leads', stage: 'NEW' as const, color: 'blue' },
+    { title: 'Contacted', stage: 'CONTACTED' as const, color: 'amber' },
+    { title: 'Interested', stage: 'INTERESTED' as const, color: 'purple' },
+    { title: 'Converted', stage: 'CONVERTED' as const, color: 'green' },
+    { title: 'Lost', stage: 'LOST' as const, color: 'red' },
   ];
 
   return (

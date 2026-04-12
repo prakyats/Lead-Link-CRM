@@ -4,7 +4,9 @@ const authMiddleware = require('../middleware/auth');
 const {
     getKPIs,
     getRecentLeads,
-    getUpcomingTasks
+    getUpcomingTasks,
+    getDashboardSummary,
+    getReportsData
 } = require('../controllers/dashboardController');
 
 // All dashboard routes require authentication
@@ -12,6 +14,12 @@ router.use(authMiddleware);
 
 // GET /api/dashboard/kpis - Get KPI metrics
 router.get('/kpis', getKPIs);
+
+// GET /api/dashboard/summary - Dashboard Summary (Manager snapshot)
+router.get('/summary', getDashboardSummary);
+
+// GET /api/dashboard/reports - Reports Data
+router.get('/reports', getReportsData);
 
 // GET /api/dashboard/recent-leads - Get recent leads
 router.get('/recent-leads', getRecentLeads);
