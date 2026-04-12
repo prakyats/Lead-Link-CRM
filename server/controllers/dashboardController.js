@@ -1,5 +1,7 @@
 const prisma = require('../utils/prisma');
 const { calculateRisk } = require('../utils/riskCalculator');
+const { getAccessibleUserIds } = require('../utils/hierarchy');
+
 
 /**
  * Mapping Helpers
@@ -32,48 +34,38 @@ function mapTaskToLegacy(task) {
  */
 async function getKPIs(req, res) {
     try {
-        const { role, id: userId, organizationId } = req.user;
-        let where = { organizationId };
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        let where = { 
+            organizationId,
+            assignedToId: { in: accessibleIds }
+        };
 
-        // RBAC: SALES count only their own data
-        if (role === 'SALES') {
-            where.assignedToId = userId;
-        }
 
-        const [totalLeads, activeCustomers, tasks, leads] = await Promise.all([
+        const now = new Date();
+        const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const atRiskThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const [totalLeads, activeCustomers, pendingFollowUps, atRiskCustomers] = await Promise.all([
             prisma.lead.count({ where }),
+            prisma.lead.count({
+                where: { ...where, stage: 'CONVERTED' }
+            }),
+            prisma.task.count({
+                where: { 
+                    ...where, 
+                    status: 'PENDING',
+                    dueDate: { gte: now, lte: sevenDaysFromNow }
+                }
+            }),
             prisma.lead.count({
                 where: {
                     ...where,
-                    stage: 'CONVERTED'
+                    lastInteraction: { lt: atRiskThreshold },
+                    stage: { notIn: ['CONVERTED', 'LOST'] }
                 }
-            }),
-            prisma.task.findMany({
-                where: {
-                    ...where,
-                    status: 'PENDING'
-                }
-            }),
-            prisma.lead.findMany({
-                where,
-                select: { lastInteraction: true }
             })
         ]);
-
-        // Pending follow-ups (tasks due within next 7 days)
-        const now = new Date();
-        const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const pendingFollowUps = tasks.filter(t => {
-            if (!t.dueDate) return false;
-            const dueDate = new Date(t.dueDate);
-            return dueDate >= now && dueDate <= sevenDaysFromNow;
-        }).length;
-
-        // At-risk customers (no interaction in 7+ days)
-        const atRiskCustomers = leads.filter(l => {
-            const risk = calculateRisk(l.lastInteraction);
-            return risk === 'high';
-        }).length;
 
         // Mock trends (as in original)
         const generateTrend = () => parseFloat((Math.random() * 20 - 5).toFixed(1));
@@ -98,15 +90,15 @@ async function getKPIs(req, res) {
  */
 async function getRecentLeads(req, res) {
     try {
-        const { role, id: userId, organizationId } = req.user;
-        let where = { organizationId };
-
-        if (role === 'SALES') {
-            where.assignedToId = userId;
-        }
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
 
         const leads = await prisma.lead.findMany({
-            where,
+            where: {
+                organizationId,
+                assignedToId: { in: accessibleIds }
+            },
+
             orderBy: { createdAt: 'desc' },
             take: 5,
             include: { assignedTo: { select: { name: true } } }
@@ -124,12 +116,14 @@ async function getRecentLeads(req, res) {
  */
 async function getUpcomingTasks(req, res) {
     try {
-        const { role, id: userId, organizationId } = req.user;
-        let where = { status: 'PENDING', organizationId };
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        let where = { 
+            status: 'PENDING', 
+            organizationId,
+            assignedToId: { in: accessibleIds }
+        };
 
-        if (role === 'SALES') {
-            where.assignedToId = userId;
-        }
 
         const tasks = await prisma.task.findMany({
             where,
@@ -155,65 +149,100 @@ async function getUpcomingTasks(req, res) {
 async function getDashboardSummary(req, res) {
     try {
         if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-        const { role, id: userId, organizationId } = req.user;
+        const { organizationId } = req.user;
 
-        // Scoping logic: filter by userId if role is SALES
-        const baseWhere = { organizationId };
-        const salesWhere = role === 'SALES' ? { assignedToId: userId } : {};
-        const interactionWhere = role === 'SALES' ? { performedById: userId } : {};
-        const teamWhere = role === 'SALES' ? { id: userId } : { role: 'SALES' };
+        const accessibleIds = await getAccessibleUserIds(req.user);
 
         const now = new Date();
         const todayStart = new Date(now.setHours(0, 0, 0, 0));
-        const idleThreshold = new Date();
-        idleThreshold.setDate(now.getDate() - 7);
+        const idleThreshold = new Date(new Date().setDate(new Date().getDate() - 7));
 
-        const [tasks, leads, interactions, users] = await Promise.all([
-            prisma.task.findMany({ where: { ...baseWhere, ...salesWhere } }),
-            prisma.lead.findMany({ where: { ...baseWhere, ...salesWhere } }),
-            prisma.interaction.findMany({ 
+        const [
+            users,
+            taskTotalToday,
+            taskCompletedToday,
+            taskPending,
+            taskOverdue,
+            interestedLeads,
+            convertedLeads,
+            activeLeads,
+            totalTasks,
+            idleLeadsCount,
+            taskStatusGroups,
+            taskOverdueGroups,
+            interactionTodayGroups,
+            interactionWeekGroups
+        ] = await Promise.all([
+            prisma.user.findMany({
+                where: { organizationId, id: { in: accessibleIds } },
+                select: { id: true, name: true }
+            }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: todayStart } } }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'COMPLETED', completedAt: { gte: todayStart } } }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING' } }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: new Date() } } }),
+            prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED' } }),
+            prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED' } }),
+            prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: { notIn: ['CONVERTED', 'LOST'] } } }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds } } }),
+            prisma.lead.count({ 
                 where: { 
-                    ...baseWhere,
-                    ...interactionWhere,
-                    createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } 
+                    organizationId, 
+                    assignedToId: { in: accessibleIds }, 
+                    stage: { notIn: ['CONVERTED', 'LOST'] },
+                    lastInteraction: { lt: idleThreshold }
                 } 
             }),
-            prisma.user.findMany({ 
-                where: { ...baseWhere, ...teamWhere },
-                select: { id: true, name: true }
+            prisma.task.groupBy({
+                by: ['assignedToId', 'status'],
+                where: { organizationId, assignedToId: { in: accessibleIds } },
+                _count: true
+            }),
+            prisma.task.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: new Date() } },
+                _count: true
+            }),
+            prisma.interaction.groupBy({
+                by: ['performedById'],
+                where: { organizationId, performedById: { in: accessibleIds }, createdAt: { gte: todayStart } },
+                _count: true
+            }),
+            prisma.interaction.groupBy({
+                by: ['performedById'],
+                where: { organizationId, performedById: { in: accessibleIds }, createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } },
+                _count: true
             })
         ]);
 
+        // Helper to find count from groupBy results
+        const getCount = (groups, userId, key, matchKey, matchVal) => {
+            const group = groups.find(g => g[key] === userId && (matchKey ? g[matchKey] === matchVal : true));
+            return group ? group._count : 0;
+        };
+
         // 1. Task Health
         const taskHealth = {
-            total: tasks.filter(t => t.createdAt >= todayStart).length, // Tasks created today
-            completed: tasks.filter(t => t.status === 'COMPLETED' && t.completedAt >= todayStart).length,
-            pending: tasks.filter(t => t.status === 'PENDING').length,
-            overdue: tasks.filter(t => t.status === 'PENDING' && t.dueDate && new Date(t.dueDate) < new Date()).length
+            total: taskTotalToday,
+            completed: taskCompletedToday,
+            pending: taskPending,
+            overdue: taskOverdue
         };
 
         // 2. Team Performance
-        const teamPerformance = users.map(u => {
-            const userTasks = tasks.filter(t => t.assignedToId === u.id);
-            const userInteractions = interactions.filter(i => i.performedById === u.id);
-            return {
-                id: u.id,
-                name: u.name,
-                pending: userTasks.filter(t => t.status === 'PENDING').length,
-                completed: userTasks.filter(t => t.status === 'COMPLETED').length,
-                overdue: userTasks.filter(t => t.status === 'PENDING' && t.dueDate && new Date(t.dueDate) < new Date()).length,
-                interactionsToday: userInteractions.filter(i => i.createdAt >= todayStart).length,
-                interactionsWeek: userInteractions.length
-            };
-        }).sort((a, b) => b.overdue - a.overdue);
+        const teamPerformance = users.map(u => ({
+            id: u.id,
+            name: u.name,
+            pending: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'PENDING'),
+            completed: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'COMPLETED'),
+            overdue: getCount(taskOverdueGroups, u.id, 'assignedToId'),
+            interactionsToday: getCount(interactionTodayGroups, u.id, 'performedById'),
+            interactionsWeek: getCount(interactionWeekGroups, u.id, 'performedById')
+        })).sort((a, b) => b.overdue - a.overdue);
 
         // 3. Key Metrics
-        const interestedLeads = leads.filter(l => l.stage === 'INTERESTED').length;
-        const convertedLeads = leads.filter(l => l.stage === 'CONVERTED').length;
-        const activeLeads = leads.filter(l => l.stage !== 'CONVERTED' && l.stage !== 'LOST').length;
-        
         const keyMetrics = {
-            taskCompletionRate: tasks.length > 0 ? (tasks.filter(t => t.status === 'COMPLETED').length / tasks.length) * 100 : 0,
+            taskCompletionRate: totalTasks > 0 ? (taskCompletedToday / totalTasks) * 100 : 0, // Simplified approximation
             activeLeads,
             conversionRate: interestedLeads > 0 ? (convertedLeads / interestedLeads) * 100 : 0
         };
@@ -224,13 +253,8 @@ async function getDashboardSummary(req, res) {
             alerts.push({ type: 'OVERDUE', message: `${u.name} has ${u.overdue} overdue follow-ups`, priority: 'HIGH' });
         });
 
-        const idleLeads = leads.filter(l => {
-            if (l.stage === 'CONVERTED' || l.stage === 'LOST') return false;
-            return !l.lastInteraction || new Date(l.lastInteraction) < idleThreshold;
-        });
-        
-        if (idleLeads.length > 0) {
-            alerts.push({ type: 'IDLE', message: `${idleLeads.length} leads have no interaction in 7+ days`, priority: 'MEDIUM' });
+        if (idleLeadsCount > 0) {
+            alerts.push({ type: 'IDLE', message: `${idleLeadsCount} leads have no interaction in 7+ days`, priority: 'MEDIUM' });
         }
 
         res.json({ success: true, data: { taskHealth, teamPerformance, keyMetrics, alerts } });
@@ -247,13 +271,8 @@ async function getDashboardSummary(req, res) {
 async function getReportsData(req, res) {
     try {
         if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-        const { role, id: userId, organizationId } = req.user;
-
-        // Scoping logic: filter by userId if role is SALES
-        const baseWhere = { organizationId };
-        const salesWhere = role === 'SALES' ? { assignedToId: userId } : {};
-        const interactionWhere = role === 'SALES' ? { performedById: userId } : {};
-        const teamWhere = role === 'SALES' ? { id: userId } : { role: 'SALES' };
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
 
         const { filter } = req.query; // today, week, month
 
@@ -262,52 +281,107 @@ async function getReportsData(req, res) {
         else if (filter === 'week') startDate.setDate(startDate.getDate() - 7);
         else startDate.setDate(startDate.getDate() - 30); // Default month
 
-        const [leads, tasks, interactions, users] = await Promise.all([
-            prisma.lead.findMany({ where: { ...baseWhere, ...salesWhere, createdAt: { gte: startDate } } }),
-            prisma.task.findMany({ where: { ...baseWhere, ...salesWhere, createdAt: { gte: startDate } } }),
-            prisma.interaction.findMany({ where: { ...baseWhere, ...interactionWhere, createdAt: { gte: startDate } } }),
-            prisma.user.findMany({ where: { ...baseWhere, ...teamWhere }, select: { id: true, name: true } })
+        const [
+            users,
+            taskTotal,
+            taskCompleted,
+            leadFlowGroups,
+            revenueData,
+            pipelineData,
+            userTaskCompletedGroups,
+            userTaskOverdueGroups,
+            userInteractionGroups,
+            userLeadConvertedGroups,
+            userLeadInterestedGroups
+        ] = await Promise.all([
+            prisma.user.findMany({
+                where: { organizationId, id: { in: accessibleIds } },
+                select: { id: true, name: true }
+            }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } } }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate }, status: 'COMPLETED' } }),
+            prisma.lead.groupBy({
+                by: ['stage'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } },
+                _count: true
+            }),
+            prisma.lead.aggregate({
+                _sum: { value: true },
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', createdAt: { gte: startDate } }
+            }),
+            prisma.lead.aggregate({
+                _sum: { value: true },
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED', createdAt: { gte: startDate } }
+            }),
+            prisma.task.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate }, status: 'COMPLETED' },
+                _count: true
+            }),
+            prisma.task.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: new Date() } },
+                _count: true
+            }),
+            prisma.interaction.groupBy({
+                by: ['performedById'],
+                where: { organizationId, performedById: { in: accessibleIds }, createdAt: { gte: startDate } },
+                _count: true
+            }),
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', createdAt: { gte: startDate } },
+                _count: true
+            }),
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED', createdAt: { gte: startDate } },
+                _count: true
+            })
         ]);
 
-        // 1. Task Trends (Created vs Completed)
-        // Simplified: Total counts for the period
+        const getCount = (groups, userId, key) => {
+            const group = groups.find(g => g[key] === userId);
+            return group ? group._count : 0;
+        };
+
+        const funnelCount = (stage) => {
+            const group = leadFlowGroups.find(g => g.stage === stage);
+            return group ? group._count : 0;
+        };
+
+        // 1. Task Trends
         const taskTrends = {
-            created: tasks.length,
-            completed: tasks.filter(t => t.status === 'COMPLETED').length
+            created: taskTotal,
+            completed: taskCompleted
         };
 
         // 2. Sales Performance Comparison
         const salesComparison = users.map(u => {
-            const userLeads = leads.filter(l => l.assignedToId === u.id);
-            const userConverted = userLeads.filter(l => l.stage === 'CONVERTED').length;
-            const userInterested = userLeads.filter(l => l.stage === 'INTERESTED').length;
+            const converted = getCount(userLeadConvertedGroups, u.id, 'assignedToId');
+            const interested = getCount(userLeadInterestedGroups, u.id, 'assignedToId');
 
             return {
                 id: u.id,
                 name: u.name,
-                tasksCompleted: tasks.filter(t => t.assignedToId === u.id && t.status === 'COMPLETED').length,
-                overdue: tasks.filter(t => t.assignedToId === u.id && t.status === 'PENDING' && t.dueDate && new Date(t.dueDate) < new Date()).length,
-                interactions: interactions.filter(i => i.performedById === u.id).length,
-                conversionRate: userInterested > 0 ? (userConverted / userInterested) * 100 : 0
+                tasksCompleted: getCount(userTaskCompletedGroups, u.id, 'assignedToId'),
+                overdue: getCount(userTaskOverdueGroups, u.id, 'assignedToId'),
+                interactions: getCount(userInteractionGroups, u.id, 'performedById'),
+                conversionRate: interested > 0 ? (converted / interested) * 100 : 0
             };
         });
 
         // 3. Revenue Insights
-        const actualRevenue = leads
-            .filter(l => l.stage === 'CONVERTED')
-            .reduce((sum, l) => sum + (l.value || 0), 0);
-        
-        const pipelineValue = leads
-            .filter(l => l.stage === 'INTERESTED')
-            .reduce((sum, l) => sum + (l.value || 0), 0);
+        const actualRevenue = revenueData._sum.value || 0;
+        const pipelineValue = pipelineData._sum.value || 0;
 
         // 4. Lead Flow (Funnel)
         const leadFlow = {
-            new: leads.filter(l => l.stage === 'NEW').length,
-            contacted: leads.filter(l => l.stage === 'CONTACTED').length,
-            interested: leads.filter(l => l.stage === 'INTERESTED').length,
-            converted: leads.filter(l => l.stage === 'CONVERTED').length,
-            lost: leads.filter(l => l.stage === 'LOST').length
+            new: funnelCount('NEW'),
+            contacted: funnelCount('CONTACTED'),
+            interested: funnelCount('INTERESTED'),
+            converted: funnelCount('CONVERTED'),
+            lost: funnelCount('LOST')
         };
 
         res.json({ success: true, data: { taskTrends, salesComparison, revenue: { actualRevenue, pipelineValue }, leadFlow } });

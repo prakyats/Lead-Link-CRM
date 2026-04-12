@@ -8,7 +8,10 @@ interface User {
     role: string;
     organizationId?: number;
     organizationSlug?: string;
+    managerId?: number | null;
+    hasTeam?: boolean;
 }
+
 
 interface AuthContextType {
     user: User | null;

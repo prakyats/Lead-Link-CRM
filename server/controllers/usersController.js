@@ -21,10 +21,14 @@ async function getAllUsers(req, res) {
                 name: true,
                 email: true,
                 role: true,
-                createdAt: true
+                createdAt: true,
+                manager: {
+                    select: { name: true }
+                }
             },
             orderBy: { createdAt: 'desc' }
         });
+
 
         res.json(users);
     } catch (error) {
@@ -39,13 +43,19 @@ async function getAllUsers(req, res) {
  */
 async function createUser(req, res) {
     try {
-        const { role, organizationId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
 
-        if (role !== 'ADMIN') {
-            return res.status(403).json({ error: 'Access denied. Admin only.' });
+        if (role !== 'ADMIN' && role !== 'MANAGER') {
+            return res.status(403).json({ error: 'Access denied.' });
         }
 
-        const { name, email, password, role: newUserRole } = req.body;
+        const { name, email, password, role: newUserRole, managerId } = req.body;
+        
+        // RBAC: Manager can only create SALES
+        if (role === 'MANAGER' && newUserRole.toUpperCase() !== 'SALES') {
+            return res.status(403).json({ error: 'Managers can only create Sales accounts' });
+        }
+
 
         // Validate with centralized rules
         const { errors, isValid } = validateUserBody({ name, email, password, role: newUserRole });
@@ -75,6 +85,14 @@ async function createUser(req, res) {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        // Set Manager ID logic
+        let assignedManagerId = null;
+        if (role === 'MANAGER') {
+            assignedManagerId = userId; // Auto-assign to self
+        } else if (role === 'ADMIN' && newUserRole.toUpperCase() === 'SALES') {
+            assignedManagerId = managerId ? parseInt(managerId) : null;
+        }
+
         // Create user
         const newUser = await prisma.user.create({
             data: {
@@ -82,8 +100,10 @@ async function createUser(req, res) {
                 email: sanitizedEmail,
                 password: hashedPassword,
                 role: newUserRole.toUpperCase(),
-                organizationId
+                organizationId,
+                managerId: assignedManagerId
             },
+
             select: {
                 id: true,
                 name: true,
@@ -109,17 +129,24 @@ async function createUser(req, res) {
  */
 async function getSalesUsers(req, res) {
     try {
-        const { role, organizationId } = req.user;
+        const { role, id: userId, organizationId } = req.user;
 
         if (role === 'SALES') {
             return res.status(403).json({ error: 'Access denied' });
         }
 
+        let where = { organizationId };
+        
+        if (role === 'MANAGER') {
+            where.role = 'SALES';
+            where.managerId = userId;
+        } else {
+            // ADMIN sees all potential assignees
+            where.role = { in: ['SALES', 'MANAGER'] };
+        }
+
         const users = await prisma.user.findMany({
-            where: {
-                organizationId,
-                role: { in: ['SALES', 'MANAGER'] }
-            },
+            where,
             select: {
                 id: true,
                 name: true,
@@ -128,6 +155,7 @@ async function getSalesUsers(req, res) {
             },
             orderBy: { name: 'asc' }
         });
+
 
         res.json(users);
     } catch (error) {

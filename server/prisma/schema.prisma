@@ -27,6 +27,12 @@ model User {
   createdAt    DateTime      @default(now())
   organizationId Int
   organization Organization @relation(fields: [organizationId], references: [id])
+  
+  // Hierarchy
+  managerId    Int?
+  manager      User?         @relation("TeamHierarchy", fields: [managerId], references: [id])
+  teamMembers  User[]        @relation("TeamHierarchy")
+
   interactions Interaction[] @relation("UserInteractions")
   leads        Lead[]        @relation("UserLeads")
   tasks        Task[]        @relation("UserTasks")
@@ -35,6 +41,7 @@ model User {
   @@index([role])
   @@index([organizationId])
 }
+
 
 model Lead {
   id              Int           @id @default(autoincrement())
@@ -75,7 +82,7 @@ model Task {
   assignedToId Int
   interactionId Int?
   assignedTo   User       @relation("UserTasks", fields: [assignedToId], references: [id])
-  lead         Lead?      @relation(fields: [leadId], references: [id])
+  lead         Lead?      @relation(fields: [leadId], references: [id], onDelete: Cascade)
   interaction  Interaction? @relation(fields: [interactionId], references: [id])
 
   @@index([organizationId])
@@ -97,7 +104,7 @@ model Interaction {
   createdAt     DateTime        @default(now())
   leadId        Int
   performedById Int
-  lead          Lead            @relation(fields: [leadId], references: [id])
+  lead          Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
   performedBy   User            @relation("UserInteractions", fields: [performedById], references: [id])
   tasks         Task[]
 

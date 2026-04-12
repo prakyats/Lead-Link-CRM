@@ -17,7 +17,9 @@ interface SystemUser {
     email: string;
     role: string;
     createdAt: string;
+    manager?: { name: string };
 }
+
 
 const TableSkeleton = () => (
     <div className="space-y-4 animate-pulse">
@@ -55,10 +57,12 @@ export default function Settings() {
 
     // Create user form state
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'SALES' });
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'SALES', managerId: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [formLoading, setFormLoading] = useState(false);
+    const [availableManagers, setAvailableManagers] = useState<{id: number, name: string}[]>([]);
+
 
     const riskThresholds = [
         { level: 'High Risk', criteria: 'Last interaction >= 7 days', color: '#F87171', bg: 'rgba(239,68,68,0.1)', icon: AlertCircle },
@@ -71,17 +75,24 @@ export default function Settings() {
             setUsersLoading(true);
             const response = await api.get('/users');
             setUsers(response.data);
+            
+            // If admin, fetch potential managers for assignment
+            if (user?.role === 'ADMIN') {
+                const managersResponse = await api.get('/users/sales'); // This returns MANAGER + SALES
+                setAvailableManagers(managersResponse.data.filter((u: any) => u.role === 'MANAGER'));
+            }
         } catch (error: any) {
             toast.error('Failed to sync user directory');
             console.error('Failed to fetch users:', error);
         } finally {
             setUsersLoading(false);
         }
-    }, []);
+    }, [user?.role]);
 
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
+
 
     const validateForm = () => {
         const errors = validateUserForm({
@@ -112,14 +123,18 @@ export default function Settings() {
 
         setFormLoading(true);
         try {
-            await api.post('/users', formData);
+            await api.post('/users', {
+                ...formData,
+                managerId: formData.managerId ? parseInt(formData.managerId) : undefined
+            });
             toast.success('User Provisioned Successfully', {
                 description: `${formData.name} has been added to the system.`
             });
-            setFormData({ name: '', email: '', password: '', role: 'SALES' });
+            setFormData({ name: '', email: '', password: '', role: 'SALES', managerId: '' });
             setShowCreateForm(false);
             fetchUsers();
         } catch (error: any) {
+
             const errorMsg = error.response?.data?.error || 'System failed to create user';
             toast.error('Provisions Failed', { description: errorMsg });
             if (errorMsg.toLowerCase().includes('email')) {
@@ -190,11 +205,11 @@ export default function Settings() {
                                         />
                                     </div>
                                     <button 
-                                        onClick={() => setShowCreateForm(!showCreateForm)}
-                                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[#00D4AA] text-primary-foreground hover:scale-[1.02] active:scale-[0.98] transition-all whitespace-nowrap"
+                                        onClick={() => setShowCreateForm(true)}
+                                        className="px-4 py-2 bg-[#00D4AA] text-primary-foreground rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#00D4AA]/90 transition-all"
                                     >
-                                        <UserPlus className="w-4 h-4" />
-                                        <span>Provision User</span>
+                                        <Plus className="w-4 h-4" />
+                                        <span>{user?.role === 'MANAGER' ? 'Add Sales Exec' : 'Provision User'}</span>
                                     </button>
                                 </div>
                             </div>
@@ -211,8 +226,9 @@ export default function Settings() {
                                             <div className="flex items-center justify-between mb-6">
                                                 <h3 className="font-bold text-[#00D4AA] flex items-center gap-2">
                                                     <Plus className="w-4 h-4" />
-                                                    Initialize New Node
+                                                    {user?.role === 'MANAGER' ? 'Expand Your Force' : 'Initialize New Node'}
                                                 </h3>
+
                                                 <button onClick={() => setShowCreateForm(false)} className="text-muted-foreground hover:text-foreground transition-colors">
                                                     <X className="w-5 h-5" />
                                                 </button>
@@ -274,16 +290,38 @@ export default function Settings() {
                                                                 className={inputClasses('role')}
                                                                 style={{ appearance: 'none' }}
                                                                 value={formData.role}
+                                                                disabled={user?.role === 'MANAGER'}
                                                                 onChange={(e) => setFormData({...formData, role: e.target.value})}
                                                             >
                                                                 <option value="SALES">SALES - Frontline Operations</option>
-                                                                <option value="MANAGER">MANAGER - Oversight Control</option>
-                                                                <option value="ADMIN">ADMIN - Full Core Access</option>
+                                                                {user?.role === 'ADMIN' && <option value="MANAGER">MANAGER - Oversight Control</option>}
+                                                                {user?.role === 'ADMIN' && <option value="ADMIN">ADMIN - Full Core Access</option>}
                                                             </select>
                                                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                                                         </div>
                                                     </div>
+
+                                                    {user?.role === 'ADMIN' && formData.role === 'SALES' && (
+                                                        <div className="space-y-2">
+                                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Team Leader (Manager)</label>
+                                                            <div className="relative">
+                                                                <select 
+                                                                    className={inputClasses('role')}
+                                                                    style={{ appearance: 'none' }}
+                                                                    value={formData.managerId}
+                                                                    onChange={(e) => setFormData({...formData, managerId: e.target.value})}
+                                                                >
+                                                                    <option value="">Unassigned (Solitary Node)</option>
+                                                                    {availableManagers.map(m => (
+                                                                        <option key={m.id} value={m.id}>{m.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
+
                                                 <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                                     <button 
                                                         type="button" 
@@ -337,9 +375,16 @@ export default function Settings() {
                                                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                                                         <Mail className="w-3 h-3 flex-shrink-0" />
                                                                         <span className="truncate">{u.email}</span>
+                                                                        {u.manager && (
+                                                                            <>
+                                                                                <span className="mx-1 opacity-50">•</span>
+                                                                                <span className="text-[#00D4AA]/70 font-bold truncate">REPORTING TO: {u.manager.name}</span>
+                                                                            </>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
+
                                                             {/* Mobile Dot */}
                                                             <div className="md:hidden inline-block w-2 h-2 rounded-full bg-[#00D4AA]" />
                                                         </div>

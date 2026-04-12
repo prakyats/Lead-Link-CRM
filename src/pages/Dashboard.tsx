@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Link } from 'react-router';
-import { Users, UserCheck, Clock, AlertTriangle, ArrowRight, Shield, BarChart3, Users2, TrendingUp, CheckCircle2, Calendar, Target, Activity } from 'lucide-react';
+import { Users, UserCheck, Clock, AlertTriangle, ArrowRight, Shield, BarChart3, Users2, TrendingUp, CheckCircle2, Calendar, Target, Activity, UserPlus, Plus } from 'lucide-react';
+
 import { useQueryClient, useMutation, useQuery, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { getDashboardKpis, getRecentLeads, getDashboardSummary } from '../api/dashboard';
 import { getTaskSummary, markTaskComplete } from '../api/tasks';
@@ -131,7 +132,25 @@ const DashboardContent = () => {
 
           {loading ? (
             <DashboardSkeleton />
+          ) : user?.role === 'MANAGER' && !user?.hasTeam ? (
+            <div className="flex flex-col items-center justify-center p-20 bg-muted/10 border border-dashed border-border rounded-[2.5rem] text-center animate-in zoom-in duration-500">
+               <div className="w-24 h-24 rounded-3xl bg-[#00D4AA]/10 flex items-center justify-center mb-8">
+                  <UserPlus className="w-12 h-12 text-[#00D4AA]" />
+               </div>
+               <h2 className="text-3xl font-bold text-foreground mb-4">Initialize Your Power Team</h2>
+               <p className="text-muted-foreground max-w-md mb-10 leading-relaxed">
+                 You current view is restricted to your own activity. To unlock full team oversight and performance analytics, begin by provisioning your first sales frontline.
+               </p>
+               <Link 
+                  to="/settings"
+                  className="flex items-center justify-center gap-3 px-8 py-4 rounded-2xl text-lg font-black bg-[#00D4AA] text-primary-foreground hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#00D4AA]/20"
+               >
+                  <Plus className="w-6 h-6" />
+                  <span>Provision Sales Node</span>
+               </Link>
+            </div>
           ) : isManagerOrAdmin && managerSummary ? (
+
             <div className="space-y-8 animate-in fade-in duration-500">
               
               {/* Section 1: Task Health Overview */}

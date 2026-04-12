@@ -30,14 +30,15 @@ export const PERMISSIONS: Record<Role, Permissions> = {
         canViewReports: true,
         canModifyTasks: true,
         canCreateLeads: false,
-        canViewGlobalMetrics: true,
+        canViewGlobalMetrics: false, // Managers see team metrics, not global
         canManageSettings: false,
         canOperationalControl: true,
-        canSeeAllLeads: true,
+        canSeeAllLeads: false, // Managers see team leads, not ALL
         canShowTeamOversight: true,
         canAssignLeads: true,
         canAddInteractions: true,
     },
+
     [ROLES.SALES]: {
         canViewReports: false,
         canModifyTasks: true,

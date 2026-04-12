@@ -1,4 +1,6 @@
 const prisma = require('../utils/prisma');
+const { getAccessibleUserIds } = require('../utils/hierarchy');
+
 
 
 /**
@@ -22,15 +24,15 @@ function mapTaskToLegacy(task) {
  */
 async function getAllTasks(req, res) {
     try {
-        const { role, id: userId, organizationId } = req.user;
-        let where = { organizationId };
-
-        if (role === 'SALES') {
-            where.assignedToId = userId;
-        }
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
 
         const tasks = await prisma.task.findMany({
-            where,
+            where: {
+                organizationId,
+                assignedToId: { in: accessibleIds }
+            },
+
             include: {
                 lead: true,
                 assignedTo: {
@@ -70,10 +72,11 @@ async function createTask(req, res) {
             if (!lead) return res.status(400).json({ success: false, message: 'Invalid lead for this organization' });
         }
 
-        const assignee = await prisma.user.findFirst({
-            where: { id: parsedAssignedToId, organizationId }
-        });
-        if (!assignee) return res.status(400).json({ success: false, message: 'Invalid assignee for this organization' });
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(parsedAssignedToId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: You cannot assign tasks to users outside your team' });
+        }
+
 
         const newTask = await prisma.task.create({
             data: {
@@ -107,7 +110,11 @@ async function updateTask(req, res) {
 
         const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
-        if (role === 'SALES' && existingTask.assignedToId !== userId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(existingTask.assignedToId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: Task ownership is outside your team scope' });
+        }
 
         const updateData = { ...req.body };
         delete updateData.id;
@@ -143,7 +150,11 @@ async function toggleComplete(req, res) {
 
         const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
-        if (role === 'SALES' && existingTask.assignedToId !== userId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(existingTask.assignedToId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: Task ownership is outside your team scope' });
+        }
 
         const newStatus = existingTask.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
         await prisma.task.update({
@@ -177,7 +188,11 @@ async function markTaskComplete(req, res) {
 
         const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
-        if (role === 'SALES' && existingTask.assignedToId !== userId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(existingTask.assignedToId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: Task ownership is outside your team scope' });
+        }
 
         await prisma.task.update({
             where: { id: parseInt(id) },
@@ -267,10 +282,15 @@ async function deleteTask(req, res) {
     try {
         const { id } = req.params;
         const { role, organizationId } = req.user;
-        if (role !== 'MANAGER') return res.status(403).json({ success: false, message: 'Only Managers can delete' });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
+        if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
-        const delRes = await prisma.task.deleteMany({ where: { id: parseInt(id), organizationId } });
-        if (delRes.count === 0) return res.status(404).json({ success: false, message: 'Task not found' });
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(existingTask.assignedToId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: Task ownership is outside your team scope' });
+        }
+
+        await prisma.task.delete({ where: { id: parseInt(id) } });
         res.json({ success: true, message: 'Task deleted' });
     } catch (error) {
         console.error('Error deleting task:', error);

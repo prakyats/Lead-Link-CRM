@@ -1,4 +1,6 @@
 const prisma = require('../utils/prisma');
+const { getAccessibleUserIds } = require('../utils/hierarchy');
+
 
 /**
  * Get interactions for a specific lead (with RBAC)
@@ -11,27 +13,35 @@ async function getInteractionsByLead(req, res) {
         const { role, id: userId, organizationId } = req.user;
         const parsedLeadId = parseInt(leadId);
 
-        // Verify lead exists and belongs to the user's org
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        // Access Check: Is the lead owned by someone in the user's team?
         const lead = await prisma.lead.findFirst({
-            where: { id: parsedLeadId, organizationId }
+            where: { 
+                id: parsedLeadId, 
+                organizationId,
+                assignedToId: { in: accessibleIds }
+            }
         });
 
         if (!lead) {
-            return res.status(404).json({ success: false, message: 'Lead not found' });
+            return res.status(404).json({ success: false, message: 'Lead not found or access denied' });
         }
 
-        // SALES can only view interactions on their own leads
-        if (role === 'SALES' && lead.assignedToId !== userId) {
-            return res.status(403).json({ success: false, message: 'Access denied: You can only view interactions for your own leads' });
-        }
 
         const interactions = await prisma.interaction.findMany({
-            where: { leadId: parsedLeadId, organizationId },
+            where: { 
+                leadId: parsedLeadId, 
+                organizationId,
+                performedById: { in: accessibleIds }, // Creator must be in team
+                lead: { assignedToId: { in: accessibleIds } } // Lead owner must be in team
+            },
             include: {
                 performedBy: { select: { id: true, name: true } }
             },
             orderBy: { date: 'desc' }
         });
+
 
         const mapped = interactions.map(i => ({
             ...i,
@@ -66,19 +76,21 @@ async function createInteraction(req, res) {
         const parsedLeadId = parseInt(leadId);
         const normalizedType = type.toUpperCase();
 
-        // Verify lead exists in the same org
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        // Verify lead exists and is owned by the team
         const lead = await prisma.lead.findFirst({
-            where: { id: parsedLeadId, organizationId }
+            where: { 
+                id: parsedLeadId, 
+                organizationId,
+                assignedToId: { in: accessibleIds }
+            }
         });
 
         if (!lead) {
-            return res.status(404).json({ success: false, message: 'Lead not found' });
+            return res.status(404).json({ success: false, message: 'Lead not found or access denied (Must be owned by your team)' });
         }
 
-        // SALES can only add interactions to their own leads
-        if (role === 'SALES' && lead.assignedToId !== userId) {
-            return res.status(403).json({ success: false, message: 'Access denied: You can only add interactions to your own leads' });
-        }
 
         // Start transaction
         const result = await prisma.$transaction(async (tx) => {

@@ -60,6 +60,14 @@ async function login(req, res) {
         const { password: _, ...userProfile } = user;
         // userProfile.role = userProfile.role.toLowerCase(); // Standardize to raw DB format (uppercase)
 
+        // Fetch team count if manager
+        let teamCount = 0;
+        if (user.role === 'MANAGER') {
+            teamCount = await prisma.user.count({
+                where: { managerId: user.id }
+            });
+        }
+
         res.json({
             success: true,
             data: {
@@ -67,10 +75,13 @@ async function login(req, res) {
                 user: {
                     ...userProfile,
                     organizationId: org.id,
-                    organizationSlug: org.slug
+                    organizationSlug: org.slug,
+                    managerId: user.managerId,
+                    hasTeam: teamCount > 0
                 }
             }
         });
+
 
     } catch (error) {
         console.error('Login error:', error);
@@ -84,11 +95,14 @@ async function login(req, res) {
  */
 async function register(req, res) {
     try {
-        const { name, email, password, role, organizationSlug } = req.body;
+        const { name, email, password, organizationSlug } = req.body;
         const orgSlug = (organizationSlug || 'demo').toString().trim().toLowerCase();
 
-        if (!orgSlug || !role) {
-            return res.status(400).json({ success: false, message: 'Organization and role are required' });
+        // Force SALES — public registration cannot self-elevate to ADMIN or MANAGER
+        const role = 'SALES';
+
+        if (!orgSlug) {
+            return res.status(400).json({ success: false, message: 'Organization is required' });
         }
         
         const normalizedEmail = email.trim().toLowerCase();

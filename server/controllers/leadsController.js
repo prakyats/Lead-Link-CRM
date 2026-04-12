@@ -1,5 +1,7 @@
 const prisma = require('../utils/prisma');
 const { addRiskToLead } = require('../utils/riskCalculator');
+const { getAccessibleUserIds } = require('../utils/hierarchy');
+
 
 
 /**
@@ -53,15 +55,15 @@ function mapLeadToLegacy(lead) {
  */
 async function getAllLeads(req, res) {
     try {
-        const { role, id: userId, organizationId } = req.user;
-        let where = { organizationId };
-
-        if (role === 'SALES') {
-            where.assignedToId = userId;
-        }
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
 
         const leads = await prisma.lead.findMany({
-            where,
+            where: {
+                organizationId,
+                assignedToId: { in: accessibleIds }
+            },
+
             include: {
                 assignedTo: { select: { name: true } },
                 interactions: {
@@ -89,7 +91,7 @@ async function getLeadById(req, res) {
         const lead = await prisma.lead.findFirst({
             where: { id: parseInt(id), organizationId },
             include: {
-                assignedTo: { select: { name: true } },
+                assignedTo: { select: { name: true, id: true } },
                 tasks: {
                     include: { assignedTo: { select: { name: true } } }
                 },
@@ -103,9 +105,11 @@ async function getLeadById(req, res) {
             return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
-        if (role === 'SALES' && lead.assignedToId !== userId) {
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(lead.assignedToId)) {
             return res.status(403).json({ success: false, message: 'Access denied' });
         }
+
 
         res.json({ success: true, data: mapLeadToLegacy(addRiskToLead(lead)) });
     } catch (error) {
@@ -165,7 +169,11 @@ async function updateLead(req, res) {
 
         const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingLead) return res.status(404).json({ success: false, message: 'Lead not found' });
-        if (role === 'SALES' && existingLead.assignedToId !== userId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(existingLead.assignedToId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: Lead ownership is outside your team scope' });
+        }
 
         const data = { ...req.body };
         if (data.contact) data.contactName = data.contact;
@@ -207,7 +215,11 @@ async function updateLeadStage(req, res) {
 
         const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingLead) return res.status(404).json({ success: false, message: 'Lead not found' });
-        if (role === 'SALES' && existingLead.assignedToId !== userId) return res.status(403).json({ success: false, message: 'Access denied' });
+
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(existingLead.assignedToId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: Lead ownership is outside your team scope' });
+        }
 
         await prisma.lead.updateMany({
             where: { id: parseInt(id), organizationId },
@@ -236,10 +248,15 @@ async function deleteLead(req, res) {
     try {
         const { id } = req.params;
         const { role, organizationId } = req.user;
-        if (role !== 'MANAGER') return res.status(403).json({ success: false, message: 'Only Managers can delete' });
+        const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
+        if (!existingLead) return res.status(404).json({ success: false, message: 'Lead not found' });
 
-        const delRes = await prisma.lead.deleteMany({ where: { id: parseInt(id), organizationId } });
-        if (delRes.count === 0) return res.status(404).json({ success: false, message: 'Lead not found' });
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(existingLead.assignedToId)) {
+            return res.status(403).json({ success: false, message: 'Access denied: Lead ownership is outside your team scope' });
+        }
+
+        await prisma.lead.delete({ where: { id: parseInt(id) } });
         res.json({ success: true, message: 'Lead deleted' });
     } catch (error) {
         console.error('Error deleting lead:', error);
@@ -272,6 +289,12 @@ async function assignLead(req, res) {
             where: { id: parseInt(assignedToId), organizationId }
         });
         if (!targetUser) return res.status(400).json({ success: false, message: 'Target user not found in this organization' });
+
+        // Verify target user is within the manager's accessible team
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        if (!accessibleIds.includes(parseInt(assignedToId))) {
+            return res.status(403).json({ success: false, message: 'Cannot assign lead outside your team' });
+        }
 
         await prisma.lead.update({
             where: { id: parseInt(id) },

@@ -5,13 +5,13 @@ CREATE TYPE "Role" AS ENUM ('ADMIN', 'MANAGER', 'SALES');
 CREATE TYPE "Priority" AS ENUM ('LOW', 'MEDIUM', 'HIGH');
 
 -- CreateEnum
-CREATE TYPE "Stage" AS ENUM ('NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'CONVERTED', 'LOST');
+CREATE TYPE "Stage" AS ENUM ('NEW', 'CONTACTED', 'INTERESTED', 'CONVERTED', 'LOST');
 
 -- CreateEnum
 CREATE TYPE "TaskStatus" AS ENUM ('PENDING', 'COMPLETED');
 
 -- CreateEnum
-CREATE TYPE "InteractionType" AS ENUM ('EMAIL', 'CALL', 'MEETING');
+CREATE TYPE "InteractionType" AS ENUM ('EMAIL', 'CALL', 'MEETING', 'WHATSAPP', 'OTHER');
 
 -- CreateTable
 CREATE TABLE "Organization" (
@@ -32,6 +32,7 @@ CREATE TABLE "User" (
     "role" "Role" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "organizationId" INTEGER NOT NULL,
+    "managerId" INTEGER,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -68,6 +69,7 @@ CREATE TABLE "Task" (
     "completedAt" TIMESTAMP(3),
     "leadId" INTEGER,
     "assignedToId" INTEGER NOT NULL,
+    "interactionId" INTEGER,
 
     CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
 );
@@ -79,6 +81,9 @@ CREATE TABLE "Interaction" (
     "type" "InteractionType" NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
     "notes" TEXT,
+    "summary" TEXT,
+    "outcome" TEXT,
+    "followUpDate" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "leadId" INTEGER NOT NULL,
     "performedById" INTEGER NOT NULL,
@@ -117,7 +122,7 @@ CREATE INDEX "Task_assignedToId_idx" ON "Task"("assignedToId");
 CREATE INDEX "Task_leadId_idx" ON "Task"("leadId");
 
 -- CreateIndex
-CREATE INDEX "Task_assignedToId_status_idx" ON "Task"("assignedToId", "status");
+CREATE INDEX "Task_assignedToId_dueDate_status_idx" ON "Task"("assignedToId", "dueDate", "status");
 
 -- CreateIndex
 CREATE INDEX "Interaction_organizationId_idx" ON "Interaction"("organizationId");
@@ -135,6 +140,9 @@ CREATE INDEX "Interaction_leadId_date_idx" ON "Interaction"("leadId", "date");
 ALTER TABLE "User" ADD CONSTRAINT "User_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "User" ADD CONSTRAINT "User_managerId_fkey" FOREIGN KEY ("managerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Lead" ADD CONSTRAINT "Lead_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -150,6 +158,9 @@ ALTER TABLE "Task" ADD CONSTRAINT "Task_assignedToId_fkey" FOREIGN KEY ("assigne
 ALTER TABLE "Task" ADD CONSTRAINT "Task_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Task" ADD CONSTRAINT "Task_interactionId_fkey" FOREIGN KEY ("interactionId") REFERENCES "Interaction"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Interaction" ADD CONSTRAINT "Interaction_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -157,3 +168,4 @@ ALTER TABLE "Interaction" ADD CONSTRAINT "Interaction_leadId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "Interaction" ADD CONSTRAINT "Interaction_performedById_fkey" FOREIGN KEY ("performedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
