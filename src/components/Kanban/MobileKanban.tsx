@@ -10,7 +10,7 @@ interface Lead {
   value: number;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   lastInteraction: string;
-  stage: 'NEW' | 'CONTACTED' | 'PROPOSAL' | 'CONVERTED' | 'LOST' | 'QUALIFIED';
+  stage: 'NEW' | 'CONTACTED' | 'INTERESTED' | 'CONVERTED' | 'LOST';
   createdAt: string;
 }
 

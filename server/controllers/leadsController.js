@@ -13,8 +13,7 @@ function mapLeadToLegacy(lead) {
     const stageMap = {
         'NEW': 'new',
         'CONTACTED': 'contacted',
-        'QUALIFIED': 'qualified',
-        'PROPOSAL': 'proposal',
+        'INTERESTED': 'interested',
         'CONVERTED': 'converted',
         'LOST': 'lost'
     };

@@ -59,21 +59,21 @@ JWT_SECRET=your_super_secret_jwt_key_here
 ```bash
 cd server
 
-# One-time (or whenever `prisma/schema.prisma` changes):
-# - generate: builds the Prisma Client used by the API code
-# - db push: syncs your local database schema to match Prisma schema
+# Step 1: Generate the Prisma Client
 npx prisma generate
-npx prisma db push
+
+# Step 2: Run database migrations
+npx prisma migrate dev
 ```
 
-Seed the database with initial users:
+### 5. Seed Database
 
 ```bash
 # Seed (creates default users + sample data)
-npx prisma db seed
+node prisma/seed.js
 ```
 
-### 5. Start the Application
+### 6. Start the Application
 
 **Option A: Quick Start (recommended)**
 
@@ -117,19 +117,28 @@ Visit **http://localhost:5173**
 ```
 Lead Link CRM/
 ├── src/                    # Frontend React application
-│   ├── components/         # Reusable UI components
-│   ├── contexts/           # React Context providers (Auth, Leads, Tasks)
-│   ├── pages/              # Page components (Dashboard, Leads, etc.)
-│   └── utils/              # Helper utilities (roles, permissions, api)
 ├── server/                 # Backend Express application
 │   ├── controllers/        # Route handlers
 │   ├── middleware/         # Auth middleware
+│   ├── prisma/             # Database schema + versioned migrations
+│   │   ├── schema.prisma   # Source of truth for data models
+│   │   └── migrations/     # SQL migration history (version controlled)
 │   ├── routes/             # API routes
-│   ├── prisma/             # Database schema
 │   └── utils/              # Server utilities
 ├── start.bat               # Quick start script (Windows)
 └── README.md
 ```
+
+## Database Management
+
+- **Version Controlled**: This project uses Prisma Migrate for version-controlled schema evolution.
+- **Migration History**: All database changes must go through migration files stored in `prisma/migrations/`. 
+- **No Manual Sync**: Direct schema syncing (`db push`) is strictly prohibited to ensure environment consistency across the team.
+- **Data Transformations**: Any required data mapping or transformations are performed via scripts (e.g., `map-stages.js`) prior to schema migrations.
+- **Developer Workflow**:
+  1. Modify `schema.prisma`
+  2. Run `npx prisma migrate dev --name your_description`
+  3. Commit the generated migration files.
 
 ## Contributing
 

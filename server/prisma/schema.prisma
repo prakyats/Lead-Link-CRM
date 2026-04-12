@@ -49,6 +49,7 @@ model Lead {
   stage           Stage
   leadScore       Int
   lastInteraction DateTime?
+  testField       String?
   createdAt       DateTime      @default(now())
   assignedToId    Int
   interactions    Interaction[]
@@ -67,19 +68,21 @@ model Task {
   title        String
   description  String?
   dueDate      DateTime?
-  status       TaskStatus @default(PENDING)
+  status       String     @default("PENDING")
   priority     Priority
   createdAt    DateTime   @default(now())
   completedAt  DateTime?
   leadId       Int?
   assignedToId Int
+  interactionId Int?
   assignedTo   User       @relation("UserTasks", fields: [assignedToId], references: [id])
   lead         Lead?      @relation(fields: [leadId], references: [id])
+  interaction  Interaction? @relation(fields: [interactionId], references: [id])
 
   @@index([organizationId])
   @@index([assignedToId])
   @@index([leadId])
-  @@index([assignedToId, status])
+  @@index([assignedToId, dueDate, status])
 }
 
 model Interaction {
@@ -89,11 +92,15 @@ model Interaction {
   type          InteractionType
   date          DateTime
   notes         String?
+  summary       String?
+  outcome       String?
+  followUpDate  DateTime?
   createdAt     DateTime        @default(now())
   leadId        Int
   performedById Int
   lead          Lead            @relation(fields: [leadId], references: [id])
   performedBy   User            @relation("UserInteractions", fields: [performedById], references: [id])
+  tasks         Task[]
 
   @@index([organizationId])
   @@index([leadId])
@@ -116,8 +123,7 @@ enum Priority {
 enum Stage {
   NEW
   CONTACTED
-  QUALIFIED
-  PROPOSAL
+  INTERESTED
   CONVERTED
   LOST
 }
@@ -131,4 +137,6 @@ enum InteractionType {
   EMAIL
   CALL
   MEETING
+  WHATSAPP
+  OTHER
 }
