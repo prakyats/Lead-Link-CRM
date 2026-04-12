@@ -2,15 +2,17 @@ import React from 'react';
 
 interface SkeletonProps {
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export function Skeleton({ className = '' }: SkeletonProps) {
+export function Skeleton({ className = '', style }: SkeletonProps) {
   return (
     <div 
       className={`animate-pulse rounded-md bg-muted/20 ${className}`}
       style={{
         backgroundImage: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent)',
         backgroundSize: '200% 100%',
+        ...style
       }}
     />
   );
@@ -196,7 +198,7 @@ export function ReportsSkeleton() {
             ))}
           </div>
         </div>
-        <div className="crm-card h-[400px] bg-[#1A2332]/50 border-white/5 flex flex-col items-center justify-center">
+        <div className="crm-card h-[400px] bg-[#1A2332]/50 border-white/5 flex flex-col items-center justify-center relative">
           <Skeleton className="h-6 w-48 absolute top-8 left-8" />
           <Skeleton className="w-48 h-48 rounded-full border-8 border-white/5" />
           <div className="mt-8 flex gap-4">
