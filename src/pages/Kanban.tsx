@@ -3,7 +3,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Link, useNavigate } from 'react-router';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus } from 'lucide-react';
+import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus, Share2, Target, Zap } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { getLeads, updateLeadStage as updateLeadStageApi } from '../api/leads';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -13,6 +13,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import { MobileKanban } from '../components/Kanban/MobileKanban';
 import { KanbanSkeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Lead {
   id: number;
@@ -38,35 +39,35 @@ function LeadCard({ lead, canDrag }: LeadCardProps) {
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }), [canDrag]);
+  }), [canDrag, lead.id, lead.stage]);
 
   return (
     <div
       ref={drag as any}
-      className={`group rounded-2xl p-5 transition-all cursor-grab active:cursor-grabbing bg-card border border-border hover:border-[#00D4AA]/30 hover:shadow-xl ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
+      className={`group relative rounded-2xl p-5 transition-all cursor-grab active:cursor-grabbing border border-border/40 hover:border-primary/30 hover:shadow-[0_8px_32px_-8px_rgba(0,212,170,0.15)] bg-card/40 backdrop-blur-sm ${isDragging ? 'opacity-30 rotate-3 scale-95' : 'opacity-100'}`}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs" style={{ background: 'rgba(0,212,170,0.15)', color: '#00D4AA', border: '1px solid rgba(0,212,170,0.2)' }}>
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm bg-primary/10 text-primary border border-primary/20 shadow-inner">
             {lead.company.charAt(0)}
           </div>
           <div>
-            <h3 className="text-sm font-bold leading-tight uppercase tracking-tight transition-colors text-foreground">{lead.company}</h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5 text-muted-foreground">{lead.contact}</p>
+            <h3 className="text-sm font-semibold leading-tight text-foreground text-foreground transition-colors group-hover:text-primary">{lead.company}</h3>
+            <p className="text-xs text-muted-foreground mt-1 text-muted-foreground/60">{lead.contact}</p>
           </div>
         </div>
-        <button className="transition-colors text-muted-foreground hover:text-foreground">
-          <MoreHorizontal className="w-4 h-4" />
+        <button className="w-8 h-8 flex items-center justify-center rounded-lg transition-all text-muted-foreground/40 hover:text-foreground hover:bg-muted/50">
+          <MoreHorizontal size={16} />
         </button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 font-bold text-sm text-foreground">
-            <span className="text-muted-foreground">₹</span>
+          <div className="flex items-center gap-1.5 font-medium text-sm text-foreground">
+            <span className="text-muted-foreground mr-1">₹</span>
             {lead.value.toLocaleString('en-IN')}
           </div>
-          <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+          <span className={`crm-badge scale-[0.85] origin-right ${lead.priority === 'HIGH' ? 'badge-priority-high' :
             lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
               'badge-priority-low'
             }`}>
@@ -74,16 +75,23 @@ function LeadCard({ lead, canDrag }: LeadCardProps) {
           </span>
         </div>
 
-        <div className="pt-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-widest border-t border-border text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3 h-3" />
+        <div className="pt-4 flex items-center justify-between text-xs text-muted-foreground border-t border-border/20 text-muted-foreground/40">
+          <div className="flex items-center gap-2">
+            <Clock size={12} className="opacity-40" />
             <span>{formatRelativeTime(lead.lastInteraction || lead.createdAt)}</span>
           </div>
-          <Link to="/leads" className="opacity-0 group-hover:opacity-100 transition-opacity text-[#00D4AA]">
-            Details →
+          <Link to={`/leads/${lead.id}`} className="opacity-0 group-hover:opacity-100 transition-all text-primary hover:tracking-widest">
+            VIEW LEAD →
           </Link>
         </div>
       </div>
+      
+      {/* Dynamic Highlight Bar */}
+      <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-1/2 rounded-full transition-all duration-500 group-hover:h-2/3 ${
+        lead.priority === 'HIGH' ? 'bg-red-500/40' : 
+        lead.priority === 'MEDIUM' ? 'bg-amber-500/40' : 
+        'bg-primary/40'
+      }`} />
     </div>
   );
 }
@@ -109,10 +117,10 @@ function Column({ title, stage, leads, count, color, onDrop, canDrag }: ColumnPr
     collect: (monitor) => ({
       isOver: monitor.isOver(),
     }),
-  }));
+  }), [stage, onDrop]);
 
   const colorVariants: Record<string, string> = {
-    teal: '#00D4AA',
+    teal: 'var(--primary)',
     amber: '#FBBF24',
     purple: '#C084FC',
     green: '#4ADE80',
@@ -120,31 +128,51 @@ function Column({ title, stage, leads, count, color, onDrop, canDrag }: ColumnPr
     red: '#F87171',
   };
 
-  const dotColor = colorVariants[color] || colorVariants.teal;
+  const accentColor = colorVariants[color] || colorVariants.teal;
 
   return (
-    <div className="flex-shrink-0 w-[320px] flex flex-col h-full">
-      <div className="flex items-center justify-between px-2 mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ background: dotColor }} />
-          <h2 className="text-sm font-bold uppercase tracking-widest text-foreground">{title}</h2>
-          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-muted/50 text-muted-foreground border border-border">
+    <div className="flex-shrink-0 w-[340px] flex flex-col h-full group/column">
+      <div className="flex items-center justify-between px-3 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: accentColor }} />
+            <div className="absolute inset-0 rounded-full blur-[4px] animate-pulse" style={{ background: accentColor, opacity: 0.5 }} />
+          </div>
+          <h2 className="text-sm font-semibold text-foreground text-foreground/80">{title}</h2>
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted/50 text-muted-foreground border border-border/40 tabular-nums">
             {count}
           </span>
         </div>
-        <Plus className="w-4 h-4 cursor-pointer transition-colors text-muted-foreground hover:text-foreground" />
+        <button className="w-8 h-8 flex items-center justify-center rounded-xl transition-all text-muted-foreground/30 hover:text-foreground hover:bg-muted/50">
+          <Plus size={16} />
+        </button>
       </div>
 
       <div
         ref={drop as any}
-        className={`flex-1 p-2 rounded-2xl transition-all duration-300 space-y-3 min-h-[500px] ${isOver ? 'bg-[#00D4AA]/5 shadow-[inset_0_0_0_2px_rgba(0,212,170,0.15)]' : 'bg-muted/10'}`}
+        className={`flex-1 p-3 rounded-[2rem] transition-all duration-500 space-y-4 min-h-[500px] border-2 border-transparent ${
+          isOver ? 'bg-primary/[0.03] border-primary/20 shadow-[inset_0_0_80px_rgba(0,212,170,0.05)]' : 'bg-muted/[0.02]'
+        }`}
       >
-        {leads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} canDrag={canDrag} />
-        ))}
+        <AnimatePresence mode="popLayout">
+          {leads.map((lead) => (
+            <motion.div
+              key={lead.id}
+              layout
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            >
+              <LeadCard lead={lead} canDrag={canDrag} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        
         {leads.length === 0 && (
-          <div className="h-24 rounded-2xl flex items-center justify-center border-2 border-dashed border-border">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">No Leads</p>
+          <div className="h-32 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-border/20 bg-muted/[0.01]">
+            <Target size={24} className="text-muted-foreground/10 mb-2" />
+            <p className="text-xs text-muted-foreground text-muted-foreground/20">No Leads</p>
           </div>
         )}
       </div>
@@ -155,6 +183,7 @@ function Column({ title, stage, leads, count, color, onDrop, canDrag }: ColumnPr
 function KanbanInnerContent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
   const { data: leads = [], isLoading: loading } = useQuery({
     queryKey: ['leads'],
@@ -177,23 +206,22 @@ function KanbanInnerContent() {
     },
     onError: (err, variables, context: any) => {
       queryClient.setQueryData(['leads'], context.previousLeads);
-      toast.error('Failed to update pipeline stage');
+      toast.error('Update Failed', {
+          description: 'Unable to update pipeline stage.'
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
     }
   });
 
-  const navigate = useNavigate();
-
   const handleDrop = async (leadId: number, newStage: Lead['stage']) => {
     try {
       await stageMutation.mutateAsync({ id: leadId, stage: newStage });
-      // Nudge after update
-      toast.success(`Stage updated to ${newStage}`, {
-        description: 'Would you like to log the interaction details now?',
+      toast.success(`Stage: ${newStage}`, {
+        description: 'Stage updated. View lead?',
         action: {
-          label: 'Log Activity',
+          label: 'VIEW',
           onClick: () => navigate(`/leads/${leadId}`)
         },
         duration: 5000,
@@ -204,7 +232,7 @@ function KanbanInnerContent() {
   };
 
   const columns = [
-    { title: 'New Leads', stage: 'NEW' as const, color: 'blue' },
+    { title: 'New', stage: 'NEW' as const, color: 'blue' },
     { title: 'Contacted', stage: 'CONTACTED' as const, color: 'amber' },
     { title: 'Interested', stage: 'INTERESTED' as const, color: 'purple' },
     { title: 'Converted', stage: 'CONVERTED' as const, color: 'green' },
@@ -212,56 +240,67 @@ function KanbanInnerContent() {
   ];
 
   return (
-    <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-background">
+    <main className="crm-main-content select-none">
+        {/* ── Background Effects ── */}
+        <div className="ll-hero-grid opacity-[0.02] dark:opacity-[0.04]" />
+        <div className="ll-orb w-[600px] h-[600px] -top-64 -right-32 bg-primary/5 blur-[120px]" />
+        <div className="ll-orb w-[500px] h-[500px] bottom-0 -left-64 bg-teal-500/5 blur-[100px]" />
         
         {/* Desktop Header */}
-        <div className="hidden md:block p-8 pb-4 shrink-0">
-          <div className="flex justify-between items-end mb-6">
-            <div className="space-y-1">
-              <h1 className="crm-page-title">Pipeline Board</h1>
-              <p className="crm-page-subtitle">Drag and drop leads across stages to update their status</p>
+        <div className="hidden md:block p-10 pb-6 shrink-0 relative z-10">
+          <div className="flex justify-between items-end mb-8">
+            <div className="animate-in slide-in-from-left duration-700">
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Kanban Board</h1>
+              <p className="text-sm font-medium text-muted-foreground mt-2">Drag and drop leads to update their pipeline stage</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
+            <div className="flex items-center gap-6 animate-in slide-in-from-right duration-700">
+              <div className="flex -space-x-3">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border-2 border-background bg-muted">
-                    <User2 className="w-5 h-5 text-muted-foreground" />
+                  <div key={i} className="w-10 h-10 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-background bg-muted/40 shadow-xl">
+                    <User2 className="w-6 h-6 text-muted-foreground/40" />
                   </div>
                 ))}
               </div>
-              <button className="crm-btn-secondary !text-xs !py-2">View Team</button>
+              <button className="crm-btn-secondary !px-6 !py-3 flex items-center gap-3">
+                <Share2 size={14} />
+                <span className="text-sm font-semibold">Team Members</span>
+              </button>
             </div>
           </div>
 
-          <div className="crm-card !p-3 !flex-row flex items-center gap-3 mb-2 bg-[#00D4AA]/5">
-            <AlertCircle className="w-4 h-4 text-[#00D4AA]" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Tip: <span className="text-foreground">Drag and drop cards to move leads between stages</span>
+          <div className="flex items-center gap-4 bg-primary/[0.03] border border-primary/10 rounded-2xl p-4 transition-all hover:bg-primary/[0.05] hover:border-primary/20">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Zap size={14} className="text-primary animate-pulse" />
+            </div>
+            <p className="text-xs font-semibold text-muted-foreground">
+              TIP: <span className="text-foreground/80">DRAG LEADS TO UPDATE THEIR PIPELINE STAGE</span>
             </p>
           </div>
         </div>
 
         {/* Mobile Header */}
-        <div className="md:hidden p-6 pb-2 shrink-0">
+        <div className="md:hidden p-8 pb-4 shrink-0 relative z-10">
           <div className="flex justify-between items-start">
-            <div className="space-y-0.5">
-               <h1 className="text-2xl font-bold tracking-tight text-white font-outfit uppercase">Pipeline Board</h1>
-               <p className="text-[10px] font-bold uppercase tracking-widest text-[#00D4AA]">Manage Enterprise Leads</p>
+            <div className="space-y-1">
+               <h1 className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Pipeline</h1>
+               <p className="text-sm font-semibold text-primary">Kanban Board</p>
             </div>
-            <div className="px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-bold uppercase tracking-widest leading-none">
-              ⚠ Desktop
+            <div className="px-3 py-1.5 rounded-xl bg-status-warning/10 border border-status-warning/20 text-status-warning text-xs font-medium uppercase tracking-wider">
+              ACTIVE
             </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="px-8 flex-1">
+          <div className="px-10 flex-1 relative z-10">
             <KanbanSkeleton />
           </div>
         ) : isMobile ? (
-          <MobileKanban leads={leads} columns={columns} onUpdateStage={async (id, stage) => { await stageMutation.mutateAsync({ id, stage }); }} canDrag={canDrag} />
+          <div className="flex-1 relative z-10">
+            <MobileKanban leads={leads} columns={columns} onUpdateStage={async (id, stage) => { await stageMutation.mutateAsync({ id, stage }); }} canDrag={canDrag} />
+          </div>
         ) : (
-          <div className="flex-1 overflow-x-auto overflow-y-hidden px-8 pb-8 flex gap-6 custom-scrollbar">
+          <div className="flex-1 overflow-x-auto overflow-y-hidden px-10 pb-10 flex gap-8 custom-scrollbar relative z-10">
             {columns.map((column) => (
               <Column
                 key={column.stage}
@@ -282,11 +321,11 @@ function KanbanInnerContent() {
 
 function KanbanContent() {
   return (
-    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-background">
+    <div className="crm-page-container">
       <Sidebar />
       <QueryErrorResetBoundary>
         {({ reset }) => (
-          <ErrorBoundary onReset={reset} message="Failed to load pipeline board">
+          <ErrorBoundary onReset={reset} message="Failed to load Kanban board">
             <KanbanInnerContent />
           </ErrorBoundary>
         )}

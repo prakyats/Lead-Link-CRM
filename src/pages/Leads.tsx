@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient, keepPreviousData, QueryErrorResetBoundary } from '@tanstack/react-query';
+import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck, Calendar, Activity } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { getLeads, createLead as createLeadApi, assignLead as assignLeadApi, LeadType as Lead } from '../api/leads';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { toast } from 'sonner';
@@ -32,7 +32,6 @@ function LeadsInnerContent() {
         stage: 'NEW' as const
     });
 
-    // Filter state
     const [showFilters, setShowFilters] = useState(false);
     const [filterSettings, setFilterSettings] = useState({
         stage: 'ALL',
@@ -41,16 +40,14 @@ function LeadsInnerContent() {
         maxValue: ''
     });
 
-    const { data: leads = [], isLoading: loading, isError } = useQuery({
+    const { data: leads = [], isLoading: loading } = useQuery({
         queryKey: ['leads', filterSettings],
         queryFn: getLeads,
         enabled: !!user?.id,
-        placeholderData: (prev) => prev,
     });
 
     const canAssign = hasPermission(user?.role as Role, 'canAssignLeads');
 
-    // Fetch sales users for the assign dropdown (Managers only)
     useEffect(() => {
         if (canAssign) {
             import('../utils/api').then(({ default: api }) => {
@@ -65,18 +62,18 @@ function LeadsInnerContent() {
         mutationFn: createLeadApi,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
-            toast.success('Lead added successfully');
+            toast.success('Lead established in pipeline');
         },
-        onError: () => toast.error('Failed to add lead')
+        onError: () => toast.error('Failed to establish lead')
     });
 
     const assignMutation = useMutation({
         mutationFn: assignLeadApi,
         onSuccess: () => {
              queryClient.invalidateQueries({ queryKey: ['leads'] });
-             toast.success('Lead assigned successfully');
+             toast.success('Lead assignment successful');
         },
-        onError: () => toast.error('Failed to assign lead')
+        onError: () => toast.error('Assignment failure')
     });
 
     const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -137,498 +134,545 @@ function LeadsInnerContent() {
     });
 
     return (
-        <>
-            <main className="flex-1 min-w-0 crm-page-container">
-                <div className="max-w-7xl mx-auto space-y-8">
-                    <div className="flex justify-between items-end">
-                        <div className="space-y-1">
-                            <h1 className="crm-page-title">Lead Management</h1>
-                            <p className="crm-page-subtitle">Track and nurture your enterprise sales pipeline</p>
-                        </div>
-                        {canCreate && (
-                            <button
-                                onClick={() => setIsModalOpen(true)}
-                                className="crm-btn-primary"
-                            >
-                                <Plus className="w-5 h-5" />
-                                <span>Add Lead</span>
-                            </button>
-                        )}
-                    </div>
+        <main className="crm-main-content">
+            {/* ── Background Effects ── */}
+            <div className="ll-hero-grid opacity-[0.03] dark:opacity-[0.05]" />
+            <div className="ll-orb w-[500px] h-[500px] -top-32 -left-32 bg-primary/10 blur-[100px]" />
+            <div className="ll-orb w-[400px] h-[400px] bottom-0 -right-32 bg-teal-500/5 blur-[120px]" />
 
-                    {/* Controls Section */}
-                    <div className="crm-card border border-border !p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
-                        <div className="relative w-full md:w-96 group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-[#00D4AA] transition-colors" />
-                            <input
-                                type="text"
-                                placeholder="Search by company or contact..."
-                                className="crm-input !pl-11 border-border focus:border-[#00D4AA]/50 group-focus-within:ring-4 group-focus-within:ring-[#00D4AA]/5 shadow-none"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex items-center gap-3 w-full md:w-auto">
-                            <button 
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={`crm-btn-secondary w-full md:w-auto !py-2.5 flex items-center justify-center gap-2 transition-all duration-300 ${showFilters ? 'bg-muted/80 text-[#00D4AA] border-[#00D4AA]/30' : ''}`}
-                            >
-                                <Filter className={`w-4 h-4 ${showFilters ? 'animate-pulse' : ''}`} />
-                                <span>Advanced Filters</span>
-                            </button>
-                        </div>
+            <div className="max-w-7xl mx-auto p-8 space-y-8 relative z-10">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                    <div className="animate-in slide-in-from-left duration-700">
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground">Leads Registry</h1>
+                        <p className="text-sm font-medium text-muted-foreground mt-2">Manage and track your active prospects and client pipeline</p>
                     </div>
+                    {canCreate && (
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="crm-btn-primary animate-in slide-in-from-right duration-700"
+                        >
+                            <Plus size={20} />
+                            <span>Add Lead</span>
+                        </button>
+                    )}
+                </div>
 
-                    {/* Advanced Filters Panel */}
-                    <AnimatePresence>
-                        {showFilters && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="overflow-hidden"
-                            >
-                                <div className="crm-card border-border bg-muted/5 p-6 grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 relative group">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Pipeline Stage</label>
-                                        <select 
-                                            value={filterSettings.stage}
-                                            onChange={(e) => setFilterSettings({ ...filterSettings, stage: e.target.value })}
-                                            className="crm-input text-xs font-bold bg-card border-border"
-                                        >
-                                            <option value="ALL">ALL STAGES</option>
-                                            <option value="NEW">NEW LEAD</option>
-                                            <option value="CONTACTED">CONTACTED</option>
-                                            <option value="INTERESTED">INTERESTED</option>
-                                            <option value="CONVERTED">CONVERTED</option>
-                                            <option value="LOST">LOST LEAD</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Priority Tier</label>
-                                        <select 
-                                            value={filterSettings.priority}
-                                            onChange={(e) => setFilterSettings({ ...filterSettings, priority: e.target.value })}
-                                            className="crm-input text-xs font-bold bg-card border-border"
-                                        >
-                                            <option value="ALL">ALL PRIORITIES</option>
-                                            <option value="HIGH">HIGH PRIORITY</option>
-                                            <option value="MEDIUM">MEDIUM PRIORITY</option>
-                                            <option value="LOW">LOW PRIORITY</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Projected Value (Min/Max)</label>
-                                        <div className="flex items-center gap-2">
-                                            <input 
-                                                type="number" 
-                                                placeholder="Min ₹"
-                                                value={filterSettings.minValue}
-                                                onChange={(e) => setFilterSettings({ ...filterSettings, minValue: e.target.value })}
-                                                className="crm-input text-xs font-bold bg-card border-border"
-                                            />
-                                            <input 
-                                                type="number" 
-                                                placeholder="Max ₹"
-                                                value={filterSettings.maxValue}
-                                                onChange={(e) => setFilterSettings({ ...filterSettings, maxValue: e.target.value })}
-                                                className="crm-input text-xs font-bold bg-card border-border"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-end">
-                                        <button 
-                                            onClick={() => setFilterSettings({ stage: 'ALL', priority: 'ALL', minValue: '', maxValue: '' })}
-                                            className="w-full py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300"
-                                        >
-                                            Reset Controls
-                                        </button>
-                                    </div>
-                                    {/* Glass reflection effect */}
-                                    <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#00D4AA]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                {/* Controls Section */}
+                <div className="crm-card !p-4 flex flex-col md:flex-row gap-4 items-center justify-between border-border/40">
+                    <div className="relative w-full md:w-[400px] group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <input
+                            type="text"
+                            placeholder="Search leads by name, email..."
+                            className="crm-input !pl-11 border-transparent hover:border-border/40 group-focus-within:border-primary/30"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <button 
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`crm-btn-secondary !px-5 !py-3 flex items-center justify-center gap-2 ${showFilters ? 'bg-primary/10 text-primary border-primary/20 shadow-lg shadow-primary/5' : ''}`}
+                        >
+                            <Filter className={`w-4 h-4 ${showFilters ? 'scale-110' : ''}`} />
+                            <span className="text-sm font-semibold">Filters</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Advanced Operations Panel */}
+                <AnimatePresence>
+                    {showFilters && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="crm-card !p-8 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 border-primary/10 bg-primary/[0.02]">
+                                <div className="space-y-3">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Stage</label>
+                                    <select 
+                                        value={filterSettings.stage}
+                                        onChange={(e) => setFilterSettings({ ...filterSettings, stage: e.target.value })}
+                                        className="crm-input text-[11px] font-bold tracking-widest bg-muted/20"
+                                    >
+                                        <option value="ALL">All Stages</option>
+                                        <option value="NEW">New</option>
+                                        <option value="CONTACTED">Contacted</option>
+                                        <option value="INTERESTED">Interested</option>
+                                        <option value="CONVERTED">Converted</option>
+                                        <option value="LOST">Lost</option>
+                                    </select>
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                <div className="space-y-3">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Priority Level</label>
+                                    <select 
+                                        value={filterSettings.priority}
+                                        onChange={(e) => setFilterSettings({ ...filterSettings, priority: e.target.value })}
+                                        className="crm-input text-[11px] font-bold tracking-widest bg-muted/20"
+                                    >
+                                        <option value="ALL">All Priorities</option>
+                                        <option value="HIGH">High Priority</option>
+                                        <option value="MEDIUM">Medium Priority</option>
+                                        <option value="LOW">Low Priority</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Value Range (₹)</label>
+                                    <div className="flex items-center gap-3">
+                                        <input 
+                                            type="number" 
+                                            placeholder="Min"
+                                            value={filterSettings.minValue}
+                                            onChange={(e) => setFilterSettings({ ...filterSettings, minValue: e.target.value })}
+                                            className="crm-input text-[11px] font-bold tracking-widest bg-muted/20"
+                                        />
+                                        <input 
+                                            type="number" 
+                                            placeholder="Max"
+                                            value={filterSettings.maxValue}
+                                            onChange={(e) => setFilterSettings({ ...filterSettings, maxValue: e.target.value })}
+                                            className="crm-input text-[11px] font-bold tracking-widest bg-muted/20"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-end">
+                                    <button 
+                                        onClick={() => setFilterSettings({ stage: 'ALL', priority: 'ALL', minValue: '', maxValue: '' })}
+                                        className="crm-btn-secondary w-full !py-3.5 !text-xs font-semibold tracking-wider border-dashed"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                    {/* Main Content (Responsive Table / Cards) */}
-                    <div className="min-h-[400px]">
-                        {loading ? (
-                            <TableSkeleton />
-                        ) : filteredLeads.length > 0 ? (
-                            <>
-                                {/* Desktop Table View - Hidden on Mobile */}
-                                <div className="hidden md:block crm-table-container">
-                                    <table className="crm-table">
-                                        <thead className="crm-table-thead">
-                                            <tr>
-                                                <th className="crm-table-th">Organization</th>
-                                                <th className="crm-table-th">Primary Contact</th>
-                                                <th className="crm-table-th">Pipeline Stage</th>
-                                                <th className="crm-table-th">Urgency</th>
-                                                <th className="crm-table-th">Projected Value</th>
-                                                {canAssign && <th className="crm-table-th">Assigned To</th>}
-                                                <th className="crm-table-th">Discovery Date</th>
-                                                <th className="crm-table-th"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredLeads.map((lead) => (
-                                                <tr key={lead.id} className="crm-table-tr group">
-                                                    <td className="crm-table-td">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold transition-transform group-hover:scale-110 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
-                                                                {lead.company.charAt(0)}
+                {/* Ledger Visualization */}
+                <div className="min-h-[500px] animate-in fade-in duration-1000">
+                    {loading ? (
+                        <TableSkeleton />
+                    ) : filteredLeads.length > 0 ? (
+                        <>
+                            {/* Pro Desktop Grid View */}
+                            <div className="hidden md:block crm-table-container">
+                                <table className="crm-table">
+                                    <thead className="bg-muted/30 border-b border-border/50">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Organization</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Contact Person</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Priority</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Value</th>
+                                            {canAssign && <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Assigned</th>}
+                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Added On</th>
+                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-right uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredLeads.map((lead, i) => (
+                                            <tr key={lead.id} className={`crm-table-tr group animate-in slide-in-from-bottom duration-500 delay-${Math.min(i * 50, 400)}`}>
+                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-11 h-11 rounded-xl flex items-center justify-center font-semibold text-base transition-all group-hover:scale-110 bg-primary/10 text-primary border border-primary/20 shadow-inner group-hover:rotate-6">
+                                                            {lead.company.charAt(0)}
+                                                        </div>
+                                                        <span className="font-semibold text-foreground">{lead.company}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
+                                                    <div className="space-y-1">
+                                                        <p className="font-medium text-foreground">{lead.contact}</p>
+                                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-widest">
+                                                            <Mail size={12} className="opacity-60" />
+                                                            {lead.email}
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
+                                                    <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                                            lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
+                                                                lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
+                                                                    lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
+                                                                        'badge-stage-lost'
+                                                        }`}>
+                                                        {lead.stage}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
+                                                    <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                                                        lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
+                                                            'badge-priority-low'
+                                                        }`}>
+                                                        {lead.priority}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
+                                                    <div className="flex items-center gap-1 font-medium text-sm text-foreground">
+                                                        <span className="text-muted-foreground mr-0.5">₹</span>
+                                                        {lead.value.toLocaleString('en-IN')}
+                                                    </div>
+                                                </td>
+                                                {canAssign && (
+                                                    <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/20 flex items-center justify-center text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                                                                {(lead.assignedTo || '?').charAt(0)}
                                                             </div>
-                                                            <span className="font-bold uppercase tracking-tight transition-colors">{lead.company}</span>
+                                                            <span className="text-xs font-medium text-muted-foreground">
+                                                                {lead.assignedTo || 'UNASSIGNED'}
+                                                            </span>
                                                         </div>
                                                     </td>
-                                                    <td className="crm-table-td">
-                                                        <div className="space-y-0.5">
-                                                            <p className="font-bold tracking-tight">{lead.contact}</p>
-                                                            <p className="text-[10px] font-medium flex items-center gap-1 text-muted-foreground">
-                                                                <Mail className="w-3 h-3" />
-                                                                {lead.email}
-                                                            </p>
-                                                        </div>
-                                                    </td>
-                                                    <td className="crm-table-td">
-                                                        <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
-                                                                lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
-                                                                    lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
-                                                                        lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
-                                                                            'badge-stage-lost'
-                                                            }`}>
-                                                            {lead.stage}
-                                                        </span>
-                                                    </td>
-                                                    <td className="crm-table-td">
-                                                        <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
-                                                            lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
-                                                                'badge-priority-low'
-                                                            }`}>
-                                                            {lead.priority}
-                                                        </span>
-                                                    </td>
-                                                    <td className="crm-table-td">
-                                                        <div className="flex items-center gap-1.5 font-bold">
-                                                            <span className="text-xs text-muted-foreground">₹</span>
-                                                            {lead.value.toLocaleString('en-IN')}
-                                                        </div>
-                                                    </td>
-                                                    <td className="crm-table-td text-xs font-bold uppercase tracking-tight text-muted-foreground">
-                                                        {formatDate(lead.createdAt)}
-                                                    </td>
-                                                    {canAssign && (
-                                                        <td className="crm-table-td">
-                                                            <span className="text-xs font-bold text-muted-foreground">{lead.assignedTo || 'Unassigned'}</span>
-                                                        </td>
-                                                    )}
-                                                    <td className="crm-table-td text-right">
-                                                        <div className="flex items-center gap-1 justify-end">
-                                                            {canAssign && (
-                                                                <button
-                                                                    onClick={() => { setAssignModal({ open: true, leadId: lead.id }); setSelectedAssignee(''); }}
-                                                                    className="p-2 rounded-lg transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400"
-                                                                    title="Assign Lead"
-                                                                >
-                                                                    <UserCheck className="w-4 h-4" />
-                                                                </button>
-                                                            )}
-                                                            <button className="p-2 rounded-lg transition-all text-muted-foreground hover:bg-[#00D4AA]/10 hover:text-[#00D4AA]">
-                                                                <MoreHorizontal className="w-5 h-5" />
+                                                )}
+                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-sm font-medium text-muted-foreground">{formatDate(lead.createdAt)}</span>
+                                                        
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap text-right">
+                                                    <div className="flex items-center gap-1.5 justify-end">
+                                                        {canAssign && (
+                                                            <button
+                                                                onClick={() => { setAssignModal({ open: true, leadId: lead.id }); setSelectedAssignee(''); }}
+                                                                className="w-9 h-9 flex items-center justify-center rounded-xl transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400 border border-transparent hover:border-purple-500/20"
+                                                                title="Assign Lead"
+                                                            >
+                                                                <UserCheck size={16} />
                                                             </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* Mobile Card View - Shown on Mobile */}
-                                <div className="md:hidden space-y-4">
-                                    {filteredLeads.map((lead) => (
-                                        <div key={lead.id} className="crm-card border-border shadow-sm active:scale-[0.98] transition-transform">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-lg bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
-                                                        {lead.company.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="font-extrabold uppercase tracking-tight text-white leading-tight">{lead.company}</h3>
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#00D4AA] mt-0.5">{lead.contact}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    {canAssign && (
-                                                        <button 
-                                                            onClick={() => { setAssignModal({ open: true, leadId: lead.id }); setSelectedAssignee(''); }}
-                                                            className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                                                        >
-                                                            <UserCheck className="w-4 h-4" />
+                                                        )}
+                                                        <button className="w-9 h-9 flex items-center justify-center rounded-xl transition-all text-muted-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20">
+                                                            <MoreHorizontal size={18} />
                                                         </button>
-                                                    )}
-                                                    <button className="p-2.5 rounded-xl bg-muted/20 text-muted-foreground border border-border">
-                                                        <MoreHorizontal className="w-4 h-4" />
-                                                    </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile View */}
+                            <div className="md:hidden space-y-4">
+                                {filteredLeads.map((lead) => (
+                                    <div key={lead.id} className="crm-card border-border/40 shadow-xl active:scale-[0.98] transition-all bg-muted/5">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-full flex items-center justify-center font-semibold text-xl bg-primary/10 text-primary">
+                                                    {lead.company.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-semibold text-lg text-foreground">{lead.company}</h3>
+                                                    <p className="text-sm font-medium text-muted-foreground mt-1">{lead.contact}</p>
                                                 </div>
                                             </div>
+                                            <div className="flex items-center gap-2">
+                                                {canAssign && (
+                                                    <button 
+                                                        onClick={() => { setAssignModal({ open: true, leadId: lead.id }); setSelectedAssignee(''); }}
+                                                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                                    >
+                                                        <UserCheck size={16} />
+                                                    </button>
+                                                )}
+                                                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/20 text-muted-foreground border border-border/40">
+                                                    <MoreHorizontal size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                                <div className="p-3 rounded-xl bg-muted/10 border border-border">
-                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Pipeline Stage</p>
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
-                                                        lead.stage === 'NEW' ? 'text-[#94A3B8]' :
-                                                        lead.stage === 'CONTACTED' ? 'text-[#60A5FA]' :
-                                                        lead.stage === 'CONVERTED' ? 'text-[#00D4AA]' :
-                                                        'text-[#FBBF24]'
-                                                    }`}>
+                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                            <div className="p-4 rounded-2xl bg-muted/10 border border-border/40">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1.5">Vector Status</p>
+                                                <div className="scale-75 origin-left">
+                                                    <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                                        lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
+                                                            lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
+                                                                'badge-stage-lost'}`}>
                                                         {lead.stage}
                                                     </span>
                                                 </div>
-                                                <div className="p-3 rounded-xl bg-muted/10 border border-border text-right">
-                                                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Urgency</p>
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
-                                                        lead.priority === 'HIGH' ? 'text-[#F87171]' :
-                                                        lead.priority === 'MEDIUM' ? 'text-[#FBBF24]' :
-                                                        'text-[#00D4AA]'
-                                                    }`}>
+                                            </div>
+                                            <div className="p-4 rounded-2xl bg-muted/10 border border-border/40 text-right">
+                                                <p className="text-xs font-semibold text-muted-foreground mb-1.5">Urgency TIER</p>
+                                                <div className="scale-75 origin-right">
+                                                    <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                                                        lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
+                                                            'badge-priority-low'}`}>
                                                         {lead.priority}
                                                     </span>
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            <div className="flex items-center justify-between pt-4 border-t border-border">
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1.5 uppercase tracking-widest">
-                                                        <Mail className="w-3 h-3 text-[#00D4AA]" />
-                                                        {lead.email}
+                                        <div className="flex items-end justify-between pt-6 border-t border-border/20">
+                                            <div className="space-y-2">
+                                                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                    <Mail size={12} className="text-primary opacity-60" />
+                                                    {lead.email}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-4 h-4 rounded-full bg-purple-500/20 flex items-center justify-center text-[7px] font-semibold text-purple-400">
+                                                        {(lead.assignedTo || '?').charAt(0)}
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Agent: <span className="text-foreground">{lead.assignedTo || 'UNASSIGNED'}</span>
                                                     </p>
-                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                                                        Assigned: <span className="text-white">{lead.assignedTo || 'Unassigned'}</span>
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-lg font-extrabold text-white">₹{lead.value.toLocaleString('en-IN')}</p>
-                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{formatDate(lead.createdAt)}</p>
                                                 </div>
                                             </div>
+                                            <div className="text-right">
+                                                <p className="text-lg font-semibold text-foreground">₹{lead.value.toLocaleString('en-IN')}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">{formatDate(lead.createdAt)}</p>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </>
-                        ) : (
-                            <div className="p-24 text-center space-y-4">
-                                <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto bg-muted/10 ring-8 ring-muted/5">
-                                    <Users className="w-10 h-10 text-muted-foreground" />
-                                </div>
-                                <div className="space-y-2">
-                                    <h3 className="text-xl font-bold text-foreground">No Leads Yet</h3>
-                                    <p className="font-medium text-sm text-muted-foreground">Add your first lead to start building your pipeline</p>
-                                </div>
-                                {canCreate && (
-                                    <button
-                                        onClick={() => setIsModalOpen(true)}
-                                        className="crm-btn-primary !mx-auto mt-6"
-                                    >
-                                        <Plus className="w-5 h-5" />
-                                        <span>Add Lead</span>
-                                    </button>
-                                )}
+                                    </div>
+                                ))}
                             </div>
-                        )}
-                    </div>
+                        </>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-24 glass-morphic border-dashed border-border/40 text-center animate-in zoom-in duration-700">
+                            <div className="w-24 h-24 rounded-3xl flex items-center justify-center bg-primary/5 ring-[12px] ring-primary/5 mb-8">
+                                <Users size={40} className="text-primary/40" />
+                            </div>
+                            <div className="space-y-3">
+                                <h3 className="text-2xl font-bold text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>No Leads Found</h3>
+                                <p className="font-bold text-sm text-muted-foreground leading-relaxed max-w-sm">Get started by adding a new lead to your pipeline.</p>
+                            </div>
+                            {canCreate && (
+                                <button
+                                    onClick={() => setIsModalOpen(true)}
+                                    className="crm-btn-primary !px-10 !py-4 mt-8"
+                                >
+                                    <Plus size={20} />
+                                    <span>Add Add Lead</span>
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
-            </main>
+            </div>
 
             {/* Creation Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
-                    <div className="absolute inset-0 backdrop-blur-md bg-black/60" onClick={() => setIsModalOpen(false)} />
-                    <div className="rounded-[2rem] w-full max-w-2xl relative overflow-hidden bg-card border border-border shadow-2xl animate-in zoom-in-95 duration-300">
-                        <div className="p-10 flex justify-between items-start border-b border-border">
-                            <div>
-                                <h2 className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>Add New Lead</h2>
-                                <p className="mt-1 font-medium text-sm tracking-tight text-muted-foreground">Fill in the details to add a new lead to your pipeline</p>
-                            </div>
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="p-2.5 rounded-xl transition-all group text-muted-foreground hover:text-foreground"
-                            >
-                                <X className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateSubmit} className="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-2">
-                                    <label className="crm-label">Company Name *</label>
-                                    <div className="relative group">
-                                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input
-                                            required
-                                            type="text"
-                                            className={`crm-input !pl-11 ${fieldErrors.company ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
-                                            placeholder="e.g. Tata Consultancy Services"
-                                            value={formData.company}
-                                            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                                            onBlur={() => handleLeadFieldBlur('company')}
-                                            maxLength={100}
-                                        />
-                                    </div>
-                                    {fieldErrors.company && <p className="text-red-400 text-xs mt-1">{fieldErrors.company}</p>}
+            <AnimatePresence>
+                {isModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }} 
+                            className="absolute inset-0 backdrop-blur-xl bg-background/60" 
+                            onClick={() => setIsModalOpen(false)} 
+                        />
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="rounded-[2.5rem] w-full max-w-2xl relative overflow-hidden bg-background/80 border border-white/10 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] dark:shadow-[0_32px_128px_-16px_rgba(0,0,0,0.8)] backdrop-blur-2xl"
+                        >
+                            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+                            
+                            <div className="p-10 flex justify-between items-start border-b border-border/40">
+                                <div>
+                                    <h2 className="text-2xl font-semibold uppercase tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Add Lead</h2>
+                                    <p className="mt-2 font-bold text-sm text-muted-foreground flex items-center gap-2">
+                                        <Activity size={14} className="text-primary animate-pulse" />
+                                        Enter details for the new prospect
+                                    </p>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="crm-label">Contact Name *</label>
-                                    <div className="relative group">
-                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input
-                                            required
-                                            type="text"
-                                            className={`crm-input !pl-11 ${fieldErrors.contact ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
-                                            placeholder="Primary contact person"
-                                            value={formData.contact}
-                                            onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                                            onBlur={() => handleLeadFieldBlur('contact')}
-                                            maxLength={50}
-                                        />
-                                    </div>
-                                    {fieldErrors.contact && <p className="text-red-400 text-xs mt-1">{fieldErrors.contact}</p>}
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="crm-label">Email Address *</label>
-                                    <div className="relative group">
-                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input
-                                            required
-                                            type="email"
-                                            className={`crm-input !pl-11 ${fieldErrors.email ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
-                                            placeholder="contact@company.com"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                            onBlur={() => handleLeadFieldBlur('email')}
-                                            maxLength={100}
-                                        />
-                                    </div>
-                                    {fieldErrors.email && <p className="text-red-400 text-xs mt-1">{fieldErrors.email}</p>}
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="crm-label">Phone Number</label>
-                                    <div className="relative group">
-                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input
-                                            type="tel"
-                                            className={`crm-input !pl-11 ${fieldErrors.phone ? 'border-red-500/50 ring-4 ring-red-500/10' : ''}`}
-                                            placeholder="9876543210"
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                            onBlur={() => handleLeadFieldBlur('phone')}
-                                            maxLength={10}
-                                        />
-                                    </div>
-                                    {fieldErrors.phone && <p className="text-red-400 text-xs mt-1">{fieldErrors.phone}</p>}
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="crm-label">Projected Value (₹)</label>
-                                    <div className="relative group">
-                                        <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors text-muted-foreground group-focus-within:text-[#00D4AA]" />
-                                        <input required type="number" className="crm-input !pl-11" placeholder="Lead value in ₹" value={formData.value} onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="crm-label">Priority Tier</label>
-                                    <select className="crm-input font-bold appearance-none cursor-pointer bg-background" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
-                                        <option value="LOW">LOW PRIORITY</option>
-                                        <option value="MEDIUM">MEDIUM PRIORITY</option>
-                                        <option value="HIGH">HIGH PRIORITY</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-4 pt-4">
-                                <button type="button" disabled={createMutation.isPending} onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4 disabled:opacity-50">Cancel</button>
-                                <button type="submit" disabled={createMutation.isPending} className="crm-btn-primary w-full !py-4 disabled:opacity-50">
-                                    {createMutation.isPending ? 'Processing...' : 'Add Lead'}
+                                <button
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="w-11 h-11 flex items-center justify-center rounded-2xl transition-all group hover:bg-muted"
+                                >
+                                    <X className="w-6 h-6 group-hover:rotate-90 transition-transform opacity-40 group-hover:opacity-100" />
                                 </button>
                             </div>
-                        </form>
+
+                            <form onSubmit={handleCreateSubmit} className="p-10 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                    <div className="space-y-3">
+                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">COMPANY NAME</label>
+                                        <div className="relative group">
+                                            <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                            <input
+                                                required
+                                                type="text"
+                                                className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.company ? 'border-red-500/50' : ''}`}
+                                                placeholder="e.g. LeadLink Enterprise"
+                                                value={formData.company}
+                                                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                                                onBlur={() => handleLeadFieldBlur('company')}
+                                            />
+                                        </div>
+                                        {fieldErrors.company && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.company}</p>}
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">CONTACT PERSON</label>
+                                        <div className="relative group">
+                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                            <input
+                                                required
+                                                type="text"
+                                                className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.contact ? 'border-red-500/50' : ''}`}
+                                                placeholder="Lead representative"
+                                                value={formData.contact}
+                                                onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                                                onBlur={() => handleLeadFieldBlur('contact')}
+                                            />
+                                        </div>
+                                        {fieldErrors.contact && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.contact}</p>}
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">EMAIL ADDRESS</label>
+                                        <div className="relative group">
+                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                            <input
+                                                required
+                                                type="email"
+                                                className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.email ? 'border-red-500/50' : ''}`}
+                                                placeholder="contact@entity.com"
+                                                value={formData.email}
+                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                onBlur={() => handleLeadFieldBlur('email')}
+                                            />
+                                        </div>
+                                        {fieldErrors.email && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.email}</p>}
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">PHONE NUMBER</label>
+                                        <div className="relative group">
+                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                            <input
+                                                type="tel"
+                                                className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.phone ? 'border-red-500/50' : ''}`}
+                                                placeholder="Voice frequency"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                onBlur={() => handleLeadFieldBlur('phone')}
+                                            />
+                                        </div>
+                                        {fieldErrors.phone && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.phone}</p>}
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">ESTIMATED VALUE (₹)</label>
+                                        <div className="relative group">
+                                            <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                            <input required type="number" className="crm-input !pl-12 !py-4 font-bold border-border/40 bg-muted/20" placeholder="Revenue forecast" value={formData.value} onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">PRIORITY</label>
+                                        <select className="crm-input !py-4 font-semibold tracking-widest bg-muted/20 border-border/40 cursor-pointer" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
+                                            <option value="LOW">Low Priority</option>
+                                            <option value="MEDIUM">Medium Priority</option>
+                                            <option value="HIGH">High Priority</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-6 pt-6">
+                                    <button type="button" disabled={createMutation.isPending} onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4 !text-xs font-semibold tracking-wider">CANCEL</button>
+                                    <button type="submit" disabled={createMutation.isPending} className="crm-btn-primary w-full !py-4 !text-xs font-semibold tracking-wider">
+                                        {createMutation.isPending ? 'SAVING...' : 'CREATE LEAD'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
                     </div>
-                </div>
-            )}
-            {/* Assign Lead Modal (Manager only) */}
-            {assignModal.open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
-                    <div className="absolute inset-0 backdrop-blur-md bg-black/60" onClick={() => setAssignModal({ open: false, leadId: null })} />
-                    <div className="rounded-[2rem] w-full max-w-md relative overflow-hidden bg-card border border-border shadow-2xl animate-in zoom-in-95 duration-300">
-                        <div className="p-8 flex justify-between items-start border-b border-border">
-                            <div>
-                                <h2 className="text-xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'Outfit, sans-serif' }}>Assign Lead</h2>
-                                <p className="mt-1 font-medium text-sm tracking-tight text-muted-foreground">Select a team member to assign this lead to</p>
-                            </div>
-                            <button
-                                onClick={() => setAssignModal({ open: false, leadId: null })}
-                                className="p-2.5 rounded-xl transition-all group text-muted-foreground hover:text-foreground"
-                            >
-                                <X className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                            </button>
-                        </div>
-                        <div className="p-8 space-y-6">
-                            <div className="space-y-2">
-                                <label className="crm-label">Assign To</label>
-                                <select
-                                    value={selectedAssignee}
-                                    onChange={(e) => setSelectedAssignee(e.target.value)}
-                                    className="crm-input font-bold appearance-none cursor-pointer bg-background"
-                                >
-                                    <option value="">Select a team member...</option>
-                                    {salesUsers.map(u => (
-                                        <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                                    ))}
-                                </select>
-                            </div>
-                             <div className="flex gap-4 pt-2">
+                )}
+            </AnimatePresence>
+
+            {/* Assignment Modal */}
+            <AnimatePresence>
+                {assignModal.open && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }} 
+                            className="absolute inset-0 backdrop-blur-xl bg-background/60" 
+                            onClick={() => setAssignModal({ open: false, leadId: null })} 
+                        />
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="rounded-[2.5rem] w-full max-w-md relative overflow-hidden bg-background/80 border border-white/10 shadow-2xl backdrop-blur-2xl"
+                        >
+                            <div className="p-8 flex justify-between items-start border-b border-border/40">
+                                <div>
+                                    <h2 className="text-xl font-semibold uppercase tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Assign Lead</h2>
+                                    <p className="mt-2 text-xs font-bold text-muted-foreground">Choose a team member to handle this lead</p>
+                                </div>
                                 <button
-                                    type="button"
-                                    disabled={assignMutation.isPending}
                                     onClick={() => setAssignModal({ open: false, leadId: null })}
-                                    className="crm-btn-secondary w-full !py-3 disabled:opacity-50"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/40"
                                 >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={!selectedAssignee || assignMutation.isPending}
-                                    onClick={async () => {
-                                        if (assignModal.leadId && selectedAssignee) {
-                                            try {
-                                                await assignMutation.mutateAsync({ id: assignModal.leadId, assignedToId: parseInt(selectedAssignee) });
-                                                setAssignModal({ open: false, leadId: null });
-                                            } catch (err) {
-                                                console.error('Failed to assign lead:', err);
-                                            }
-                                        }
-                                    }}
-                                    className="crm-btn-primary w-full !py-3 disabled:opacity-50"
-                                >
-                                    {assignMutation.isPending ? 'Assigning...' : 'Assign Lead'}
+                                    <X size={20} className="opacity-40" />
                                 </button>
                             </div>
-                        </div>
+                            <div className="p-8 space-y-8">
+                                <div className="space-y-3">
+                                    <label className="crm-label font-semibold text-xs tracking-wider ml-1">SELECT USER</label>
+                                    <div className="relative">
+                                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
+                                        <select
+                                            value={selectedAssignee}
+                                            onChange={(e) => setSelectedAssignee(e.target.value)}
+                                            className="crm-input !pl-12 !py-4 font-semibold tracking-widest bg-muted/20 appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Select team member...</option>
+                                            {salesUsers.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name.toUpperCase()} ({u.role})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                 <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        disabled={assignMutation.isPending}
+                                        onClick={() => setAssignModal({ open: false, leadId: null })}
+                                        className="crm-btn-secondary w-full !py-4 !text-xs font-semibold tracking-wider"
+                                    >
+                                        ABORT
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={!selectedAssignee || assignMutation.isPending}
+                                        onClick={async () => {
+                                            if (assignModal.leadId && selectedAssignee) {
+                                                try {
+                                                    await assignMutation.mutateAsync({ id: assignModal.leadId, assignedToId: parseInt(selectedAssignee) });
+                                                    setAssignModal({ open: false, leadId: null });
+                                                } catch (err) {
+                                                    console.error('Failed to assign lead:', err);
+                                                }
+                                            }
+                                        }}
+                                        className="crm-btn-primary w-full !py-4 !text-xs font-semibold tracking-wider"
+                                    >
+                                        {assignMutation.isPending ? 'ASSIGNING...' : 'ASSIGN'}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
-        </>
+                )}
+            </AnimatePresence>
+        </main>
     );
 }
 
 export default function Leads() {
     return (
-        <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
+        <div className="crm-page-container">
             <Sidebar />
             <QueryErrorResetBoundary>
                 {({ reset }) => (
-                    <ErrorBoundary onReset={reset} message="Failed to load leads">
+                    <ErrorBoundary onReset={reset} message="Failed to load personnel pipeline">
                         <LeadsInnerContent />
                     </ErrorBoundary>
                 )}

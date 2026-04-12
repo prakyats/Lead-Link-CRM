@@ -52,7 +52,7 @@ export function MobileKanban({ leads, columns, onUpdateStage, canDrag }: MobileK
       
       {/* Mobile Hint */}
       <div className="mb-6 px-4 py-3 bg-red-500/5 border border-red-500/10 rounded-xl flex items-center justify-center gap-2">
-        <span className="text-red-400 text-[10px] font-bold uppercase tracking-[0.1em] flex items-center gap-2">
+        <span className="text-red-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
           <AlertCircle className="w-3.5 h-3.5" />
           ⚠ Desktop Recommended for Full Pipeline Control
         </span>

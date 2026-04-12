@@ -1,454 +1,163 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Sidebar } from '../components/Sidebar';
 import { 
-    Shield, Users, Info, User, UserPlus, AlertCircle, 
-    CheckCircle2, ChevronDown, Mail, Lock, X, Plus, 
-    ShieldCheck, Target, BarChart3, Search, Eye, EyeOff, Loader2
+    Shield, Info, AlertCircle, CheckCircle2, Activity, Zap, Cpu, Lock
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../utils/api';
-import { validateUserForm, validateName, validateEmail, validatePassword } from '../utils/validation';
-
-interface SystemUser {
-    id: number;
-    name: string;
-    email: string;
-    role: string;
-    createdAt: string;
-    manager?: { name: string };
-}
-
-
-const TableSkeleton = () => (
-    <div className="space-y-4 animate-pulse">
-        {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center gap-4 py-4 px-6 rounded-xl bg-slate-800/20 border border-slate-800/10">
-                <div className="w-10 h-10 rounded-full bg-slate-800/40" />
-                <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-slate-800/40 rounded w-1/4" />
-                    <div className="h-3 bg-slate-800/40 rounded w-1/3" />
-                </div>
-                <div className="w-20 h-6 bg-slate-800/40 rounded-full" />
-                <div className="w-24 h-4 bg-slate-800/40 rounded" />
-            </div>
-        ))}
-    </div>
-);
+import { Sidebar } from '../components/Sidebar';
+import { motion } from 'framer-motion';
 
 export default function Settings() {
     const { user } = useAuth();
 
-    const getInitials = (name: string) => {
-        const trimmed = name.trim();
-        if (!trimmed) return '?';
-        const parts = trimmed.split(/\s+/);
-        if (parts.length > 1 && parts[1][0]) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
-        }
-        return trimmed.charAt(0).toUpperCase();
-    };
-
-    // User list state
-    const [users, setUsers] = useState<SystemUser[]>([]);
-    const [usersLoading, setUsersLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-
-    // Create user form state
-    const [showCreateForm, setShowCreateForm] = useState(false);
-    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'SALES', managerId: '' });
-    const [showPassword, setShowPassword] = useState(false);
-    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-    const [formLoading, setFormLoading] = useState(false);
-    const [availableManagers, setAvailableManagers] = useState<{id: number, name: string}[]>([]);
-
-
     const riskThresholds = [
-        { level: 'High Risk', criteria: 'Last interaction >= 7 days', color: '#F87171', bg: 'rgba(239,68,68,0.1)', icon: AlertCircle },
-        { level: 'Medium Risk', criteria: 'Last interaction 3-6 days', color: '#FBBF24', bg: 'rgba(245,158,11,0.1)', icon: Info },
-        { level: 'Low Risk', criteria: 'Last interaction < 3 days', color: '#4ADE80', bg: 'rgba(74,222,128,0.1)', icon: CheckCircle2 },
+        { 
+            level: 'High Risk', 
+            criteria: 'Last interaction >= 7 days', 
+            token: 'danger',
+            icon: AlertCircle,
+            description: 'Critical follow-up required. Lead is likely cooling and requires immediate re-engagement.'
+        },
+        { 
+            level: 'Medium Risk', 
+            criteria: 'Last interaction 3-6 days', 
+            token: 'warning',
+            icon: Info,
+            description: 'Standard follow-up window. Maintain active engagement to prevent cooling.'
+        },
+        { 
+            level: 'Low Risk', 
+            criteria: 'Last interaction < 3 days', 
+            token: 'success',
+            icon: CheckCircle2,
+            description: 'Lead is active and responsive. Maintain current momentum.'
+        },
     ];
 
-    const fetchUsers = useCallback(async () => {
-        try {
-            setUsersLoading(true);
-            const response = await api.get('/users');
-            setUsers(response.data);
-            
-            // If admin, fetch potential managers for assignment
-            if (user?.role === 'ADMIN') {
-                const managersResponse = await api.get('/users/sales'); // This returns MANAGER + SALES
-                setAvailableManagers(managersResponse.data.filter((u: any) => u.role === 'MANAGER'));
-            }
-        } catch (error: any) {
-            toast.error('Failed to sync user directory');
-            console.error('Failed to fetch users:', error);
-        } finally {
-            setUsersLoading(false);
-        }
-    }, [user?.role]);
-
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
-
-
-    const validateForm = () => {
-        const errors = validateUserForm({
-            name: formData.name,
-            email: formData.email,
-            password: formData.password,
-        });
-        setFieldErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
-
-    const handleFieldBlur = (field: 'name' | 'email' | 'password') => {
-        if (field === 'name') {
-            const err = validateName(formData.name, 'Full name');
-            setFieldErrors(prev => ({ ...prev, name: err || '' }));
-        } else if (field === 'email') {
-            const err = validateEmail(formData.email);
-            setFieldErrors(prev => ({ ...prev, email: err || '' }));
-        } else if (field === 'password') {
-            const err = validatePassword(formData.password);
-            setFieldErrors(prev => ({ ...prev, password: err || '' }));
-        }
-    };
-
-    const handleCreateUser = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!validateForm()) return;
-
-        setFormLoading(true);
-        try {
-            await api.post('/users', {
-                ...formData,
-                managerId: formData.managerId ? parseInt(formData.managerId) : undefined
-            });
-            toast.success('User Provisioned Successfully', {
-                description: `${formData.name} has been added to the system.`
-            });
-            setFormData({ name: '', email: '', password: '', role: 'SALES', managerId: '' });
-            setShowCreateForm(false);
-            fetchUsers();
-        } catch (error: any) {
-
-            const errorMsg = error.response?.data?.error || 'System failed to create user';
-            toast.error('Provisions Failed', { description: errorMsg });
-            if (errorMsg.toLowerCase().includes('email')) {
-                setFieldErrors({ email: 'Email already in use' });
-            }
-        } finally {
-            setFormLoading(false);
-        }
-    };
-
-    const filteredUsers = users.filter(u => 
-        u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        u.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const roleColors: Record<string, { bg: string; color: string; icon: any }> = {
-        ADMIN: { bg: 'rgba(0,212,170,0.15)', color: '#00D4AA', icon: ShieldCheck },
-        MANAGER: { bg: 'rgba(139,92,246,0.15)', color: '#A78BFA', icon: Target },
-        SALES: { bg: 'rgba(245,158,11,0.15)', color: '#FBBF24', icon: BarChart3 },
-    };
-
-    const inputClasses = (fieldName: string) => `
-        w-full px-4 py-2.5 rounded-xl text-sm transition-all duration-300 outline-none
-        ${fieldErrors[fieldName] 
-            ? 'border-red-500/40 bg-red-500/5 ring-4 ring-red-500/10' 
-            : 'border-border bg-muted/10 hover:bg-muted/20 focus:border-[#00D4AA] focus:ring-4 focus:ring-[#00D4AA]/10 focus:bg-background'
-        }
-        border text-foreground placeholder:text-muted-foreground/50
-    `;
-
     return (
-        <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-background text-foreground">
+        <div className="crm-page-container">
             <Sidebar />
-            <main className="flex-1 min-w-0 overflow-y-auto custom-scrollbar">
-                <div className="p-8 max-w-5xl mx-auto">
-                    <header className="mb-10">
-                        <div className="flex items-center gap-2 text-[#00D4AA] mb-2 font-mono text-xs tracking-widest uppercase">
-                            <Shield className="w-4 h-4" />
-                            System Administration
-                        </div>
-                        <h1 className="text-4xl font-bold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>Settings</h1>
-                        <p className="mt-2 text-muted-foreground">Manage your organization's infrastructure and team directory</p>
-                    </header>
+            
+            <main className="crm-main-content">
+                {/* ── Background Effects ── */}
+                <div className="ll-hero-grid opacity-[0.02] dark:opacity-[0.05]" />
+                <div className="ll-orb w-[600px] h-[600px] -top-64 -right-32 bg-primary/5 blur-[120px]" />
+                <div className="ll-orb w-[400px] h-[400px] bottom-0 left-0 bg-purple-500/5 blur-[100px]" />
 
-                    <div className="space-y-8">
-                        {/* User Management Section */}
-                        <section className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-                            <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-[#00D4AA]/10 flex items-center justify-center text-[#00D4AA]">
-                                        <Users className="w-5 h-5" />
+                <div className="relative z-10 h-full overflow-y-auto custom-scrollbar p-10">
+                    <div className="max-w-5xl mx-auto space-y-12">
+                        
+                        <header className="animate-in slide-in-from-top duration-700">
+                            <div className="flex items-center gap-3 text-primary mb-4 font-semibold text-xs uppercase tracking-wider">
+                                <Shield size={14} />
+                                Environmental Calibration
+                            </div>
+                            <h1 className="crm-page-title">System <span className="text-primary">Configs</span></h1>
+                            <p className="crm-page-subtitle max-w-xl mt-3">
+                                Operational benchmarks and authorization parameters governing the organization's frontline infrastructure.
+                            </p>
+                        </header>
+
+                        <div className="space-y-16">
+                            {/* ── Operational Rules Section ── */}
+                            <section className="animate-in fade-in duration-1000">
+                                <div className="flex items-center gap-4 mb-10">
+                                    <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
+                                        <Activity size={24} />
                                     </div>
                                     <div>
-                                        <h2 className="text-lg font-bold">Team Directory</h2>
-                                        <p className="text-xs text-muted-foreground">{users.length} Active System Nodes</p>
+                                        <h2 className="text-xl font-semibold tracking-tight text-foreground uppercase" style={{ fontFamily: 'var(--ll-font-display)' }}>Activity Goals</h2>
+                                        <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider mt-1">Configure your target goals.</p>
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
-                                    <div className="relative group w-full sm:w-auto">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-[#00D4AA] transition-colors" />
-                                        <input 
-                                            type="text" 
-                                            placeholder="Search directory..."
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="pl-9 pr-4 py-2 bg-muted/50 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-[#00D4AA]/50 w-full sm:w-48 md:w-64 transition-all"
-                                        />
-                                    </div>
-                                    <button 
-                                        onClick={() => setShowCreateForm(true)}
-                                        className="px-4 py-2 bg-[#00D4AA] text-primary-foreground rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#00D4AA]/90 transition-all"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                        <span>{user?.role === 'MANAGER' ? 'Add Sales Exec' : 'Provision User'}</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <AnimatePresence>
-                                {showCreateForm && (
-                                    <motion.div 
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="border-b border-border bg-muted/20"
-                                    >
-                                        <div className="p-6">
-                                            <div className="flex items-center justify-between mb-6">
-                                                <h3 className="font-bold text-[#00D4AA] flex items-center gap-2">
-                                                    <Plus className="w-4 h-4" />
-                                                    {user?.role === 'MANAGER' ? 'Expand Your Force' : 'Initialize New Node'}
-                                                </h3>
-
-                                                <button onClick={() => setShowCreateForm(false)} className="text-muted-foreground hover:text-foreground transition-colors">
-                                                    <X className="w-5 h-5" />
-                                                </button>
-                                            </div>
-
-                                            <form onSubmit={handleCreateUser} className="space-y-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Full Identity</label>
-                                                        <input 
-                                                            className={inputClasses('name')}
-                                                            value={formData.name}
-                                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                                            onBlur={() => handleFieldBlur('name')}
-                                                            placeholder="e.g. Satoshi Nakamoto"
-                                                            maxLength={50}
-                                                        />
-                                                        {fieldErrors.name && <p className="text-red-400 text-xs ml-1 mt-1">{fieldErrors.name}</p>}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Encrypted Email</label>
-                                                        <input 
-                                                            className={inputClasses('email')}
-                                                            type="email"
-                                                            value={formData.email}
-                                                            onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                                            onBlur={() => handleFieldBlur('email')}
-                                                            placeholder="identity@leadlink.com"
-                                                            maxLength={100}
-                                                        />
-                                                        {fieldErrors.email && <p className="text-red-400 text-xs ml-1 mt-1">{fieldErrors.email}</p>}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Access Token (Password)</label>
-                                                        <div className="relative">
-                                                            <input 
-                                                                className={inputClasses('password')}
-                                                                type={showPassword ? "text" : "password"}
-                                                                value={formData.password}
-                                                                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                                                onBlur={() => handleFieldBlur('password')}
-                                                                placeholder="••••••••"
-                                                                maxLength={100}
-                                                            />
-                                                            <button 
-                                                                type="button"
-                                                                onClick={() => setShowPassword(!showPassword)}
-                                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#00D4AA] transition-colors"
-                                                            >
-                                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                            </button>
-                                                        </div>
-                                                        {fieldErrors.password && <p className="text-red-400 text-xs ml-1">{fieldErrors.password}</p>}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Access Clearance (Role)</label>
-                                                        <div className="relative">
-                                                            <select 
-                                                                className={inputClasses('role')}
-                                                                style={{ appearance: 'none' }}
-                                                                value={formData.role}
-                                                                disabled={user?.role === 'MANAGER'}
-                                                                onChange={(e) => setFormData({...formData, role: e.target.value})}
-                                                            >
-                                                                <option value="SALES">SALES - Frontline Operations</option>
-                                                                {user?.role === 'ADMIN' && <option value="MANAGER">MANAGER - Oversight Control</option>}
-                                                                {user?.role === 'ADMIN' && <option value="ADMIN">ADMIN - Full Core Access</option>}
-                                                            </select>
-                                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                                                        </div>
-                                                    </div>
-
-                                                    {user?.role === 'ADMIN' && formData.role === 'SALES' && (
-                                                        <div className="space-y-2">
-                                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Team Leader (Manager)</label>
-                                                            <div className="relative">
-                                                                <select 
-                                                                    className={inputClasses('role')}
-                                                                    style={{ appearance: 'none' }}
-                                                                    value={formData.managerId}
-                                                                    onChange={(e) => setFormData({...formData, managerId: e.target.value})}
-                                                                >
-                                                                    <option value="">Unassigned (Solitary Node)</option>
-                                                                    {availableManagers.map(m => (
-                                                                        <option key={m.id} value={m.id}>{m.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    {riskThresholds.map((rule, idx) => (
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: idx * 0.1 }}
+                                            key={rule.level} 
+                                            className={`crm-card group !bg-card/20 backdrop-blur-2xl border-white/5 hover:border-white/10 transition-all duration-500`}
+                                        >
+                                            <div className="flex items-center gap-5 mb-8">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-status-${rule.token}/10 border border-status-${rule.token}/20 text-status-${rule.token} shadow-inner group-hover:scale-110 transition-transform`}>
+                                                    <rule.icon size={24} strokeWidth={2} />
                                                 </div>
-
-                                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                                    <button 
-                                                        type="button" 
-                                                        onClick={() => setShowCreateForm(false)}
-                                                        className="px-6 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted transition-colors font-bold"
-                                                    >
-                                                        Discard
-                                                    </button>
-                                                    <button 
-                                                        type="submit" 
-                                                        disabled={formLoading}
-                                                        className="px-8 py-2.5 rounded-xl text-sm font-bold bg-[#00D4AA] text-primary-foreground disabled:opacity-50 flex items-center gap-2"
-                                                    >
-                                                        {formLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-                                                        Generate Node
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-
-                            <div className="p-6">
-                                {usersLoading ? (
-                                    <TableSkeleton />
-                                ) : (
-                                    <div className="space-y-2">
-                                        <AnimatePresence initial={false}>
-                                            {filteredUsers.map((u, idx) => {
-                                                const rc = roleColors[u.role] || roleColors.SALES;
-                                                const RoleIcon = rc.icon;
-                                                return (
-                                                    <motion.div 
-                                                        layout
-                                                        key={u.id}
-                                                        initial={{ opacity: 0, scale: 0.98 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 rounded-2xl bg-muted/10 border border-border hover:border-[#00D4AA]/30 hover:bg-[#00D4AA]/[0.02] transition-all group"
-                                                    >
-                                                        <div className="flex items-center justify-between w-full md:w-auto md:flex-1">
-                                                            <div className="flex items-center gap-4 min-w-0">
-                                                                <div 
-                                                                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold text-foreground relative flex-shrink-0"
-                                                                    style={{ background: 'var(--crm-teal-glow)', border: '1px solid var(--crm-border)' }}
-                                                                >
-                                                                    {getInitials(u.name)}
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <h4 className="font-bold text-foreground truncate text-sm">{u.name}</h4>
-                                                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                                        <Mail className="w-3 h-3 flex-shrink-0" />
-                                                                        <span className="truncate">{u.email}</span>
-                                                                        {u.manager && (
-                                                                            <>
-                                                                                <span className="mx-1 opacity-50">•</span>
-                                                                                <span className="text-[#00D4AA]/70 font-bold truncate">REPORTING TO: {u.manager.name}</span>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Mobile Dot */}
-                                                            <div className="md:hidden inline-block w-2 h-2 rounded-full bg-[#00D4AA]" />
-                                                        </div>
-                                                        
-                                                        <div className="flex items-center justify-between md:justify-end gap-4 sm:gap-6 w-full md:w-auto pt-2 md:pt-0 border-t border-border md:border-0">
-                                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shrink-0"
-                                                                style={{ background: rc.bg, color: rc.color }}>
-                                                                <RoleIcon className="w-3.5 h-3.5" />
-                                                                {u.role}
-                                                            </div>
-
-                                                            <div className="flex items-center gap-4 shrink-0">
-                                                                <span className="text-xs font-mono text-muted-foreground">
-                                                                    {new Date(u.createdAt).toLocaleDateString('en-US', { 
-                                                                        month: 'short', day: 'numeric', year: 'numeric' 
-                                                                    }).toUpperCase()}
-                                                                </span>
-                                                                {/* Desktop Dot */}
-                                                                <div className="hidden md:inline-block w-2 h-2 rounded-full bg-[#00D4AA]" />
-                                                            </div>
-                                                        </div>
-                                                    </motion.div>
-                                                );
-                                            })}
-                                        </AnimatePresence>
-                                        {filteredUsers.length === 0 && (
-                                            <div className="text-center py-20 bg-muted/10 border border-dashed border-border rounded-3xl">
-                                                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                                                <p className="text-muted-foreground text-sm font-medium">No system nodes found matching your criteria</p>
+                                                <h3 className="text-xs font-semibold tracking-[0.2em] text-foreground uppercase">{rule.level}</h3>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </section>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {riskThresholds.map((rule) => (
-                                <div key={rule.level} className="flex-1 p-4 rounded-2xl border border-border" style={{ background: rule.bg }}>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-background shadow-sm">
-                                            <rule.icon className="w-4 h-4" style={{ color: rule.color }} />
-                                        </div>
-                                        <h3 className="font-bold text-foreground mb-0">{rule.level}</h3>
-                                    </div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#00D4AA] opacity-70 mb-1">Trigger Criteria</p>
-                                    <p className="text-xs font-medium text-foreground opacity-90">{rule.criteria}</p>
+                                            
+                                            <div className="space-y-6">
+                                                <div>
+                                                    <p className="text-xs font-semibold uppercase tracking-wider text-primary/40 mb-2 flex items-center gap-2">
+                                                        <Zap size={10} className="fill-current" />
+                                                        Trigger Protocol
+                                                    </p>
+                                                    <p className="text-sm font-semibold text-foreground tabular-nums tracking-tight uppercase">{rule.criteria}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/20 mb-2">Priority</p>
+                                                    <p className="text-[11px] font-bold text-muted-foreground leading-relaxed italic">"{rule.description}"</p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))}
                                 </div>
-                            ))}
+                            </section>
+
+                            {/* ── Authorization Summary ── */}
+                            <section className="pt-16 border-t border-border/40 animate-in slide-in-from-bottom duration-1000">
+                                <div className="crm-card !bg-primary/[0.03] !border-primary/10 transition-all duration-700 hover:!bg-primary/[0.05] p-12 flex flex-col md:flex-row items-center gap-10">
+                                    <div className="relative group">
+                                        <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className="relative w-28 h-28 rounded-[2rem] bg-primary flex items-center justify-center text-black text-4xl font-semibold shadow-[0_20px_50px_-10px_rgba(0,212,170,0.4)] transition-transform group-hover:scale-105">
+                                            {user?.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="text-center md:text-left flex-1 space-y-6">
+                                        <div className="space-y-1">
+                                            <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider mb-3 border border-primary/20">
+                                                <Lock size={12} fill="currentColor" />
+                                                Authorized Instance
+                                            </div>
+                                            <h3 className="text-4xl font-semibold tracking-tighter text-foreground uppercase tabular-nums" style={{ fontFamily: 'var(--ll-font-display)' }}>{user?.name}</h3>
+                                            <p className="text-sm font-semibold text-muted-foreground/40 tabular-nums lowercase flex items-center justify-center md:justify-start gap-2">
+                                                <Cpu size={14} className="text-primary/20" />
+                                                {user?.email}
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="flex flex-wrap gap-10 items-center justify-center md:justify-start pt-4">
+                                            <div className="space-y-1.5">
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-primary/40 block">System Role</span>
+                                                <span className="text-sm font-semibold text-foreground uppercase tracking-widest bg-white/5 py-1 px-3 rounded-lg border border-white/5">{user?.role}</span>
+                                            </div>
+                                            <div className="w-px h-10 bg-border/40 hidden sm:block" />
+                                            <div className="space-y-1.5">
+                                                <span className="text-xs font-semibold uppercase tracking-wider text-primary/40 block">Account Status</span>
+                                                <span className="flex items-center gap-2">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-status-success shadow-[0_0_10px_var(--status-success)]" />
+                                                    <span className="text-sm font-semibold text-foreground uppercase tracking-widest">Active user</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
                         </div>
                         
-                        <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center group transition-all hover:border-[#00D4AA]/30">
-                            <div className="w-12 h-12 rounded-xl bg-[#00D4AA] flex items-center justify-center text-primary-foreground font-black group-hover:scale-110 transition-transform">
-                                LL
+                        <footer className="mt-24 pt-10 border-t border-border/20 pb-12 flex flex-col md:flex-row md:items-center justify-between gap-6 opacity-40">
+                            <div className="flex items-center gap-4">
+                                <div className="w-2 h-2 rounded-full bg-primary" />
+                                <p className="text-xs font-semibold uppercase tracking-wider text-foreground">LeadLink CRM v1.0.0</p>
                             </div>
-                            <div className="mt-4">
-                                <h4 className="text-sm font-bold text-foreground tracking-wide uppercase">Active Administrator</h4>
-                                <p className="text-xs text-muted-foreground mt-1">{user?.email}</p>
+                            <div className="flex items-center gap-8">
+                                {['Security Ledger', 'Protocol Export', 'Neural Sync'].map(link => (
+                                    <span key={link} className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer">
+                                        {link}
+                                    </span>
+                                ))}
                             </div>
-                            <div className="mt-6 pt-6 border-t border-border w-full">
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Authority Level</p>
-                                <p className="text-xs font-bold text-foreground mt-1 uppercase tracking-widest">{user?.role}</p>
-                            </div>
-                        </div>
+                        </footer>
                     </div>
                 </div>
             </main>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Link, useParams } from 'react-router';
-import { Mail, Phone, Calendar, Star, Plus, Clock, MessageSquare, FileText, Download, X, Send } from 'lucide-react';
+import { Mail, Phone, Calendar, Star, Plus, Clock, MessageSquare, FileText, Download, X, Send, Activity, ShieldAlert, Zap, TrendingUp, UserCheck } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getLeadById, addInteraction } from '../api/leads';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,7 @@ import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -37,6 +38,9 @@ export default function CustomerDetail() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       setIsModalOpen(false);
       setForm({ type: 'CALL', summary: '', outcome: 'Interested', followUpDate: '' });
+      toast.success('Sequence Synchronized', {
+        description: 'New engagement protocol recorded successfully.'
+      });
     }
   });
 
@@ -61,19 +65,21 @@ export default function CustomerDetail() {
 
   useEffect(() => {
     if (leadData?.company) {
-      document.title = `${leadData.company} - Profile`;
+      document.title = `${leadData.company.toUpperCase()} // PROFILE`;
     }
   }, [leadData]);
 
   if (loading) {
     return (
-      <div className="flex" style={{ background: '#0B1120' }}>
+      <div className="crm-page-container">
         <Sidebar />
-        <main className="flex-1 flex items-center justify-center" style={{ background: '#0B1120' }}>
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 mx-auto" style={{ border: '4px solid rgba(0,212,170,0.2)', borderTop: '4px solid #00D4AA' }}></div>
-            <p className="mt-4" style={{ color: '#94A3B8' }}>Loading customer details...</p>
-          </div>
+        <main className="crm-main-content flex items-center justify-center">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-3xl border-4 border-primary/10 border-t-primary animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Activity size={24} className="text-primary animate-pulse" />
+              </div>
+            </div>
         </main>
       </div>
     );
@@ -81,197 +87,245 @@ export default function CustomerDetail() {
 
   if (!leadData) {
     return (
-      <div className="flex" style={{ background: '#0B1120' }}>
+      <div className="crm-page-container">
         <Sidebar />
-        <main className="flex-1 flex items-center justify-center" style={{ background: '#0B1120' }}>
-          <div className="text-center">
-            <p className="text-lg" style={{ color: '#94A3B8' }}>Customer not found</p>
+        <main className="crm-main-content flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <ShieldAlert size={48} className="mx-auto text-status-danger/20" />
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground/40">Lead Not Found</p>
+            <Link to="/leads" className="crm-btn-secondary !inline-flex">Return to Terminal</Link>
           </div>
         </main>
       </div>
     );
   }
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'high': return { bg: 'rgba(239,68,68,0.15)', color: '#F87171' };
-      case 'medium': return { bg: 'rgba(245,158,11,0.15)', color: '#FBBF24' };
-      case 'low': return { bg: 'rgba(74,222,128,0.15)', color: '#4ADE80' };
-      default: return { bg: 'rgba(148,163,184,0.1)', color: '#94A3B8' };
+  const getRiskStatus = (risk: string) => {
+    switch (risk?.toLowerCase()) {
+      case 'high': return { label: 'CRITICAL', color: 'text-status-danger', bg: 'bg-status-danger/10', border: 'border-status-danger/20' };
+      case 'medium': return { label: 'ELEVATED', color: 'text-status-warning', bg: 'bg-status-warning/10', border: 'border-status-warning/20' };
+      case 'low': return { label: 'MINIMAL', color: 'text-status-success', bg: 'bg-status-success/10', border: 'border-status-success/20' };
+      default: return { label: 'STABLE', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
     }
   };
 
-  const riskStyle = getRiskColor(leadData.risk || 'default');
+  const risk = getRiskStatus(leadData.risk || 'default');
 
   return (
-    <div className="flex flex-col md:flex-row h-screen overflow-hidden" style={{ background: '#0B1120' }}>
+    <div className="crm-page-container">
       <Sidebar />
 
-      <main className="flex-1 min-w-0 overflow-auto" style={{ background: '#0B1120' }}>
-        <div className="p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold uppercase tracking-tight" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>{leadData?.company || 'Lead Detail'}</h1>
-            <p className="mt-1" style={{ color: '#64748B' }}>Lead ID: #{id}</p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Customer Profile */}
-            <div className="lg:col-span-1">
-              <div className="rounded-2xl p-6 mb-6" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-2xl" style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)', color: '#0B1120' }}>
-                    {leadData?.company?.charAt(0) || '?'}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>{leadData?.contact}</h2>
-                    <p className="text-sm font-bold uppercase tracking-widest" style={{ color: '#00D4AA' }}>{leadData.company}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4 mb-6">
-                  <div className="flex items-center gap-3">
-                    <Mail className="w-5 h-5" style={{ color: '#64748B' }} />
-                    <span className="text-sm" style={{ color: '#94A3B8' }}>{leadData.email}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="w-5 h-5" style={{ color: '#64748B' }} />
-                    <span className="text-sm" style={{ color: '#94A3B8' }}>{leadData.phone || 'N/A'}</span>
-                  </div>
-                </div>
-
-                <div className="pt-4 space-y-3" style={{ borderTop: '1px solid rgba(148,163,184,0.08)' }}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>Lead Score</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-current" style={{ color: '#FBBF24' }} />
-                      <span className="font-bold" style={{ color: '#F1F5F9' }}>{leadData.leadScore}/100</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>Risk Status</span>
-                    <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest" style={{ background: riskStyle.bg, color: riskStyle.color }}>
-                      {leadData.risk ? leadData.risk.toUpperCase() : 'LOW'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>Deal Value</span>
-                    <span className="font-bold" style={{ color: '#F1F5F9' }}>₹{leadData.value.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>Stage</span>
-                    <span className="crm-badge badge-stage-qualified">{leadData.stage}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>Priority</span>
-                    <span className={`crm-badge ${leadData.priority === 'HIGH' ? 'badge-priority-high' : 'badge-priority-low'}`}>{leadData.priority}</span>
-                  </div>
-                </div>
+      <main className="crm-main-content">
+        {/* ── Background Effects ── */}
+        <div className="ll-hero-grid opacity-[0.02] dark:opacity-[0.05]" />
+        <div className="ll-orb w-[600px] h-[600px] -top-64 -right-32 bg-primary/5 blur-[120px]" />
+        
+        <div className="relative z-10 h-full overflow-y-auto custom-scrollbar p-10">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-12 animate-in slide-in-from-left duration-700">
+              <div className="flex items-center gap-4 mb-3">
+                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[9px] font-semibold uppercase tracking-widest border border-primary/20">
+                    Lead ID: #{id.padStart(4, '0')}
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
               </div>
-
-              {/* Action Buttons */}
-              <div className="space-y-3">
-                {hasPermission(user?.role as Role, 'canOperationalControl') && (
-                  <>
-                    <button 
-                      onClick={() => setIsModalOpen(true)}
-                      className="w-full py-3.5 rounded-xl font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" 
-                      style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)', color: '#0B1120' }}
-                    >
-                      <Plus className="w-4 h-4" />
-                      Log Interaction
-                    </button>
-                    <button className="w-full py-3.5 rounded-xl font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 border border-[#4ADE80]/30 hover:bg-[#4ADE80]/5" style={{ color: '#4ADE80' }}>
-                      <Calendar className="w-4 h-4" />
-                      Manual Follow-up
-                    </button>
-                  </>
-                )}
-                <Link
-                  to={`/pdf-preview/${id}`}
-                  className="block w-full py-3.5 rounded-xl text-center font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all border border-border text-muted-foreground hover:text-foreground"
-                >
-                  <Download className="w-4 h-4" />
-                  Export Data
-                </Link>
-              </div>
+              <h1 className="text-5xl font-semibold uppercase tracking-tighter text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>
+                {leadData.company}
+              </h1>
+              <p className="text-xs font-semibold uppercase tracking-wider mt-3 text-muted-foreground/60 flex items-center gap-3">
+                <Activity size={12} className="text-primary/60" />
+                Active Unit Profile // Operational Analysis
+              </p>
             </div>
 
-            {/* Interaction Timeline */}
-            <div className="lg:col-span-2">
-              <div className="rounded-2xl p-6" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                <h2 className="text-xl font-bold mb-8 uppercase tracking-widest text-foreground">Interaction History</h2>
-
-                <div className="space-y-8">
-                  {leadData.interactions && leadData.interactions.length > 0 ? (
-                    leadData.interactions.map((interaction: any, index: number) => {
-                      const Icon =
-                        interaction.type.toLowerCase() === 'call' ? Phone :
-                          interaction.type.toLowerCase() === 'email' ? Mail :
-                            interaction.type.toLowerCase() === 'meeting' ? MessageSquare :
-                              interaction.type.toLowerCase() === 'whatsapp' ? MessageSquare :
-                                FileText;
-
-                      const iconColors: Record<string, { bg: string; color: string }> = {
-                        call: { bg: 'rgba(0,212,170,0.15)', color: '#00D4AA' },
-                        email: { bg: 'rgba(192,132,252,0.15)', color: '#C084FC' },
-                        meeting: { bg: 'rgba(74,222,128,0.15)', color: '#4ADE80' },
-                        whatsapp: { bg: 'rgba(34,197,94,0.15)', color: '#22C55E' },
-                        default: { bg: 'rgba(148,163,184,0.1)', color: '#94A3B8' },
-                      };
-                      const colors = iconColors[interaction.type.toLowerCase()] || iconColors.default;
-
-                      return (
-                        <div key={interaction.id} className="flex gap-6 group">
-                          <div className="flex flex-col items-center">
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: colors.bg, border: `1px solid ${colors.bg}` }}>
-                              <Icon className="w-5 h-5" style={{ color: colors.color }} />
-                            </div>
-                            {index < (leadData?.interactions?.length || 0) - 1 && (
-                              <div className="w-px h-full mt-4" style={{ background: 'linear-gradient(to bottom, rgba(148,163,184,0.1), transparent)' }}></div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 pb-8">
-                            <div className="flex items-start justify-between mb-3">
-                              <div>
-                                <h3 className="font-bold text-lg text-foreground tracking-tight">{interaction.type.toUpperCase()}</h3>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-[#00D4AA] mt-0.5">Logged by {interaction.performedBy}</p>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                <Clock className="w-3 h-3" />
-                                <span>{formatRelativeTime(interaction.date)}</span>
-                              </div>
-                            </div>
-                            
-                            {interaction.summary && (
-                              <div className="p-4 rounded-xl bg-muted/10 border border-border mb-3">
-                                <p className="text-sm text-foreground/80 leading-relaxed font-medium">{interaction.summary}</p>
-                              </div>
-                            )}
-                            
-                            <div className="flex flex-wrap gap-2">
-                              {interaction.outcome && (
-                                <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-muted/20 border border-border text-foreground">
-                                  Outcome: {interaction.outcome}
-                                </span>
-                              )}
-                              {interaction.followUpDate && (
-                                <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-[#FBBF24]/10 border border-[#FBBF24]/20 text-[#FBBF24] flex items-center gap-1.5">
-                                  <Calendar className="w-3.5 h-3.5" />
-                                  Follow-up: {formatDate(interaction.followUpDate)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-16 rounded-2xl border-2 border-dashed border-border" style={{ color: '#64748B' }}>
-                      <p className="text-sm font-bold uppercase tracking-widest">No Interaction History Found</p>
-                      <p className="text-xs mt-2 opacity-50 font-medium">Log your first client engagement using the button on the left</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+              {/* ── Profile Telemetry Card ── */}
+              <div className="lg:col-span-1 space-y-8 animate-in slide-in-from-bottom duration-700">
+                <div className="crm-card relative overflow-hidden bg-card/40 backdrop-blur-2xl border-white/5 shadow-2xl group">
+                  <div className="flex items-center gap-6 mb-10">
+                    <div className="w-20 h-20 rounded-[2rem] flex items-center justify-center font-semibold text-3xl bg-primary text-black shadow-xl shadow-primary/20 group-hover:scale-110 transition-transform duration-500">
+                      {leadData?.company?.charAt(0) || '?'}
                     </div>
+                    <div>
+                      <h2 className="text-xl font-semibold tracking-tight text-foreground">{leadData?.contact.toUpperCase()}</h2>
+                      <p className="text-xs font-semibold uppercase tracking-wider mt-1 text-primary">{leadData.company}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5 mb-10">
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 transition-colors hover:bg-white/10">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                        <Mail size={18} />
+                      </div>
+                      <span className="text-sm font-bold tracking-tight text-foreground/80">{leadData.email}</span>
+                    </div>
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 transition-colors hover:bg-white/10">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                        <Phone size={18} />
+                      </div>
+                      <span className="text-sm font-bold tracking-tight text-foreground/80">{leadData.phone || 'COMMS OFFLINE'}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-8 space-y-4 border-t border-white/5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40">Engagement Index</span>
+                      <div className="flex items-center gap-2">
+                        <Star className="w-4 h-4 text-status-warning" fill="currentColor" />
+                        <span className="text-sm font-semibold text-foreground tabular-nums">{leadData.leadScore}<span className="text-muted-foreground/20 ml-1">/ 100</span></span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40">Risk Factor</span>
+                      <span className={`px-3 py-1.5 rounded-xl text-[8px] font-semibold uppercase tracking-widest border ${risk.bg} ${risk.color} ${risk.border}`}>
+                        {risk.label} STATUS
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40">Vector Value</span>
+                      <span className="text-lg font-semibold text-primary tracking-tight tabular-nums">₹{leadData.value.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40">Lifecycle Stage</span>
+                      <span className="crm-badge scale-90 origin-right border-primary/20 text-primary bg-primary/5">{leadData.stage}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40">Priority Class</span>
+                      <span className={`crm-badge scale-90 origin-right ${leadData.priority === 'HIGH' ? 'badge-priority-high' : 'badge-priority-low'}`}>{leadData.priority}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Decorative Gradient Overlay */}
+                  <div className="absolute bottom-0 right-0 w-32 h-32 bg-primary/5 blur-[50px] -z-10" />
+                </div>
+
+                {/* ── Action Executement ── */}
+                <div className="space-y-4">
+                  {hasPermission(user?.role as Role, 'canOperationalControl') && (
+                    <>
+                      <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="w-full h-16 rounded-2xl bg-primary text-black font-semibold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl shadow-primary/20" 
+                      >
+                        <Plus size={18} strokeWidth={3} />
+                        Sync Interaction
+                      </button>
+                      <button className="w-full h-16 rounded-2xl bg-white/5 border border-white/10 text-primary font-semibold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all hover:bg-white/10">
+                        <Calendar size={18} />
+                        Schedule Task
+                      </button>
+                    </>
                   )}
+                  <Link
+                    to={`/pdf-preview/${id}`}
+                    className="w-full h-14 rounded-2xl flex items-center justify-center gap-3 text-[9px] font-semibold uppercase tracking-widest transition-all border border-border/40 text-muted-foreground/60 hover:text-foreground hover:bg-muted/10"
+                  >
+                    <Download size={16} />
+                    Export Telemetry
+                  </Link>
+                </div>
+              </div>
+
+              {/* ── Interaction Feed ── */}
+              <div className="lg:col-span-2 animate-in fade-in duration-1000">
+                <div className="crm-card bg-card/20 backdrop-blur-3xl border-white/5">
+                  <div className="flex items-center justify-between mb-12">
+                     <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground flex items-center gap-3">
+                        <TrendingUp size={16} className="text-primary" />
+                        Engagement Chronology
+                     </h2>
+                     <div className="px-3 py-1.5 rounded-xl bg-primary/5 border border-primary/10 text-primary text-[8px] font-semibold uppercase tracking-widest">
+                        Network Synchronized
+                     </div>
+                  </div>
+
+                  <div className="space-y-12 relative">
+                    {/* Continuous Line */}
+                    {leadData.interactions && leadData.interactions.length > 1 && (
+                      <div className="absolute left-7 top-10 bottom-10 w-px bg-gradient-to-b from-primary/40 via-primary/10 to-transparent" />
+                    )}
+
+                    {leadData.interactions && leadData.interactions.length > 0 ? (
+                      leadData.interactions.map((interaction: any, index: number) => {
+                        const Icon =
+                          interaction.type.toLowerCase() === 'call' ? Phone :
+                            interaction.type.toLowerCase() === 'email' ? Mail :
+                              interaction.type.toLowerCase() === 'meeting' ? MessageSquare :
+                                interaction.type.toLowerCase() === 'whatsapp' ? MessageSquare :
+                                  FileText;
+
+                        const iconColors: Record<string, { bg: string; color: string; shadow: string }> = {
+                          call: { bg: 'bg-primary/10', color: 'text-primary', shadow: 'shadow-primary/20' },
+                          email: { bg: 'bg-purple-500/10', color: 'text-purple-400', shadow: 'shadow-purple-500/20' },
+                          meeting: { bg: 'bg-status-success/10', color: 'text-status-success', shadow: 'shadow-status-success/20' },
+                          whatsapp: { bg: 'bg-green-500/10', color: 'text-green-400', shadow: 'shadow-green-500/20' },
+                          default: { bg: 'bg-muted/10', color: 'text-muted-foreground', shadow: 'shadow-none' },
+                        };
+                        const colors = iconColors[interaction.type.toLowerCase()] || iconColors.default;
+
+                        return (
+                          <motion.div 
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            key={interaction.id} 
+                            className="flex gap-10 group relative"
+                          >
+                            <div className="relative z-10 shrink-0">
+                              <div className={`w-14 h-14 rounded-[1.25rem] flex items-center justify-center transition-all duration-500 group-hover:scale-110 border border-white/10 ${colors.bg} ${colors.shadow} shadow-lg`}>
+                                <Icon className={`w-6 h-6 ${colors.color}`} />
+                              </div>
+                            </div>
+
+                            <div className="flex-1 pb-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+                                <div className="space-y-1">
+                                  <h3 className="font-semibold text-xl text-foreground tracking-tight uppercase">{interaction.type}</h3>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
+                                      <UserCheck size={10} className="text-primary" />
+                                    </div>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-primary/60">Verified by {interaction.performedBy}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/30 bg-muted/5 px-3 py-1.5 rounded-xl border border-white/5 h-fit tabular-nums">
+                                  <Clock size={12} className="opacity-40" />
+                                  <span>{formatRelativeTime(interaction.date)}</span>
+                                </div>
+                              </div>
+                              
+                              {interaction.summary && (
+                                <div className="p-6 rounded-3xl bg-muted/[0.03] border border-border/40 mb-5 relative overflow-hidden group-hover:bg-muted/[0.05] transition-all duration-500">
+                                  <p className="text-[13px] text-foreground/70 leading-relaxed font-medium">{interaction.summary}</p>
+                                  <div className="absolute bottom-0 right-0 w-24 h-24 bg-primary/5 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                              )}
+                              
+                              <div className="flex flex-wrap gap-4">
+                                {interaction.outcome && (
+                                  <span className="px-4 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider bg-muted/10 border border-border/40 text-muted-foreground/60">
+                                    RESOLUTION: <span className="text-foreground/80 ml-1">{interaction.outcome.toUpperCase()}</span>
+                                  </span>
+                                )}
+                                {interaction.followUpDate && (
+                                  <span className="px-4 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider bg-status-warning/10 border border-status-warning/20 text-status-warning flex items-center gap-2.5">
+                                    <Calendar size={12} />
+                                    NEXT SYNC: {formatDate(interaction.followUpDate)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-24 rounded-[3rem] border-2 border-dashed border-border/20 bg-muted/[0.02]">
+                        <Activity size={40} className="mx-auto text-muted-foreground/10 mb-6 animate-pulse" />
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40">Chronological Vacuum</h3>
+                        <p className="text-xs mt-3 opacity-30 font-semibold uppercase tracking-wider">Log an activity to get started</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -279,101 +333,120 @@ export default function CustomerDetail() {
         </div>
       </main>
 
-      {/* Interaction Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-x-0 inset-y-0 bg-[#0B1120]/80 backdrop-blur-sm"
-            onClick={() => setIsModalOpen(false)}
-          ></div>
-          <div className="relative w-full max-w-lg bg-[#1A2332] rounded-3xl p-8 border border-white/5 shadow-2xl overflow-hidden scale-in-center">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-bold font-outfit text-white tracking-tight uppercase">Log Interaction</h2>
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">Record engagement with {leadData.company}</p>
-              </div>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-xl hover:bg-white/5 transition-colors text-muted-foreground"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleLogInteraction} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Type</label>
-                  <select 
-                    value={form.type}
-                    onChange={(e) => setForm({...form, type: e.target.value})}
-                    className="w-full h-12 rounded-xl bg-[#0B1120] border border-white/5 px-4 text-sm font-medium focus:border-[#00D4AA] focus:ring-1 focus:ring-[#00D4AA] outline-none transition-all"
-                  >
-                    <option value="CALL">Call</option>
-                    <option value="EMAIL">Email</option>
-                    <option value="MEETING">Meeting</option>
-                    <option value="WHATSAPP">WhatsApp</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+      {/* ── Interaction Modal ── */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 backdrop-blur-xl bg-black/40 dark:bg-black/80"
+              onClick={() => setIsModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 40 }}
+              className="rounded-[3rem] w-full max-w-xl relative overflow-hidden bg-card/90 backdrop-blur-2xl border border-white/10 shadow-[0_32px_120px_-20px_rgba(0,0,0,0.5)]"
+            >
+              <div className="px-10 py-10 flex justify-between items-start border-b border-white/5 relative z-10">
+                <div>
+                  <h2 className="text-3xl font-semibold tracking-tight text-foreground leading-tight uppercase" style={{ fontFamily: 'var(--ll-font-display)' }}>Log Engagement</h2>
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-primary">Synchronizing with {leadData.company}</p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Outcome</label>
-                  <select 
-                    value={form.outcome}
-                    onChange={(e) => setForm({...form, outcome: e.target.value})}
-                    className="w-full h-12 rounded-xl bg-[#0B1120] border border-white/5 px-4 text-sm font-medium focus:border-[#00D4AA] focus:ring-1 focus:ring-[#00D4AA] outline-none transition-all"
-                  >
-                    <option value="Interested">Interested</option>
-                    <option value="Not Interested">Not Interested</option>
-                    <option value="Follow-up Required">Follow-up Required</option>
-                    <option value="No Response">No Response</option>
-                  </select>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-12 h-12 flex items-center justify-center rounded-2xl transition-all group text-muted-foreground/40 hover:text-foreground hover:bg-white/5 border border-white/5"
+                >
+                  <X size={20} className="group-hover:rotate-90 transition-transform" />
+                </button>
+              </div>
+
+              <form onSubmit={handleLogInteraction} className="p-10 space-y-8 relative z-10">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Vector Type</label>
+                    <div className="relative">
+                      <select 
+                        value={form.type}
+                        onChange={(e) => setForm({...form, type: e.target.value})}
+                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer"
+                      >
+                        <option value="CALL">VOICE COMMS</option>
+                        <option value="EMAIL">DIGITAL MAIL</option>
+                        <option value="MEETING">DIRECT MISSION</option>
+                        <option value="WHATSAPP">SIGNAL LINK</option>
+                        <option value="OTHER">OTHER ACTIVITIES</option>
+                      </select>
+                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+                          <Plus size={14} className="rotate-45" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Vector Outcome</label>
+                    <div className="relative">
+                      <select 
+                        value={form.outcome}
+                        onChange={(e) => setForm({...form, outcome: e.target.value})}
+                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer"
+                      >
+                        <option value="Interested">QUALIFIED</option>
+                        <option value="Not Interested">TERMINATED</option>
+                        <option value="Follow-up Required">PENDING SYNC</option>
+                        <option value="No Response">NO RESPONSE</option>
+                      </select>
+                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+                          <Plus size={14} className="rotate-45" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Summary</label>
-                <textarea 
-                  required
-                  placeholder="What was discussed?"
-                  value={form.summary}
-                  onChange={(e) => setForm({...form, summary: e.target.value})}
-                  className="w-full h-32 rounded-xl bg-[#0B1120] border border-white/5 p-4 text-sm font-medium focus:border-[#00D4AA] focus:ring-1 focus:ring-[#00D4AA] outline-none transition-all resize-none"
-                ></textarea>
-              </div>
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Activity Notes</label>
+                  <textarea 
+                    required
+                    placeholder="Log detailed interaction summary..."
+                    value={form.summary}
+                    onChange={(e) => setForm({...form, summary: e.target.value})}
+                    className="crm-input !bg-white/5 !border-white/10 min-h-[140px] !px-6 !py-5 resize-none text-sm font-medium leading-relaxed"
+                  ></textarea>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Schedule Follow-up (Optional)</label>
-                <input 
-                  type="date"
-                  value={form.followUpDate}
-                  onChange={(e) => setForm({...form, followUpDate: e.target.value})}
-                  className="w-full h-12 rounded-xl bg-[#0B1120] border border-white/5 px-4 text-sm font-medium focus:border-[#00D4AA] focus:ring-1 focus:ring-[#00D4AA] outline-none transition-all"
-                />
-              </div>
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Next Synchronization Window</label>
+                  <input 
+                    type="date"
+                    value={form.followUpDate}
+                    onChange={(e) => setForm({...form, followUpDate: e.target.value})}
+                    className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest"
+                  />
+                </div>
 
-              <button 
-                type="submit"
-                disabled={interactionMutation.isPending}
-                className="w-full h-14 rounded-2xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)', color: '#0B1120' }}
-              >
-                {interactionMutation.isPending ? (
-                  <>
-                    <Clock className="w-5 h-5 animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>Save Interaction</span>
-                  </>
-                )}
-              </button>
-            </form>
+                <button 
+                  type="submit"
+                  disabled={interactionMutation.isPending}
+                  className="w-full h-16 rounded-[1.5rem] bg-primary text-black text-xs font-semibold uppercase tracking-wider hover:opacity-90 shadow-xl shadow-primary/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                >
+                  {interactionMutation.isPending ? (
+                    <>
+                      <Clock size={16} className="animate-spin" />
+                      <span>Syncing registry...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={14} fill="currentColor" />
+                      Authorize Registry Link
+                    </>
+                  )}
+                </button>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

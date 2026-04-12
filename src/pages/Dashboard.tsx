@@ -82,12 +82,12 @@ const DashboardContent = () => {
   }, [kpis]);
 
   const colorMap: Record<string, { iconBg: string; iconColor: string }> = {
-    teal: { iconBg: 'rgba(0,212,170,0.15)', iconColor: '#00D4AA' },
-    green: { iconBg: 'rgba(34,197,94,0.15)', iconColor: '#4ADE80' },
-    amber: { iconBg: 'rgba(245,158,11,0.15)', iconColor: '#FBBF24' },
-    red: { iconBg: 'rgba(239,68,68,0.15)', iconColor: '#F87171' },
-    blue: { iconBg: 'rgba(96,165,250,0.15)', iconColor: '#60A5FA' },
-    purple: { iconBg: 'rgba(192,132,252,0.15)', iconColor: '#C084FC' },
+    teal: { iconBg: 'var(--crm-teal-glow)', iconColor: 'var(--crm-teal)' },
+    green: { iconBg: 'rgba(34,197,94,0.12)', iconColor: '#4ADE80' },
+    amber: { iconBg: 'var(--crm-amber-glow)', iconColor: 'var(--crm-amber)' },
+    red: { iconBg: 'rgba(239,68,68,0.12)', iconColor: '#F87171' },
+    blue: { iconBg: 'rgba(96,165,250,0.12)', iconColor: '#60A5FA' },
+    purple: { iconBg: 'rgba(192,132,252,0.12)', iconColor: '#C084FC' },
   };
 
   const completeTaskMutation = useMutation({
@@ -106,360 +106,372 @@ const DashboardContent = () => {
     }
   };
 
-
-
   return (
-    <main className="flex-1 min-w-0 crm-page-container">
-        <div className="max-w-7xl mx-auto space-y-8 p-8">
-          <div className="flex justify-between items-end">
-            <div>
-              <h1 className="text-3xl font-bold uppercase tracking-tight" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>
-                 {isManagerOrAdmin ? 'Dashboard Summary' : 'Sales Dashboard'}
-              </h1>
-              <p className="crm-page-subtitle mt-1" style={{ color: '#64748B' }}>
-                {user?.role === 'ADMIN' ? 'Full enterprise visibility and control' :
-                  user?.role === 'MANAGER' ? 'Team performance and execution oversight' :
-                    'Your daily activity and pipeline status'}
-              </p>
-            </div>
+    <main className="crm-main-content">
+      {/* ── Background Effects (Aligned with Landing Page) ── */}
+      <div className="ll-hero-grid opacity-[0.03] dark:opacity-[0.05]" />
+      <div className="ll-orb w-[600px] h-[600px] -top-64 -right-64 bg-primary/20 blur-[120px]" />
+      <div className="ll-orb w-[400px] h-[400px] -bottom-32 -left-32 bg-purple-500/10 blur-[100px]" />
+
+      <div className="max-w-7xl mx-auto p-8 space-y-8 relative z-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="animate-in slide-in-from-left duration-700">
+            <h1 className="crm-page-title">
+               {isManagerOrAdmin ? 'Dashboard Summary' : 'Sales Dashboard'}
+            </h1>
+            <p className="crm-page-subtitle mt-2">
+              {user?.role === 'ADMIN' ? 'Company-wide operations & analytics' :
+                user?.role === 'MANAGER' ? 'Team performance & sales monitoring' :
+                  'Daily activity & pipeline management'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 animate-in slide-in-from-right duration-700">
             {user?.role === 'ADMIN' && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20">
+              <div className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-primary/10 text-primary border border-primary/20 flex items-center gap-2">
                 <Shield className="w-4 h-4" />
-                ADMIN OVERSIGHT
+                Admin View
               </div>
             )}
+            <p className="text-xs font-semibold uppercase tracking-wider opacity-40">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </p>
           </div>
+        </div>
 
-          {loading ? (
-            <DashboardSkeleton />
-          ) : user?.role === 'MANAGER' && !user?.hasTeam ? (
-            <div className="flex flex-col items-center justify-center p-20 bg-muted/10 border border-dashed border-border rounded-[2.5rem] text-center animate-in zoom-in duration-500">
-               <div className="w-24 h-24 rounded-3xl bg-[#00D4AA]/10 flex items-center justify-center mb-8">
-                  <UserPlus className="w-12 h-12 text-[#00D4AA]" />
-               </div>
-               <h2 className="text-3xl font-bold text-foreground mb-4">Initialize Your Power Team</h2>
-               <p className="text-muted-foreground max-w-md mb-10 leading-relaxed">
-                 You current view is restricted to your own activity. To unlock full team oversight and performance analytics, begin by provisioning your first sales frontline.
-               </p>
-               <Link 
-                  to="/settings"
-                  className="flex items-center justify-center gap-3 px-8 py-4 rounded-2xl text-lg font-black bg-[#00D4AA] text-primary-foreground hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#00D4AA]/20"
-               >
-                  <Plus className="w-6 h-6" />
-                  <span>Provision Sales Node</span>
-               </Link>
+        {loading ? (
+          <DashboardSkeleton />
+        ) : user?.role === 'MANAGER' && !user?.hasTeam ? (
+          <div className="flex flex-col items-center justify-center p-20 glass-morphic border border-dashed border-border rounded-[2.5rem] text-center animate-in zoom-in duration-500">
+             <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center mb-8">
+                <UserPlus className="w-12 h-12 text-primary" />
+             </div>
+             <h2 className="text-3xl font-bold text-foreground mb-4">Build Your Sales Team</h2>
+             <p className="text-muted-foreground max-w-md mb-10 leading-relaxed font-medium">
+               To unlock full team oversight and real-time performance analytics, begin by provisioning your first sales frontline.
+             </p>
+             <Link 
+                to="/team?add=true"
+                className="crm-btn-primary !px-10 !py-4"
+             >
+                <Plus className="w-6 h-6" />
+                <span>Add Sales Personnel</span>
+             </Link>
+          </div>
+        ) : isManagerOrAdmin && managerSummary ? (
+          <div className="space-y-8 animate-in fade-in duration-700">
+            {/* KPI Ribbon */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[
+                { title: 'Activity', value: managerSummary.taskHealth.total, icon: Activity, color: 'blue', label: 'Tasks Created' },
+                { title: 'Completed', value: managerSummary.taskHealth.completed, icon: CheckCircle2, color: 'green', label: 'Tasks Completed' },
+                { title: 'Pending', value: managerSummary.taskHealth.pending, icon: Clock, color: 'amber', label: 'Pending Tasks' },
+                { title: 'Overdue', value: managerSummary.taskHealth.overdue, icon: AlertTriangle, color: 'red', label: 'Overdue Tasks' },
+              ].map((item, i) => {
+                const colors = colorMap[item.color] || colorMap.teal;
+                return (
+                  <div key={item.title} className={`crm-card group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
+                    <div className="flex justify-between items-center mb-4">
+                       <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: colors.iconBg }}>
+                         <item.icon className="w-5 h-5" style={{ color: colors.iconColor }} />
+                       </div>
+                       {item.title === 'Overdue' && item.value > 0 && (
+                          <span className="flex h-3 w-3 rounded-full bg-red-500 shadow-lg shadow-red-500/40 relative">
+                            <span className="absolute inset-0 rounded-full animate-ping bg-red-500 opacity-75"></span>
+                          </span>
+                       )}
+                    </div>
+                    <p className="crm-page-subtitle">{item.title}</p>
+                    <p className={`text-3xl font-bold tracking-tight mt-1 ${item.title === 'Overdue' && item.value > 0 ? 'text-red-400' : 'text-foreground'}`}>{item.value}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider mt-2 opacity-40">{item.label}</p>
+                  </div>
+                );
+              })}
             </div>
-          ) : isManagerOrAdmin && managerSummary ? (
 
-            <div className="space-y-8 animate-in fade-in duration-500">
-              
-              {/* Section 1: Task Health Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {[
-                  { title: 'Today\'s Activity', value: managerSummary.taskHealth.total, icon: Activity, color: 'blue', label: 'Tasks Created' },
-                  { title: 'Completed', value: managerSummary.taskHealth.completed, icon: CheckCircle2, color: 'green', label: 'Today\'s Completion' },
-                  { title: 'Pending', value: managerSummary.taskHealth.pending, icon: Clock, color: 'amber', label: 'Awaiting Action' },
-                  { title: 'Overdue', value: managerSummary.taskHealth.overdue, icon: AlertTriangle, color: 'red', label: '⚠️ HIGH PRIORITY' },
-                ].map((item) => {
-                  const colors = colorMap[item.color] || colorMap.teal;
-                  return (
-                    <div key={item.title} className="crm-card" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                      <div className="flex justify-between items-center mb-4">
-                         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: colors.iconBg }}>
-                           <item.icon className="w-5 h-5" style={{ color: colors.iconColor }} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Team Performance Ledger */}
+              <div className="lg:col-span-2 space-y-8">
+                <div className="crm-card !p-0 overflow-hidden">
+                  <div className="p-8 border-b border-border/40 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10">
+                        <Users2 className="w-5 h-5 text-primary" />
+                      </div>
+                      <h2 className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Team Performance</h2>
+                    </div>
+                    <p className="text-xs font-semibold uppercase tracking-wider opacity-40">Live Status</p>
+                  </div>
+                  <div className="p-8 space-y-4">
+                    {managerSummary.teamPerformance.map((item: any) => (
+                      <div key={item.id} className="p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/10 border border-border/40 hover:bg-muted/20 hover:border-primary/20 transition-all group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 shadow-inner group-hover:rotate-12 transition-transform">
+                            {item.name.charAt(0)}
+                          </div>
+                          <div>
+                             <p className="font-bold text-foreground">{item.name}</p>
+                             <p className="text-xs font-semibold uppercase tracking-wider opacity-40">{item.interactionsWeek} Tasks this week</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-8 pr-4">
+                          <div className="text-center">
+                             <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Queue</p>
+                             <p className="font-bold text-foreground">{item.pending}</p>
+                          </div>
+                          <div className="text-center">
+                             <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Closed</p>
+                             <p className="font-bold text-primary">{item.completed}</p>
+                          </div>
+                          <div className="text-center min-w-[70px]">
+                             <p className="text-[10px] font-bold text-red-500/40 uppercase mb-1">Critical</p>
+                             <p className={`font-bold ${item.overdue > 0 ? 'text-red-500' : 'opacity-20'}`}>
+                               {item.overdue}
+                             </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                   {[
+                     { label: 'Efficiency', value: `${Math.round(managerSummary.keyMetrics.taskCompletionRate)}%`, icon: CheckCircle2, color: 'var(--crm-teal)' },
+                     { label: 'Pipeline', value: managerSummary.keyMetrics.activeLeads, icon: Target, color: '#60A5FA' },
+                     { label: 'Conversion', value: `${Math.round(managerSummary.keyMetrics.conversionRate)}%`, icon: TrendingUp, color: '#C084FC' },
+                   ].map(metric => (
+                      <div key={metric.label} className="crm-card flex items-center gap-4 active:scale-95 cursor-pointer">
+                         <div className="p-3 rounded-xl bg-muted/50 border border-border/40">
+                            <metric.icon className="w-5 h-5" style={{ color: metric.color }} />
                          </div>
-                         {item.title === 'Overdue' && item.value > 0 && (
-                            <span className="animate-pulse flex h-2 w-2 rounded-full bg-red-500"></span>
-                         )}
+                         <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider opacity-40">{metric.label}</p>
+                            <p className="text-xl font-bold text-foreground">{metric.value}</p>
+                         </div>
                       </div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#64748B]">{item.title}</p>
-                      <p className={`text-3xl font-bold tracking-tight mt-1 ${item.title === 'Overdue' && item.value > 0 ? 'text-red-400' : 'text-[#F1F5F9]'}`}>{item.value}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest mt-2 opacity-40">{item.label}</p>
-                    </div>
-                  );
-                })}
+                   ))}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                  
-                  {/* Section 2: Team Performance */}
-                  <div className="crm-card" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#00D4AA]/10">
-                        <Users2 className="w-5 h-5 text-[#00D4AA]" />
-                      </div>
-                      <h2 className="text-lg font-bold text-[#F1F5F9]">Team Execution Status</h2>
+              {/* Operations Side Console */}
+              <div className="space-y-8">
+                 <div className="crm-card !p-0 overflow-hidden">
+                    <div className="p-8 border-b border-border/40 flex items-center justify-between">
+                       <h3 className="font-bold text-foreground flex items-center gap-2">
+                         <AlertTriangle className="w-5 h-5 text-amber-500" />
+                         System Alerts
+                       </h3>
+                       <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/20">
+                         {managerSummary.alerts.length} ALERTS
+                       </span>
                     </div>
-                    <div className="space-y-4">
-                      {managerSummary.teamPerformance.map((item: any) => (
-                        <div key={item.id} className="p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0B1120]/50 border border-white/5 hover:border-[#00D4AA]/20 transition-all">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold border border-purple-500/20">
-                              {item.name.charAt(0)}
-                            </div>
-                            <div>
-                               <p className="font-bold text-[#F1F5F9]">{item.name}</p>
-                               <p className="text-[10px] font-bold uppercase tracking-widest text-[#64748B]">{item.interactionsWeek} Interactions this week</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <div className="text-center">
-                               <p className="text-[10px] font-bold text-[#64748B] uppercase mb-1">Pending</p>
-                               <p className="font-bold text-[#F1F5F9]">{item.pending}</p>
-                            </div>
-                            <div className="text-center">
-                               <p className="text-[10px] font-bold text-[#64748B] uppercase mb-1">Completed</p>
-                               <p className="font-bold text-green-400">{item.completed}</p>
-                            </div>
-                            <div className="text-center min-w-[60px]">
-                               <p className="text-[10px] font-bold text-red-400/60 uppercase mb-1">Overdue</p>
-                               <p className={`font-bold ${item.overdue > 0 ? 'text-red-400' : 'text-[#64748B]'}`}>{item.overdue}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="p-8 space-y-4">
+                       {managerSummary.alerts.length > 0 ? managerSummary.alerts.map((alert: any, idx: number) => (
+                         <div key={idx} className={`p-4 rounded-xl border flex gap-3 transition-colors ${alert.priority === 'HIGH' ? 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10' : 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10'}`}>
+                            <div className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${alert.priority === 'HIGH' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                            <p className="text-xs font-bold leading-relaxed">{alert.message}</p>
+                         </div>
+                       )) : (
+                         <div className="py-12 text-center opacity-30">
+                            <CheckCircle2 className="w-8 h-8 mx-auto mb-4 opacity-20" />
+                            <p className="text-xs font-semibold uppercase tracking-wider">No Active Alerts</p>
+                         </div>
+                       )}
                     </div>
-                  </div>
+                 </div>
 
-                  {/* Section 3: Key Metrics Snapshot */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                     {[
-                       { label: 'Completion Rate', value: `${Math.round(managerSummary.keyMetrics.taskCompletionRate)}%`, icon: CheckCircle2, color: '#00D4AA' },
-                       { label: 'Active Pipeline', value: managerSummary.keyMetrics.activeLeads, icon: Target, color: '#60A5FA' },
-                       { label: 'Conversion', value: `${Math.round(managerSummary.keyMetrics.conversionRate)}%`, icon: TrendingUp, color: '#C084FC' },
-                     ].map(metric => (
-                        <div key={metric.label} className="crm-card flex items-center gap-4" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                           <div className="p-2.5 rounded-lg bg-white/5">
-                              <metric.icon className="w-4 h-4" style={{ color: metric.color }} />
-                           </div>
-                           <div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-[#64748B]">{metric.label}</p>
-                              <p className="text-xl font-bold text-[#F1F5F9]">{metric.value}</p>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-                </div>
-
-                {/* Section 4: Alerts Section */}
-                <div className="space-y-8">
-                   <div className="crm-card !p-0 overflow-hidden" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                      <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                         <h3 className="font-bold text-[#F1F5F9] flex items-center gap-2">
-                           <AlertTriangle className="w-4 h-4 text-amber-400" />
-                           High Attention
-                         </h3>
-                         <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-red-500/10 text-red-500 border border-red-500/20">
-                           {managerSummary.alerts.length} ALERTS
-                         </span>
-                      </div>
-                      <div className="p-6 space-y-4">
-                         {managerSummary.alerts.length > 0 ? managerSummary.alerts.map((alert: any, idx: number) => (
-                           <div key={idx} className={`p-4 rounded-xl border flex gap-3 ${alert.priority === 'HIGH' ? 'bg-red-500/5 border-red-500/20 text-red-200' : 'bg-amber-500/5 border-amber-500/20 text-amber-200'}`}>
-                              <div className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${alert.priority === 'HIGH' ? 'bg-red-500' : 'bg-amber-500'}`} />
-                              <p className="text-xs font-bold leading-relaxed">{alert.message}</p>
-                           </div>
-                         )) : (
-                           <div className="py-12 text-center opacity-40">
-                              <p className="text-[10px] font-bold uppercase">All clear</p>
-                           </div>
-                         )}
-                      </div>
-                   </div>
-
-                   <Link to="/reports" className="crm-card flex items-center justify-between group hover:border-[#00D4AA]/40 transition-all bg-[#00D4AA]/5 border-[#00D4AA]/10">
-                      <div>
-                         <p className="font-bold text-[#00D4AA]">Open Full Reports</p>
-                         <p className="text-[10px] font-bold uppercase text-[#00D4AA]/60">Deep execution analysis</p>
-                      </div>
-                      <ArrowRight className="w-5 h-5 text-[#00D4AA] group-hover:translate-x-1 transition-transform" />
-                   </Link>
-                </div>
+                 <Link to="/reports" className="crm-card flex items-center justify-between group bg-primary/5 border-primary/10 hover:border-primary/30">
+                    <div>
+                       <p className="font-bold text-primary">Detailed Reports</p>
+                       <p className="text-xs font-semibold uppercase tracking-wider opacity-40">View comprehensive analytics</p>
+                    </div>
+                    <ArrowRight className="w-6 h-6 text-primary group-hover:translate-x-1 transition-transform" />
+                 </Link>
               </div>
             </div>
-          ) : (
-            <>
-              {/* Sales Dashboard Content */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {salesKPIs.map((card) => {
-                  const Icon = card.icon;
-                  const colors = colorMap[card.color] || colorMap.teal;
-                  return (
-                    <div key={card.title} className="crm-card crm-card-hover group" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110" style={{ background: colors.iconBg }}>
-                          <Icon className="w-6 h-6" style={{ color: colors.iconColor }} />
-                        </div>
-                        <div className="p-1.5 rounded-lg" style={{ background: 'rgba(148,163,184,0.06)' }}>
-                          <TrendingUp className="w-4 h-4" style={{ color: '#64748B' }} />
-                        </div>
+          </div>
+        ) : (
+          <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Sales KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {salesKPIs.map((card, i) => {
+                const Icon = card.icon;
+                const colors = colorMap[card.color] || colorMap.teal;
+                return (
+                  <div key={card.title} className={`crm-card crm-card-hover group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-inner" style={{ background: colors.iconBg }}>
+                        <Icon className="w-6 h-6" style={{ color: colors.iconColor }} />
                       </div>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-muted-foreground">{card.title}</p>
-                        <p className="text-3xl font-bold tracking-tight text-[#F1F5F9]">{card.value}</p>
-                        <p className="text-xs mt-2 font-medium text-[#64748B]">{card.subtitle}</p>
+                      <div className="p-2 rounded-lg bg-muted/50 border border-border/40">
+                        <TrendingUp className="w-4 h-4 opacity-40" />
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                    <div>
+                      <p className="crm-page-subtitle">{card.title}</p>
+                      <p className="text-3xl font-bold tracking-tight text-foreground">{card.value}</p>
+                      <p className="text-[10px] font-bold uppercase mt-2 opacity-40">{card.subtitle}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                  {/* Recent Activity */}
-                  <div className="crm-card !p-0 overflow-hidden" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                    <div className="p-6 sm:p-8 flex items-center justify-between gap-4" style={{ borderBottom: '1px solid rgba(148,163,184,0.08)' }}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/10 shrink-0">
-                          <BarChart3 className="w-5 h-5 text-purple-400" />
-                        </div>
-                        <h2 className="text-base sm:text-lg font-bold truncate text-[#F1F5F9]">My Recent Pipeline</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Recent Active Pipeline */}
+              <div className="lg:col-span-2 space-y-8">
+                <div className="crm-card !p-0 overflow-hidden">
+                  <div className="p-8 border-b border-border/40 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/10 border border-purple-500/10">
+                        <BarChart3 className="w-5 h-5 text-purple-400" />
                       </div>
-                      <Link to="/kanban" className="crm-btn-secondary !text-[10px] sm:!text-xs !px-3 sm:!px-4 !py-2 shrink-0 border border-white/10 text-[#94A3B8] hover:text-[#F1F5F9]">
-                        View Pipeline <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                      <h2 className="text-lg font-bold text-foreground truncate" style={{ fontFamily: 'var(--ll-font-display)' }}>Recent Leads</h2>
                     </div>
-                    <div className="p-8">
-                      <div className="space-y-4">
-                        {recentLeads.length > 0 ? recentLeads.map((lead: LeadType) => (
-                          <Link key={lead.id} to={`/leads/${lead.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl transition-all group gap-4 border border-white/5 hover:border-[#00D4AA]/20 hover:bg-[#00D4AA]/5">
-                            <div className="flex items-center gap-5 min-w-0">
-                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-[#00D4AA]/10 text-[#00D4AA] border border-[#00D4AA]/20 shrink-0">
-                                {lead.company.charAt(0)}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-lg tracking-tight transition-colors truncate text-[#F1F5F9]">{lead.company}</p>
-                                <div className="flex flex-wrap items-center gap-2 mt-1">
-                                  <span className={`crm-badge shrink-0 ${lead.stage === 'NEW' ? 'badge-stage-new' :
-                                    lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
-                                      lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
-                                          lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
-                                            'badge-stage-lost'
-                                    }`}>
-                                    {lead.stage}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-muted-foreground/30">•</span>
-                                  <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-widest leading-none whitespace-nowrap">
-                                    ₹{lead.value.toLocaleString('en-IN')}
-                                  </span>
-                                </div>
+                    <Link to="/kanban" className="px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider border border-border/40 hover:bg-muted hover:border-primary/20 transition-all flex items-center gap-2">
+                      Full Pipeline <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                  <div className="p-8">
+                    <div className="space-y-4">
+                      {recentLeads.length > 0 ? recentLeads.map((lead: LeadType) => (
+                        <Link key={lead.id} to={`/leads/${lead.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl transition-all group gap-4 bg-muted/10 border border-border/40 hover:bg-primary/5 hover:border-primary/20">
+                          <div className="flex items-center gap-5 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-primary/10 text-primary border border-primary/20 shadow-inner shrink-0 leading-none">
+                              {lead.company.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-lg tracking-tight truncate text-foreground leading-none">{lead.company}</p>
+                              <div className="flex items-center gap-3 mt-2">
+                                <span className={`crm-badge shrink-0 ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                  lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
+                                    lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
+                                        lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
+                                          'badge-stage-lost'
+                                  }`}>
+                                  {lead.stage}
+                                </span>
+                                <span className="text-[10px] font-bold opacity-30 tracking-wider">
+                                  ₹{lead.value.toLocaleString('en-IN')}
+                                </span>
                               </div>
                             </div>
-                            <span className={`crm-badge self-start sm:self-center shrink-0 ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                          </div>
+                          <div className="flex items-center gap-4 self-start sm:self-center">
+                            <span className={`crm-badge shrink-0 ${lead.priority === 'HIGH' ? 'badge-priority-high' :
                               lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
                                 'badge-priority-low'
                               }`}>
                               {lead.priority}
                             </span>
-                          </Link>
-                        )) : (
-                          <div className="py-12 text-center">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#64748B]">No recent activity found</p>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-8">
-                  {/* Quick Actions */}
-                  {hasPermission(user?.role as Role, 'canCreateLeads') && (
-                    <div className="crm-card" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                      <h2 className="text-lg font-bold mb-6 text-[#F1F5F9]">Quick Actions</h2>
-                      <div className="space-y-3">
-                        <Link to="/leads" className="w-full h-12 rounded-xl font-bold uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)', color: '#0B1120' }}>
-                          Add New Lead
                         </Link>
-                        <Link
-                          to="/tasks"
-                          className="w-full h-12 flex items-center justify-center rounded-xl transition-all font-bold uppercase tracking-widest text-[10px] border border-white/10 text-[#94A3B8] hover:bg-white/5 hover:text-[#F1F5F9]"
-                        >
-                          Advanced Task Manager
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* My Tasks Section */}
-                  <div className="crm-card !p-0 overflow-hidden" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
-                    <div className="p-6 pb-4">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#00D4AA]/10">
-                          <CheckCircle2 className="w-5 h-5 text-[#00D4AA]" />
+                      )) : (
+                        <div className="py-16 text-center opacity-30 grayscale">
+                          <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                          <p className="text-xs font-semibold uppercase tracking-wider">No Recent Leads</p>
                         </div>
-                        <h3 className="text-lg font-bold text-[#F1F5F9]">My Tasks</h3>
-                      </div>
-                      
-                      <div className="flex gap-1 p-1 rounded-xl bg-[#0B1120]/50 border border-white/5">
-                        <button 
-                          onClick={() => setActiveTaskTab('today')}
-                          className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTaskTab === 'today' ? 'bg-[#00D4AA] text-[#0B1120]' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
-                        >
-                          Today ({taskSummary.today.length})
-                        </button>
-                        <button 
-                          onClick={() => setActiveTaskTab('overdue')}
-                          className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTaskTab === 'overdue' ? 'bg-red-500 text-white' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
-                        >
-                          Overdue ({taskSummary.overdue.length})
-                        </button>
-                        <button 
-                          onClick={() => setActiveTaskTab('upcoming')}
-                          className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTaskTab === 'upcoming' ? 'bg-purple-500 text-white' : 'text-[#64748B] hover:text-[#F1F5F9]'}`}
-                        >
-                          Next ({taskSummary.upcoming.length})
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-6 pt-2 max-h-[400px] overflow-auto">
-                      <div className="space-y-3">
-                        {taskSummary[activeTaskTab].length > 0 ? (
-                          taskSummary[activeTaskTab].map((task: any) => (
-                            <div key={task.id} className="p-4 rounded-2xl bg-[#0B1120]/30 border border-white/5 group hover:border-white/10 transition-all">
-                              <div className="flex justify-between items-start gap-3">
-                                <div className="min-w-0">
-                                  <p className="text-sm font-bold text-[#F1F5F9] leading-snug">{task.title}</p>
-                                  {task.leadName && (
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#00D4AA] mt-1">{task.leadName}</p>
-                                  )}
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#64748B] mt-1 flex items-center gap-1.5">
-                                    <Calendar className="w-3 h-3" />
-                                    {new Date(task.dueDate).toLocaleDateString()}
-                                  </p>
-                                </div>
-                                <button 
-                                  onClick={() => handleCompleteTask(task.id)}
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-all bg-[#00D4AA]/10 text-[#00D4AA] hover:bg-[#00D4AA] hover:text-[#0B1120]"
-                                  title="Mark as Complete"
-                                >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="py-12 text-center rounded-2xl border border-dashed border-white/5 opacity-50">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#64748B]">Clear for {activeTaskTab}!</p>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-            </>
-          )}
-        </div>
-      </main>
+
+              {/* Action Console */}
+              <div className="space-y-8">
+                {hasPermission(user?.role as Role, 'canCreateLeads') && (
+                  <div className="crm-card">
+                    <h2 className="text-lg font-bold mb-6 text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Quick Actions</h2>
+                    <div className="space-y-3">
+                      <Link to="/leads?open=add" className="crm-btn-primary w-full">
+                        Add New Lead
+                      </Link>
+                      <Link
+                        to="/tasks"
+                        className="w-full h-11 flex items-center justify-center rounded-xl transition-all font-bold uppercase tracking-wider text-[10px] border border-border/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        View All Tasks
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tactical Tasks Console */}
+                <div className="crm-card !p-0 overflow-hidden">
+                  <div className="p-8 pb-4">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 border border-primary/10">
+                        <CheckCircle2 className="w-5 h-5 text-primary" />
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Task Queue</h3>
+                    </div>
+                    
+                    <div className="flex gap-1 p-1 rounded-xl bg-muted/30 border border-border/40">
+                      {[
+                        { id: 'today', count: taskSummary.today.length, label: 'Today' },
+                        { id: 'overdue', count: taskSummary.overdue.length, label: 'Critical' },
+                        { id: 'upcoming', count: taskSummary.upcoming.length, label: 'Next' },
+                      ].map((tab) => (
+                        <button 
+                          key={tab.id}
+                          onClick={() => setActiveTaskTab(tab.id as any)}
+                          className={`flex-1 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${activeTaskTab === tab.id ? (tab.id === 'overdue' ? 'bg-red-500 text-white' : 'bg-primary text-primary-foreground') : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
+                        >
+                          {tab.label} ({tab.count})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-8 pt-2 max-h-[460px] overflow-auto custom-scrollbar">
+                    <div className="space-y-3">
+                      {taskSummary[activeTaskTab].length > 0 ? (
+                        taskSummary[activeTaskTab].map((task: any) => (
+                          <div key={task.id} className="p-5 rounded-2xl bg-muted/20 border border-border/40 group hover:border-primary/20 transition-all duration-300">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-foreground leading-tight">{task.title}</p>
+                                {task.leadName && (
+                                  <Link to={`/leads/${task.leadId}`} className="text-xs font-semibold uppercase tracking-wider text-primary mt-2 block hover:underline">
+                                    {task.leadName}
+                                  </Link>
+                                )}
+                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-2 flex items-center gap-2">
+                                  <Calendar className="w-3.5 h-3.5 opacity-40" />
+                                  {new Date(task.dueDate).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <button 
+                                onClick={() => handleCompleteTask(task.id)}
+                                className="w-9 h-9 rounded-xl flex items-center justify-center transition-all bg-primary/10 text-primary border border-primary/10 hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
+                                title="Complete Task"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-16 text-center rounded-[2rem] border border-dashed border-border/40 opacity-20">
+                          <CheckCircle2 className="w-8 h-8 mx-auto mb-4" />
+                          <p className="text-xs font-semibold uppercase tracking-wider">No pending tasks</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
   );
 };
 
 export default function Dashboard() {
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground" style={{ background: '#0B1120' }}>
+    <div className="crm-page-container">
       <Sidebar />
       <QueryErrorResetBoundary>
         {({ reset }) => (

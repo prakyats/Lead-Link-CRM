@@ -89,7 +89,7 @@ export default function Login() {
                 toast.error('Workspace Not Found', { description: 'Please check your Workspace ID (e.g., demo).' });
             } else if (errorMsg === 'Account not found') {
                 setFieldErrors({ email: 'User account not found' });
-                toast.error('Identity Verification Failed', { description: 'This email is not registered in our records for this workspace.' });
+                toast.error('Login Failed', { description: 'This email is not registered in our records for this workspace.' });
             } else if (errorMsg === 'Incorrect password') {
                 setFieldErrors({ password: 'Password does not match our records' });
                 toast.error('Authentication Error', { description: 'Incorrect password. Please try again.' });
@@ -143,7 +143,7 @@ export default function Login() {
                                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center relative group overflow-hidden" 
                                          style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)' }}>
                                         <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                                        <span className="font-black text-xl text-[#020617] relative z-10">LL</span>
+                                        <span className="font-semibold text-xl text-[#020617] relative z-10">LL</span>
                                     </div>
                                 </motion.div>
                                 
@@ -308,7 +308,7 @@ export default function Login() {
                             >
                                 <CheckCircle2 className="w-10 h-10 text-primary-foreground" />
                             </motion.div>
-                            <h2 className="text-3xl font-black text-foreground mb-3 tracking-tight outline-none">Access Granted</h2>
+                            <h2 className="text-3xl font-semibold text-foreground mb-3 tracking-tight outline-none">Access Granted</h2>
                             <p className="text-muted-foreground font-medium">Redirecting to system core...</p>
                         </motion.div>
                     )}

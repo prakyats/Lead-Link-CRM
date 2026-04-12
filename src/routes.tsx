@@ -13,6 +13,7 @@ const Kanban = lazy(() => import("./pages/Kanban"));
 const CustomerDetail = lazy(() => import("./pages/CustomerDetail"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const Reports = lazy(() => import("./pages/Reports"));
+const Team = lazy(() => import("./pages/Team"));
 const Settings = lazy(() => import("./pages/Settings"));
 const PdfPreview = lazy(() => import("./pages/PdfPreview"));
 
@@ -97,9 +98,19 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/team",
+    element: (
+      <ProtectedRoute allowedRoles={ADMIN_MANAGER}>
+        <Suspense fallback={<PageLoader />}>
+          <Team />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: "/settings",
     element: (
-      <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+      <ProtectedRoute allowedRoles={ADMIN_MANAGER}>
         <Suspense fallback={<PageLoader />}>
           <Settings />
         </Suspense>

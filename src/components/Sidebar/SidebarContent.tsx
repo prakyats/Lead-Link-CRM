@@ -1,5 +1,8 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Users, Columns3, CheckSquare, BarChart3, Settings, LogOut, ChevronRight } from 'lucide-react';
+import { 
+  LayoutDashboard, Users, Columns3, CheckSquare, 
+  BarChart3, Settings, LogOut, Users2, Layers
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 import { Role } from '../../utils/roles';
@@ -9,14 +12,15 @@ interface MenuItem {
   icon: typeof LayoutDashboard;
   label: string;
   path: string;
-  permission: 'canViewReports' | 'canManageSettings' | 'canSeeAllLeads' | 'isAlwaysVisible';
+  permission: 'canViewReports' | 'canManageSettings' | 'canSeeAllLeads' | 'isAlwaysVisible' | 'canShowTeamOversight';
   desktopRecommended?: boolean;
 }
 
 const MENU_ITEMS: MenuItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', permission: 'isAlwaysVisible' },
   { icon: Users, label: 'Leads', path: '/leads', permission: 'isAlwaysVisible' },
-  { icon: Columns3, label: 'Kanban Pipeline', path: '/kanban', permission: 'isAlwaysVisible', desktopRecommended: true },
+  { icon: Columns3, label: 'Kanban', path: '/kanban', permission: 'isAlwaysVisible', desktopRecommended: true },
+  { icon: Users2, label: 'Team', path: '/team', permission: 'canShowTeamOversight' },
   { icon: CheckSquare, label: 'Tasks', path: '/tasks', permission: 'isAlwaysVisible' },
   { icon: BarChart3, label: 'Reports', path: '/reports', permission: 'canViewReports', desktopRecommended: true },
   { icon: Settings, label: 'Settings', path: '/settings', permission: 'canManageSettings' },
@@ -47,129 +51,77 @@ export function SidebarContent({ onClose }: SidebarContentProps) {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'ADMIN': return 'System Admin';
-      case 'MANAGER': return 'Team Manager';
-      case 'SALES': return 'Sales Executive';
+      case 'ADMIN': return 'Admin';
+      case 'MANAGER': return 'Manager';
+      case 'SALES': return 'Sales';
       default: return role;
     }
   };
 
   return (
-    <>
-      <div className="p-8">
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00D4AA, #6EE7B7)' }}>
-              <span className="font-extrabold text-sm" style={{ color: '#0B1120' }}>LL</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight" style={{ color: 'var(--crm-white)', fontFamily: 'Outfit, sans-serif' }}>Lead Link</h1>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#00D4AA' }}></span>
-                <span className="text-[10px] font-bold uppercase tracking-widest leading-none" style={{ color: 'var(--crm-muted-dim)' }}>Enterprise</span>
-              </div>
-            </div>
+    <div className="flex flex-col h-full bg-card border-r border-border">
+      <div className="p-6">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <Layers size={20} className="text-primary-foreground" />
           </div>
-
-          <ThemeToggle
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors hover:scale-105 active:scale-95"
-            style={{
-              background: 'rgba(148, 163, 184, 0.06)',
-              border: '1px solid var(--crm-border)',
-              color: 'var(--crm-white)',
-            }}
-            aria-label="Toggle theme"
-          />
-        </div>
+          <h1 className="text-xl font-bold text-foreground">LeadLink</h1>
+        </Link>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
-        <div className="px-4 mb-4 mt-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--crm-muted-dim)' }}>Main Menu</p>
-        </div>
-        <ul className="space-y-1">
-          {visibleMenuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+      <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+        {visibleMenuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = location.pathname === item.path;
 
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  onClick={onClose}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group"
-                  style={isActive ? {
-                    background: 'linear-gradient(135deg, #00D4AA, #00B894)',
-                    color: '#0B1120',
-                    boxShadow: '0 4px 24px rgba(0, 212, 170, 0.25)',
-                  } : {
-                    color: 'var(--crm-muted)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = 'rgba(148, 163, 184, 0.06)';
-                      e.currentTarget.style.color = '#00D4AA';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'var(--crm-muted)';
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm tracking-tight">{item.label}</span>
-                      {item.desktopRecommended && (
-                        <span className="md:hidden text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 whitespace-nowrap">
-                          ⚠ Desktop
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {isActive && <ChevronRight className="w-4 h-4 opacity-50" />}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={onClose}
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
+                ${isActive 
+                  ? 'bg-primary/10 text-primary font-medium' 
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'}
+              `}
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="p-4" style={{ borderTop: '1px solid var(--crm-border)' }}>
+      <div className="p-4 border-t border-border">
         {user && (
-          <div className="rounded-2xl p-4" style={{ background: 'var(--crm-glass)', border: '1px solid var(--crm-border)' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0, 212, 170, 0.15)', border: '1px solid rgba(0, 212, 170, 0.2)' }}>
-                <span className="font-bold text-xs uppercase tracking-tight" style={{ color: '#00D4AA' }}>
-                  {getInitials(user.name)}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-sm truncate leading-tight" style={{ color: 'var(--crm-white)' }}>{user.name}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: '#00D4AA' }}>
-                  {getRoleLabel(user.role)}
-                </p>
-              </div>
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium flex-shrink-0">
+              {getInitials(user.name)}
             </div>
-
-            <button
-              onClick={() => {
-                onClose?.();
-                logout();
-              }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all active:scale-95"
-              style={{ color: '#F87171', border: '1px solid transparent' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.2)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
-            </button>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{getRoleLabel(user.role)}</p>
+            </div>
           </div>
         )}
+        <div className="flex gap-2">
+          <ThemeToggle
+            className="flex-1 h-9 rounded-md flex items-center justify-center border border-input bg-background hover:bg-muted hover:text-foreground transition-colors text-muted-foreground"
+            aria-label="Toggle theme"
+          />
+          <button
+            onClick={() => {
+              onClose?.();
+              logout();
+            }}
+            className="flex-1 flex items-center justify-center gap-2 h-9 border border-input bg-background hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 text-muted-foreground rounded-md transition-colors"
+            title="Log out"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
