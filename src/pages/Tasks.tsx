@@ -2,17 +2,56 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Calendar, Clock, User, CheckCircle2, Circle, AlertCircle, Filter, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTasks } from '../contexts/TasksContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getTasks, createTask as createTaskApi, toggleCompleteTask } from '../api/tasks';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, isOverdue } from '../utils/dateHelpers';
+import { toast } from 'sonner';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { TaskSkeleton } from '@/components/ui/skeleton';
 import { validateTaskForm, validateTaskTitle, validateDescription, type ValidationErrors } from '../utils/validation';
 
 export default function Tasks() {
-  const { tasks, loading, fetchTasks, toggleComplete, createTask } = useTasks();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: tasks = [], isLoading: loading, isError } = useQuery({
+    queryKey: ['tasks', user?.id],
+    queryFn: getTasks,
+    enabled: !!user?.id,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createTaskApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
+      toast.success('Activity created successfully');
+    },
+    onError: () => {
+      toast.error('Failed to create activity');
+    }
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: toggleCompleteTask,
+    onMutate: async (taskId) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', user?.id] });
+      const previousTasks = queryClient.getQueryData(['tasks', user?.id]);
+      queryClient.setQueryData(['tasks', user?.id], (old: any) =>
+        old?.map((t: any) =>
+          t.id === taskId ? { ...t, status: t.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED' } : t
+        )
+      );
+      return { previousTasks };
+    },
+    onError: (err, variables, context: any) => {
+      queryClient.setQueryData(['tasks', user?.id], context.previousTasks);
+      toast.error('Failed to toggle task status');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', user?.id] });
+    }
+  });
   const [filter, setFilter] = useState<'all' | 'PENDING' | 'COMPLETED'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
@@ -31,7 +70,7 @@ export default function Tasks() {
       return;
     }
     try {
-      await createTask(formData);
+      await createMutation.mutateAsync(formData);
       setIsModalOpen(false);
       setFieldErrors({});
       setFormData({
@@ -48,26 +87,20 @@ export default function Tasks() {
   const handleTaskFieldBlur = (field: 'title' | 'description' | 'dueDate') => {
     if (field === 'title') {
       const err = validateTaskTitle(formData.title);
-      setFieldErrors(prev => ({ ...prev, title: err || '' }));
+      setFieldErrors((prev: ValidationErrors) => ({ ...prev, title: err || '' }));
     } else if (field === 'description') {
       const err = validateDescription(formData.description);
-      setFieldErrors(prev => ({ ...prev, description: err || '' }));
+      setFieldErrors((prev: ValidationErrors) => ({ ...prev, description: err || '' }));
     } else if (field === 'dueDate') {
-      setFieldErrors(prev => ({ ...prev, dueDate: formData.dueDate ? '' : 'Due date and time are required' }));
+      setFieldErrors((prev: ValidationErrors) => ({ ...prev, dueDate: formData.dueDate ? '' : 'Due date and time are required' }));
     }
   };
 
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
 
-  const handleToggle = async (taskId: number) => {
+
+  const handleToggle = (taskId: number) => {
     if (!hasPermission(user?.role as Role, 'canOperationalControl')) return;
-    try {
-      await toggleComplete(taskId);
-    } catch (error) {
-      console.error('Error toggling task:', error);
-    }
+    toggleMutation.mutate(taskId);
   };
 
   const filteredTasks = tasks
@@ -78,8 +111,23 @@ export default function Tasks() {
     })
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-  const pendingCount = tasks.filter((t) => t.status === 'PENDING').length;
-  const completedCount = tasks.filter((t) => t.status === 'COMPLETED').length;
+  const pendingCount = tasks.filter((t: any) => t.status === 'PENDING').length;
+  const completedCount = tasks.filter((t: any) => t.status === 'COMPLETED').length;
+
+  if (isError) {
+    return (
+      <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
+        <Sidebar />
+        <main className="flex-1 min-w-0 p-8 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <h2 className="text-xl font-bold">Failed to load tasks</h2>
+            <button onClick={() => window.location.reload()} className="crm-btn-primary">Retry</button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
@@ -354,8 +402,10 @@ export default function Tasks() {
                 </div>
 
                 <div className="flex gap-4 pt-4">
-                  <button type="button" onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4">Cancel</button>
-                  <button type="submit" className="crm-btn-primary w-full !py-4">Create Activity</button>
+                  <button type="button" disabled={createMutation.isPending} onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4 disabled:opacity-50">Cancel</button>
+                  <button type="submit" disabled={createMutation.isPending} className="crm-btn-primary w-full !py-4 disabled:opacity-50">
+                    {createMutation.isPending ? 'Syncing...' : 'Create Activity'}
+                  </button>
                 </div>
               </form>
             </motion.div>

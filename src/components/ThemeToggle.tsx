@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes@0.4.6";
+import { useTheme } from "next-themes";
 
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement>;
 

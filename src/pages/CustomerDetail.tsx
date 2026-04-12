@@ -2,20 +2,19 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Link, useParams } from 'react-router';
 import { Mail, Phone, Calendar, Star, Plus, Clock, MessageSquare, FileText, Download, X, Send } from 'lucide-react';
-import { useLeads } from '../contexts/LeadsContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getLeadById, addInteraction } from '../api/leads';
 import { useAuth } from '../contexts/AuthContext';
 import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
+import { toast } from 'sonner';
 
 export default function CustomerDetail() {
   const { id } = useParams();
-  const { getLeadById, addInteraction } = useLeads();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [leadData, setLeadData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
   const [form, setForm] = useState({
@@ -25,42 +24,46 @@ export default function CustomerDetail() {
     followUpDate: ''
   });
 
-  const fetchLead = async () => {
-    if (id) {
-      try {
-        const data = await getLeadById(parseInt(id));
-        setLeadData(data);
-      } catch (error) {
-        console.error('Error fetching lead:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+  const { data: leadData, isLoading: loading } = useQuery({
+    queryKey: ['lead', id],
+    queryFn: () => getLeadById(parseInt(id!)),
+    enabled: !!id
+  });
 
-  useEffect(() => {
-    fetchLead();
-  }, [id, getLeadById]);
+  const interactionMutation = useMutation({
+    mutationFn: addInteraction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lead', id] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setIsModalOpen(false);
+      setForm({ type: 'CALL', summary: '', outcome: 'Interested', followUpDate: '' });
+    }
+  });
 
   const handleLogInteraction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
     
-    setIsSubmitting(true);
     try {
-      await addInteraction(parseInt(id), {
-        ...form,
-        date: new Date().toISOString()
+      await interactionMutation.mutateAsync({
+        leadId: parseInt(id),
+        interaction: {
+          ...form,
+          date: new Date().toISOString()
+        }
       });
-      setIsModalOpen(false);
-      setForm({ type: 'CALL', summary: '', outcome: 'Interested', followUpDate: '' });
-      await fetchLead(); // Refresh the lead data to show new interaction
-    } catch (error) {
-      // toast handled in context
-    } finally {
-      setIsSubmitting(false);
+    } catch (error: any) {
+      console.error(error);
+      const message = error.response?.data?.message || 'Failed to record interaction';
+      toast.error(message);
     }
   };
+
+  useEffect(() => {
+    if (leadData?.company) {
+      document.title = `${leadData.company} - Profile`;
+    }
+  }, [leadData]);
 
   if (loading) {
     return (
@@ -98,7 +101,7 @@ export default function CustomerDetail() {
     }
   };
 
-  const riskStyle = getRiskColor(leadData.risk);
+  const riskStyle = getRiskColor(leadData.risk || 'default');
 
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden" style={{ background: '#0B1120' }}>
@@ -107,7 +110,7 @@ export default function CustomerDetail() {
       <main className="flex-1 min-w-0 overflow-auto" style={{ background: '#0B1120' }}>
         <div className="p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold uppercase tracking-tight" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>{leadData.company}</h1>
+            <h1 className="text-3xl font-bold uppercase tracking-tight" style={{ color: '#F1F5F9', fontFamily: 'Outfit, sans-serif' }}>{leadData?.company || 'Lead Detail'}</h1>
             <p className="mt-1" style={{ color: '#64748B' }}>Lead ID: #{id}</p>
           </div>
 
@@ -117,10 +120,10 @@ export default function CustomerDetail() {
               <div className="rounded-2xl p-6 mb-6" style={{ background: '#1A2332', border: '1px solid rgba(148,163,184,0.08)' }}>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-2xl" style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)', color: '#0B1120' }}>
-                    {leadData.company.charAt(0)}
+                    {leadData?.company?.charAt(0) || '?'}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>{leadData.contactName}</h2>
+                    <h2 className="text-xl font-bold" style={{ color: '#F1F5F9' }}>{leadData?.contact}</h2>
                     <p className="text-sm font-bold uppercase tracking-widest" style={{ color: '#00D4AA' }}>{leadData.company}</p>
                   </div>
                 </div>
@@ -223,7 +226,7 @@ export default function CustomerDetail() {
                             <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110" style={{ background: colors.bg, border: `1px solid ${colors.bg}` }}>
                               <Icon className="w-5 h-5" style={{ color: colors.color }} />
                             </div>
-                            {index < leadData.interactions.length - 1 && (
+                            {index < (leadData?.interactions?.length || 0) - 1 && (
                               <div className="w-px h-full mt-4" style={{ background: 'linear-gradient(to bottom, rgba(148,163,184,0.1), transparent)' }}></div>
                             )}
                           </div>
@@ -351,16 +354,19 @@ export default function CustomerDetail() {
 
               <button 
                 type="submit"
-                disabled={isSubmitting}
+                disabled={interactionMutation.isPending}
                 className="w-full h-14 rounded-2xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg, #00D4AA, #00B894)', color: '#0B1120' }}
               >
-                {isSubmitting ? (
-                  <Clock className="w-5 h-5 animate-spin" />
+                {interactionMutation.isPending ? (
+                  <>
+                    <Clock className="w-5 h-5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    Save Interaction
+                    <span>Save Interaction</span>
                   </>
                 )}
               </button>

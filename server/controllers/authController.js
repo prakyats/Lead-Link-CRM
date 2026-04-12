@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const prisma = require('../utils/prisma');
-const { validateAuthBody, normalizeEmail } = require('../utils/validation');
+
 
 /**
  * Login Controller
@@ -12,24 +12,15 @@ async function login(req, res) {
     try {
         const { email, password, organizationSlug } = req.body;
         const orgSlug = (organizationSlug || 'demo').toString().trim().toLowerCase();
-
-        // Validate input
-        if (!orgSlug) {
-            return res.status(400).json({ error: 'Workspace ID is required' });
-        }
-        const { errors, isValid } = validateAuthBody({ email, password }, false);
-        if (!isValid) {
-            const firstError = Object.values(errors)[0];
-            return res.status(400).json({ error: firstError, errors });
-        }
-        const normalizedEmail = normalizeEmail(email);
+        
+        const normalizedEmail = email.trim().toLowerCase();
 
         const org = await prisma.organization.findUnique({
             where: { slug: orgSlug }
         });
 
         if (!org) {
-            return res.status(401).json({ error: 'Workspace not found' });
+            return res.status(401).json({ success: false, message: 'Workspace not found' });
         }
 
         // Find user by org + email (multi-tenant)
@@ -43,13 +34,13 @@ async function login(req, res) {
         });
 
         if (!user) {
-            return res.status(401).json({ error: 'Account not found' });
+            return res.status(401).json({ success: false, message: 'Account not found' });
         }
 
         // Check password using bcrypt
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ error: 'Incorrect password' });
+            return res.status(401).json({ success: false, message: 'Incorrect password' });
         }
 
         // Generate JWT token
@@ -71,17 +62,19 @@ async function login(req, res) {
 
         res.json({
             success: true,
-            token,
-            user: {
-                ...userProfile,
-                organizationId: org.id,
-                organizationSlug: org.slug
+            data: {
+                token,
+                user: {
+                    ...userProfile,
+                    organizationId: org.id,
+                    organizationSlug: org.slug
+                }
             }
         });
 
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Login failed' });
+        res.status(500).json({ success: false, message: 'Login failed' });
     }
 }
 
@@ -95,18 +88,14 @@ async function register(req, res) {
         const orgSlug = (organizationSlug || 'demo').toString().trim().toLowerCase();
 
         if (!orgSlug || !role) {
-            return res.status(400).json({ error: 'Organization and role are required' });
+            return res.status(400).json({ success: false, message: 'Organization and role are required' });
         }
-        const { errors, isValid } = validateAuthBody({ name, email, password }, true);
-        if (!isValid) {
-            const firstError = Object.values(errors)[0];
-            return res.status(400).json({ error: firstError, errors });
-        }
-        const normalizedEmail = normalizeEmail(email);
+        
+        const normalizedEmail = email.trim().toLowerCase();
         const trimmedName = name.trim();
 
         const org = await prisma.organization.findUnique({ where: { slug: orgSlug } });
-        if (!org) return res.status(400).json({ error: 'Organization not found' });
+        if (!org) return res.status(400).json({ success: false, message: 'Organization not found' });
 
         // Check if user already exists (per tenant)
         const existingUser = await prisma.user.findUnique({
@@ -119,7 +108,7 @@ async function register(req, res) {
         });
 
         if (existingUser) {
-            return res.status(400).json({ error: 'An account with this email already exists in this workspace' });
+            return res.status(400).json({ success: false, message: 'An account with this email already exists in this workspace' });
         }
 
         // Hash password
@@ -142,11 +131,13 @@ async function register(req, res) {
 
         res.status(201).json({
             success: true,
-            user: userProfile
+            data: {
+                user: userProfile
+            }
         });
     } catch (error) {
         console.error('Registration error:', error);
-        res.status(500).json({ error: 'Registration failed' });
+        res.status(500).json({ success: false, message: 'Registration failed' });
     }
 }
 

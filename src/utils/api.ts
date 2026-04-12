@@ -50,6 +50,15 @@ api.interceptors.response.use(
     (response) => {
         setGlobalLoading(false);
         setGlobalColdStartMessage(null);
+        
+        // Handle standardized success envelope
+        if (response.data && response.data.success === true && response.data.data !== undefined) {
+            return {
+                ...response,
+                data: response.data.data
+            };
+        }
+        
         return response;
     },
     async (error: AxiosError) => {
@@ -95,7 +104,8 @@ api.interceptors.response.use(
 
         // Standard error toast for non-auth errors
         if (!isLoginRequest && error.response?.status !== 404) {
-            toast.error(error.message || "An unexpected error occurred.");
+            const serverMessage = (error.response?.data as any)?.message;
+            toast.error(serverMessage || error.message || "An unexpected error occurred.");
         }
 
         return Promise.reject(error);

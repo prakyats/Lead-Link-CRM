@@ -28,6 +28,8 @@ async function main() {
     console.log(`Success! Updated ${result} leads to 'INTERESTED'.`);
   } catch (error) {
     console.error('Error during data mapping:', error);
+    await prisma.$disconnect();
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }

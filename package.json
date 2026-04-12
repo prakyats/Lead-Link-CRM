@@ -1,5 +1,5 @@
 {
-      "name": "CRM Web Application Prototype",
+      "name": "crm-web-application-prototype",
       "version": "0.1.0",
       "private": true,
       "dependencies": {
@@ -30,9 +30,11 @@
             "@radix-ui/react-toggle-group": "^1.1.2",
             "@radix-ui/react-tooltip": "^1.1.8",
             "@tailwindcss/vite": "^4.1.18",
+            "@tanstack/react-query": "^5.99.0",
+            "@tanstack/react-query-devtools": "^5.99.0",
             "axios": "^1.13.4",
             "class-variance-authority": "^0.7.1",
-            "clsx": "*",
+            "clsx": "^2.1.1",
             "cmdk": "^1.1.1",
             "embla-carousel-react": "^8.6.0",
             "framer-motion": "^12.38.0",
@@ -42,29 +44,32 @@
             "next-themes": "^0.4.6",
             "react": "^18.3.1",
             "react-day-picker": "^8.10.1",
-            "react-dnd": "*",
-            "react-dnd-html5-backend": "*",
+            "react-dnd": "^16.0.1",
+            "react-dnd-html5-backend": "^16.0.1",
             "react-dom": "^18.3.1",
             "react-hook-form": "^7.55.0",
             "react-resizable-panels": "^2.1.7",
-            "react-router": "*",
+            "react-router": "^7.2.0",
             "recharts": "^2.15.2",
             "sonner": "^2.0.3",
-            "tailwind-merge": "*",
+            "tailwind-merge": "^3.4.0",
             "tailwindcss": "^4.1.18",
-            "vaul": "^1.1.2"
+            "vaul": "^1.1.2",
+            "zod": "^4.3.6"
       },
       "devDependencies": {
             "@types/node": "^20.10.0",
             "@types/react": "^19.2.13",
             "@types/react-dom": "^19.2.3",
             "@vitejs/plugin-react-swc": "^3.10.2",
+            "concurrently": "^9.2.1",
             "typescript": "^5.9.3",
             "vite": "6.3.5"
       },
       "scripts": {
             "dev": "vite",
             "dev:api": "npm --prefix server run dev",
-            "build": "vite build"
+            "build": "vite build",
+            "start:all": "concurrently -k -n SERVER,CLIENT \"npm run dev --prefix server\" \"npm run dev\""
       }
 }

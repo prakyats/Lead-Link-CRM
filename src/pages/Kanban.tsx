@@ -4,7 +4,9 @@ import { Link, useNavigate } from 'react-router';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus } from 'lucide-react';
-import { useLeads } from '../contexts/LeadsContext';
+import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
+import { getLeads, updateLeadStage as updateLeadStageApi } from '../api/leads';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
 import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -115,6 +117,7 @@ function Column({ title, stage, leads, count, color, onDrop, canDrag }: ColumnPr
     purple: '#C084FC',
     green: '#4ADE80',
     blue: '#60A5FA',
+    red: '#F87171',
   };
 
   const dotColor = colorVariants[color] || colorVariants.teal;
@@ -149,21 +152,43 @@ function Column({ title, stage, leads, count, color, onDrop, canDrag }: ColumnPr
   );
 }
 
-function KanbanContent() {
-  const { leads, loading, fetchLeads, updateLeadStage } = useLeads();
+function KanbanInnerContent() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  const { data: leads = [], isLoading: loading } = useQuery({
+    queryKey: ['leads'],
+    queryFn: getLeads,
+    enabled: !!user?.id
+  });
+
   const canDrag = user?.role !== 'ADMIN';
   const isMobile = useMediaQuery('(max-width: 767px)');
 
-  useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+  const stageMutation = useMutation({
+    mutationFn: updateLeadStageApi,
+    onMutate: async ({ id: leadId, stage: newStage }) => {
+      await queryClient.cancelQueries({ queryKey: ['leads'] });
+      const previousLeads = queryClient.getQueryData(['leads']);
+      queryClient.setQueryData(['leads'], (old: any) => 
+        old?.map((l: any) => l.id === leadId ? { ...l, stage: newStage } : l)
+      );
+      return { previousLeads };
+    },
+    onError: (err, variables, context: any) => {
+      queryClient.setQueryData(['leads'], context.previousLeads);
+      toast.error('Failed to update pipeline stage');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    }
+  });
 
   const navigate = useNavigate();
 
   const handleDrop = async (leadId: number, newStage: Lead['stage']) => {
     try {
-      await updateLeadStage(leadId, newStage);
+      await stageMutation.mutateAsync({ id: leadId, stage: newStage });
       // Nudge after update
       toast.success(`Stage updated to ${newStage}`, {
         description: 'Would you like to log the interaction details now?',
@@ -187,10 +212,7 @@ function KanbanContent() {
   ];
 
   return (
-    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-background">
-      <Sidebar />
-
-      <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-background">
+    <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-background">
         
         {/* Desktop Header */}
         <div className="hidden md:block p-8 pb-4 shrink-0">
@@ -237,7 +259,7 @@ function KanbanContent() {
             <KanbanSkeleton />
           </div>
         ) : isMobile ? (
-          <MobileKanban leads={leads} columns={columns} onUpdateStage={updateLeadStage} canDrag={canDrag} />
+          <MobileKanban leads={leads} columns={columns} onUpdateStage={async (id, stage) => { await stageMutation.mutateAsync({ id, stage }); }} canDrag={canDrag} />
         ) : (
           <div className="flex-1 overflow-x-auto overflow-y-hidden px-8 pb-8 flex gap-6 custom-scrollbar">
             {columns.map((column) => (
@@ -255,6 +277,20 @@ function KanbanContent() {
           </div>
         )}
       </main>
+  );
+}
+
+function KanbanContent() {
+  return (
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-background">
+      <Sidebar />
+      <QueryErrorResetBoundary>
+        {({ reset }) => (
+          <ErrorBoundary onReset={reset} message="Failed to load pipeline board">
+            <KanbanInnerContent />
+          </ErrorBoundary>
+        )}
+      </QueryErrorResetBoundary>
     </div>
   );
 }

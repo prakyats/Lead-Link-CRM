@@ -2,30 +2,18 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { useParams, Link } from 'react-router';
 import { Download, ArrowLeft, Mail, Phone, Calendar, Star } from 'lucide-react';
-import { useLeads } from '../contexts/LeadsContext';
+import { useQuery } from '@tanstack/react-query';
+import { getLeadById } from '../api/leads';
 import jsPDF from 'jspdf';
 
 export default function PdfPreview() {
   const { id } = useParams();
-  const { getLeadById } = useLeads();
-  const [leadData, setLeadData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchLead = async () => {
-      if (id) {
-        try {
-          const data = await getLeadById(parseInt(id));
-          setLeadData(data);
-        } catch (error) {
-          console.error('Error fetching lead:', error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    fetchLead();
-  }, [id, getLeadById]);
+  
+  const { data: leadData, isLoading: loading } = useQuery({
+    queryKey: ['lead', id],
+    queryFn: () => getLeadById(parseInt(id!)),
+    enabled: !!id
+  });
 
   const handleDownload = () => {
     if (!leadData) return;
@@ -274,10 +262,10 @@ export default function PdfPreview() {
                     <p className="text-sm mb-1" style={{ color: '#64748B' }}>Risk Status</p>
                     <p className="font-semibold uppercase" style={{ color: '#0F172A' }}>{leadData.risk || 'LOW'}</p>
                   </div>
-                  <div>
-                    <p className="text-sm mb-1" style={{ color: '#64748B' }}>Last Updated</p>
-                    <p className="font-semibold" style={{ color: '#0F172A' }}>{new Date(leadData.lastInteraction).toLocaleDateString()}</p>
-                  </div>
+                    <div>
+                      <p className="text-sm mb-1" style={{ color: '#64748B' }}>Last Updated</p>
+                      <p className="font-semibold" style={{ color: '#0F172A' }}>{leadData.lastInteraction ? new Date(leadData.lastInteraction).toLocaleDateString() : 'Never'}</p>
+                    </div>
                 </div>
               </div>
 

@@ -42,7 +42,12 @@ check_db.js
 Thumbs.db
 
 # Prisma
-server/prisma/migrations/ 
+# NOTE: migrations/ is intentionally NOT ignored — migration files are version-controlled source of truth
 
-# Vite cache
-.vite/
+# Meta
+.agent/
+.gemini/
+.gsd/
+scratch/
+GSD-STYLE.md
+

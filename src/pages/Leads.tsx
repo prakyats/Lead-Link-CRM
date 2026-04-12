@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck } from 'lucide-react';
-import { useLeads, Lead } from '../contexts/LeadsContext';
+import { useQuery, useMutation, useQueryClient, keepPreviousData, QueryErrorResetBoundary } from '@tanstack/react-query';
+import { getLeads, createLead as createLeadApi, assignLead as assignLeadApi, LeadType as Lead } from '../api/leads';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
@@ -10,9 +13,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { validateLeadForm, validateCompany, validateName, validateEmail, validatePhone, type ValidationErrors } from '../utils/validation';
 
-export default function Leads() {
-    const { leads, loading, fetchLeads, createLead, assignLead } = useLeads();
+function LeadsInnerContent() {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
     const [searchTerm, setSearchTerm] = useState('');
@@ -38,11 +41,14 @@ export default function Leads() {
         maxValue: ''
     });
 
-    const canAssign = hasPermission(user?.role as Role, 'canAssignLeads');
+    const { data: leads = [], isLoading: loading, isError } = useQuery({
+        queryKey: ['leads', filterSettings],
+        queryFn: getLeads,
+        enabled: !!user?.id,
+        placeholderData: (prev) => prev,
+    });
 
-    useEffect(() => {
-        fetchLeads();
-    }, [fetchLeads]);
+    const canAssign = hasPermission(user?.role as Role, 'canAssignLeads');
 
     // Fetch sales users for the assign dropdown (Managers only)
     useEffect(() => {
@@ -55,6 +61,24 @@ export default function Leads() {
 
     const canCreate = hasPermission(user?.role as Role, 'canCreateLeads');
 
+    const createMutation = useMutation({
+        mutationFn: createLeadApi,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['leads'] });
+            toast.success('Lead added successfully');
+        },
+        onError: () => toast.error('Failed to add lead')
+    });
+
+    const assignMutation = useMutation({
+        mutationFn: assignLeadApi,
+        onSuccess: () => {
+             queryClient.invalidateQueries({ queryKey: ['leads'] });
+             toast.success('Lead assigned successfully');
+        },
+        onError: () => toast.error('Failed to assign lead')
+    });
+
     const handleCreateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const errors = validateLeadForm(formData);
@@ -63,7 +87,7 @@ export default function Leads() {
             return;
         }
         try {
-            await createLead(formData);
+            await createMutation.mutateAsync(formData);
             setIsModalOpen(false);
             setFieldErrors({});
             setFormData({
@@ -83,24 +107,24 @@ export default function Leads() {
     const handleLeadFieldBlur = (field: keyof typeof formData) => {
         if (field === 'company') {
             const err = validateCompany(formData.company);
-            setFieldErrors(prev => ({ ...prev, company: err || '' }));
+            setFieldErrors((prev: ValidationErrors) => ({ ...prev, company: err || '' }));
         } else if (field === 'contact') {
             const err = validateName(formData.contact, 'Contact name');
-            setFieldErrors(prev => ({ ...prev, contact: err || '' }));
+            setFieldErrors((prev: ValidationErrors) => ({ ...prev, contact: err || '' }));
         } else if (field === 'email') {
             const err = validateEmail(formData.email);
-            setFieldErrors(prev => ({ ...prev, email: err || '' }));
+            setFieldErrors((prev: ValidationErrors) => ({ ...prev, email: err || '' }));
         } else if (field === 'phone') {
             const err = validatePhone(String(formData.phone || ''));
-            setFieldErrors(prev => ({ ...prev, phone: err || '' }));
+            setFieldErrors((prev: ValidationErrors) => ({ ...prev, phone: err || '' }));
         }
     };
 
     const filteredLeads = leads.filter(lead => {
         const matchesSearch = 
-            lead.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            lead.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            lead.email.toLowerCase().includes(searchTerm.toLowerCase());
+            (lead.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (lead.contact || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (lead.email || '').toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesStage = filterSettings.stage === 'ALL' || lead.stage === filterSettings.stage;
         const matchesPriority = filterSettings.priority === 'ALL' || lead.priority === filterSettings.priority;
@@ -113,8 +137,7 @@ export default function Leads() {
     });
 
     return (
-        <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
-            <Sidebar />
+        <>
             <main className="flex-1 min-w-0 crm-page-container">
                 <div className="max-w-7xl mx-auto space-y-8">
                     <div className="flex justify-between items-end">
@@ -173,6 +196,7 @@ export default function Leads() {
                                             onChange={(e) => setFilterSettings({ ...filterSettings, stage: e.target.value })}
                                             className="crm-input text-xs font-bold bg-card border-border"
                                         >
+                                            <option value="ALL">ALL STAGES</option>
                                             <option value="NEW">NEW LEAD</option>
                                             <option value="CONTACTED">CONTACTED</option>
                                             <option value="INTERESTED">INTERESTED</option>
@@ -225,7 +249,8 @@ export default function Leads() {
                                 </div>
                             </motion.div>
                         )}
-                    </AnimatePresence>                    {/* Main Content (Responsive Table / Cards) */}
+                    </AnimatePresence>
+
                     {/* Main Content (Responsive Table / Cards) */}
                     <div className="min-h-[400px]">
                         {loading ? (
@@ -522,8 +547,10 @@ export default function Leads() {
                             </div>
 
                             <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4">Cancel</button>
-                                <button type="submit" className="crm-btn-primary w-full !py-4">Add Lead</button>
+                                <button type="button" disabled={createMutation.isPending} onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4 disabled:opacity-50">Cancel</button>
+                                <button type="submit" disabled={createMutation.isPending} className="crm-btn-primary w-full !py-4 disabled:opacity-50">
+                                    {createMutation.isPending ? 'Processing...' : 'Add Lead'}
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -560,21 +587,22 @@ export default function Leads() {
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex gap-4 pt-2">
+                             <div className="flex gap-4 pt-2">
                                 <button
                                     type="button"
+                                    disabled={assignMutation.isPending}
                                     onClick={() => setAssignModal({ open: false, leadId: null })}
-                                    className="crm-btn-secondary w-full !py-3"
+                                    className="crm-btn-secondary w-full !py-3 disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={!selectedAssignee}
+                                    disabled={!selectedAssignee || assignMutation.isPending}
                                     onClick={async () => {
                                         if (assignModal.leadId && selectedAssignee) {
                                             try {
-                                                await assignLead(assignModal.leadId, parseInt(selectedAssignee));
+                                                await assignMutation.mutateAsync({ id: assignModal.leadId, assignedToId: parseInt(selectedAssignee) });
                                                 setAssignModal({ open: false, leadId: null });
                                             } catch (err) {
                                                 console.error('Failed to assign lead:', err);
@@ -583,13 +611,28 @@ export default function Leads() {
                                     }}
                                     className="crm-btn-primary w-full !py-3 disabled:opacity-50"
                                 >
-                                    Assign Lead
+                                    {assignMutation.isPending ? 'Assigning...' : 'Assign Lead'}
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
+        </>
+    );
+}
+
+export default function Leads() {
+    return (
+        <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
+            <Sidebar />
+            <QueryErrorResetBoundary>
+                {({ reset }) => (
+                    <ErrorBoundary onReset={reset} message="Failed to load leads">
+                        <LeadsInnerContent />
+                    </ErrorBoundary>
+                )}
+            </QueryErrorResetBoundary>
         </div>
     );
 }

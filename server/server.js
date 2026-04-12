@@ -2,6 +2,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -10,13 +12,20 @@ const tasksRoutes = require('./routes/tasks');
 const dashboardRoutes = require('./routes/dashboard');
 const usersRoutes = require('./routes/users');
 const interactionsRoutes = require('./routes/interactions');
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// ✅ Trust proxy in production (for correct IP detection)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // ✅ Allowed origins
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   process.env.FRONTEND_URL // Render frontend URL
 ];
 
@@ -47,12 +56,19 @@ app.use((req, res, next) => {
 });
 
 // Routes
+// Apply strict limiter to login, general limiter to all other API routes
+app.use('/api/auth/login', authLimiter);
+app.use('/api', apiLimiter);
+
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/interactions', interactionsRoutes);
+
+// Swagger Documentation
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -63,13 +79,18 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('🔥 Error:', err.message);
   res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error'
+    success: false,
+    message: err.message || 'Internal Server Error',
+    errors: err.errors || []
   });
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
 });
 
 // Start server

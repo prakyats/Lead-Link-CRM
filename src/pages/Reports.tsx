@@ -167,8 +167,8 @@ export default function Reports() {
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                         {data.salesComparison.map((row: any) => (
-                            <tr key={row.name} className="hover:bg-white/[0.02] transition-colors">
+                         {data.salesComparison.map((row: any, index: number) => (
+                            <tr key={row.id ?? `${row.name}-${index}`} className="hover:bg-white/[0.02] transition-colors">
                                <td className="p-6">
                                   <div className="flex items-center gap-3">
                                      <div className="w-8 h-8 rounded-lg bg-[#00D4AA]/10 flex items-center justify-center text-[#00D4AA] font-bold text-xs">
