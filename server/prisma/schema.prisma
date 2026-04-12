@@ -49,7 +49,6 @@ model Lead {
   stage           Stage
   leadScore       Int
   lastInteraction DateTime?
-  testField       String?
   createdAt       DateTime      @default(now())
   assignedToId    Int
   interactions    Interaction[]
@@ -68,7 +67,7 @@ model Task {
   title        String
   description  String?
   dueDate      DateTime?
-  status       String     @default("PENDING")
+  status       TaskStatus @default(PENDING)
   priority     Priority
   createdAt    DateTime   @default(now())
   completedAt  DateTime?

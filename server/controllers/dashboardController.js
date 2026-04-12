@@ -79,14 +79,17 @@ async function getKPIs(req, res) {
         const generateTrend = () => parseFloat((Math.random() * 20 - 5).toFixed(1));
 
         res.json({
-            totalLeads: { value: totalLeads, trend: generateTrend() },
-            activeCustomers: { value: activeCustomers, trend: generateTrend() },
-            pendingFollowUps: { value: pendingFollowUps, trend: generateTrend() },
-            atRiskCustomers: { value: atRiskCustomers, trend: generateTrend() }
+            success: true,
+            data: {
+                totalLeads: { value: totalLeads, trend: generateTrend() },
+                activeCustomers: { value: activeCustomers, trend: generateTrend() },
+                pendingFollowUps: { value: pendingFollowUps, trend: generateTrend() },
+                atRiskCustomers: { value: atRiskCustomers, trend: generateTrend() }
+            }
         });
     } catch (error) {
         console.error('Error calculating KPIs:', error);
-        res.status(500).json({ error: 'Failed to calculate KPIs' });
+        res.status(500).json({ success: false, message: 'Failed to calculate KPIs' });
     }
 }
 
@@ -109,10 +112,10 @@ async function getRecentLeads(req, res) {
             include: { assignedTo: { select: { name: true } } }
         });
 
-        res.json(leads.map(mapLeadToLegacy));
+        res.json({ success: true, data: leads.map(mapLeadToLegacy) });
     } catch (error) {
         console.error('Error fetching recent leads:', error);
-        res.status(500).json({ error: 'Failed to fetch recent leads' });
+        res.status(500).json({ success: false, message: 'Failed to fetch recent leads' });
     }
 }
 
@@ -138,10 +141,10 @@ async function getUpcomingTasks(req, res) {
             }
         });
 
-        res.json(tasks.map(mapTaskToLegacy));
+        res.json({ success: true, data: tasks.map(mapTaskToLegacy) });
     } catch (error) {
         console.error('Error fetching upcoming tasks:', error);
-        res.status(500).json({ error: 'Failed to fetch upcoming tasks' });
+        res.status(500).json({ success: false, message: 'Failed to fetch upcoming tasks' });
     }
 }
 
@@ -151,23 +154,32 @@ async function getUpcomingTasks(req, res) {
  */
 async function getDashboardSummary(req, res) {
     try {
-        const { organizationId } = req.user;
+        if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+        const { role, id: userId, organizationId } = req.user;
+
+        // Scoping logic: filter by userId if role is SALES
+        const baseWhere = { organizationId };
+        const salesWhere = role === 'SALES' ? { assignedToId: userId } : {};
+        const interactionWhere = role === 'SALES' ? { performedById: userId } : {};
+        const teamWhere = role === 'SALES' ? { id: userId } : { role: 'SALES' };
+
         const now = new Date();
         const todayStart = new Date(now.setHours(0, 0, 0, 0));
         const idleThreshold = new Date();
         idleThreshold.setDate(now.getDate() - 7);
 
         const [tasks, leads, interactions, users] = await Promise.all([
-            prisma.task.findMany({ where: { organizationId } }),
-            prisma.lead.findMany({ where: { organizationId } }),
+            prisma.task.findMany({ where: { ...baseWhere, ...salesWhere } }),
+            prisma.lead.findMany({ where: { ...baseWhere, ...salesWhere } }),
             prisma.interaction.findMany({ 
                 where: { 
-                    organizationId,
+                    ...baseWhere,
+                    ...interactionWhere,
                     createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } 
                 } 
             }),
             prisma.user.findMany({ 
-                where: { organizationId, role: 'SALES' },
+                where: { ...baseWhere, ...teamWhere },
                 select: { id: true, name: true }
             })
         ]);
@@ -221,10 +233,10 @@ async function getDashboardSummary(req, res) {
             alerts.push({ type: 'IDLE', message: `${idleLeads.length} leads have no interaction in 7+ days`, priority: 'MEDIUM' });
         }
 
-        res.json({ taskHealth, teamPerformance, keyMetrics, alerts });
+        res.json({ success: true, data: { taskHealth, teamPerformance, keyMetrics, alerts } });
     } catch (error) {
         console.error('Error fetching dashboard summary:', error);
-        res.status(500).json({ error: 'Failed to fetch dashboard summary' });
+        res.status(500).json({ success: false, message: 'Failed to fetch dashboard summary' });
     }
 }
 
@@ -234,7 +246,15 @@ async function getDashboardSummary(req, res) {
  */
 async function getReportsData(req, res) {
     try {
-        const { organizationId } = req.user;
+        if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+        const { role, id: userId, organizationId } = req.user;
+
+        // Scoping logic: filter by userId if role is SALES
+        const baseWhere = { organizationId };
+        const salesWhere = role === 'SALES' ? { assignedToId: userId } : {};
+        const interactionWhere = role === 'SALES' ? { performedById: userId } : {};
+        const teamWhere = role === 'SALES' ? { id: userId } : { role: 'SALES' };
+
         const { filter } = req.query; // today, week, month
 
         let startDate = new Date();
@@ -243,10 +263,10 @@ async function getReportsData(req, res) {
         else startDate.setDate(startDate.getDate() - 30); // Default month
 
         const [leads, tasks, interactions, users] = await Promise.all([
-            prisma.lead.findMany({ where: { organizationId } }),
-            prisma.task.findMany({ where: { organizationId, createdAt: { gte: startDate } } }),
-            prisma.interaction.findMany({ where: { organizationId, createdAt: { gte: startDate } } }),
-            prisma.user.findMany({ where: { organizationId, role: 'SALES' }, select: { id: true, name: true } })
+            prisma.lead.findMany({ where: { ...baseWhere, ...salesWhere, createdAt: { gte: startDate } } }),
+            prisma.task.findMany({ where: { ...baseWhere, ...salesWhere, createdAt: { gte: startDate } } }),
+            prisma.interaction.findMany({ where: { ...baseWhere, ...interactionWhere, createdAt: { gte: startDate } } }),
+            prisma.user.findMany({ where: { ...baseWhere, ...teamWhere }, select: { id: true, name: true } })
         ]);
 
         // 1. Task Trends (Created vs Completed)
@@ -263,6 +283,7 @@ async function getReportsData(req, res) {
             const userInterested = userLeads.filter(l => l.stage === 'INTERESTED').length;
 
             return {
+                id: u.id,
                 name: u.name,
                 tasksCompleted: tasks.filter(t => t.assignedToId === u.id && t.status === 'COMPLETED').length,
                 overdue: tasks.filter(t => t.assignedToId === u.id && t.status === 'PENDING' && t.dueDate && new Date(t.dueDate) < new Date()).length,
@@ -289,10 +310,10 @@ async function getReportsData(req, res) {
             lost: leads.filter(l => l.stage === 'LOST').length
         };
 
-        res.json({ taskTrends, salesComparison, revenue: { actualRevenue, pipelineValue }, leadFlow });
+        res.json({ success: true, data: { taskTrends, salesComparison, revenue: { actualRevenue, pipelineValue }, leadFlow } });
     } catch (error) {
         console.error('Error fetching reports data:', error);
-        res.status(500).json({ error: 'Failed to fetch reports data' });
+        res.status(500).json({ success: false, message: 'Failed to fetch reports data' });
     }
 }
 

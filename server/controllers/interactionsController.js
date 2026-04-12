@@ -17,12 +17,12 @@ async function getInteractionsByLead(req, res) {
         });
 
         if (!lead) {
-            return res.status(404).json({ error: 'Lead not found' });
+            return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
         // SALES can only view interactions on their own leads
         if (role === 'SALES' && lead.assignedToId !== userId) {
-            return res.status(403).json({ error: 'Access denied: You can only view interactions for your own leads' });
+            return res.status(403).json({ success: false, message: 'Access denied: You can only view interactions for your own leads' });
         }
 
         const interactions = await prisma.interaction.findMany({
@@ -39,10 +39,10 @@ async function getInteractionsByLead(req, res) {
             performedBy: i.performedBy ? i.performedBy.name : 'Unknown'
         }));
 
-        res.json(mapped);
+        res.json({ success: true, data: mapped });
     } catch (error) {
         console.error('Error fetching interactions:', error);
-        res.status(500).json({ error: 'Failed to fetch interactions' });
+        res.status(500).json({ success: false, message: 'Failed to fetch interactions' });
     }
 }
 
@@ -58,22 +58,13 @@ async function createInteraction(req, res) {
         const { role, id: userId, organizationId } = req.user;
 
         if (role === 'ADMIN') {
-            return res.status(403).json({ error: 'ADMIN is read-only' });
+            return res.status(403).json({ success: false, message: 'ADMIN is read-only' });
         }
+        
+        const { leadId, type, date, notes, summary, outcome, followUpDate } = req.body;
 
-        const { leadId, type, date, notes } = req.body;
         const parsedLeadId = parseInt(leadId);
-
-        if (!parsedLeadId || !type) {
-            return res.status(400).json({ error: 'leadId and type are required' });
-        }
-
-        // Validate type
-        const validTypes = ['EMAIL', 'CALL', 'MEETING'];
         const normalizedType = type.toUpperCase();
-        if (!validTypes.includes(normalizedType)) {
-            return res.status(400).json({ error: 'Invalid type. Must be EMAIL, CALL, or MEETING' });
-        }
 
         // Verify lead exists in the same org
         const lead = await prisma.lead.findFirst({
@@ -81,42 +72,73 @@ async function createInteraction(req, res) {
         });
 
         if (!lead) {
-            return res.status(404).json({ error: 'Lead not found' });
+            return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
         // SALES can only add interactions to their own leads
         if (role === 'SALES' && lead.assignedToId !== userId) {
-            return res.status(403).json({ error: 'Access denied: You can only add interactions to your own leads' });
+            return res.status(403).json({ success: false, message: 'Access denied: You can only add interactions to your own leads' });
         }
 
-        const interaction = await prisma.interaction.create({
-            data: {
-                organizationId,
-                leadId: parsedLeadId,
-                performedById: userId, // Always the authenticated user
-                type: normalizedType,
-                date: date ? new Date(date) : new Date(),
-                notes: notes || null
-            },
-            include: {
-                performedBy: { select: { id: true, name: true } }
-            }
-        });
+        // Start transaction
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create interaction
+            const interaction = await tx.interaction.create({
+                data: {
+                    organizationId,
+                    leadId: parsedLeadId,
+                    performedById: userId,
+                    type: normalizedType,
+                    date: date ? new Date(date) : new Date(),
+                    notes: notes || null,
+                    summary: summary || null,
+                    outcome: outcome || null,
+                    followUpDate: followUpDate ? new Date(followUpDate) : null
+                },
+                include: {
+                    performedBy: { select: { id: true, name: true } }
+                }
+            });
 
-        // Update lead's lastInteraction timestamp
-        await prisma.lead.update({
-            where: { id: parsedLeadId },
-            data: { lastInteraction: new Date() }
+            // 2. Automate task creation if followUpDate is provided
+            let autoTask = null;
+            if (followUpDate) {
+                autoTask = await tx.task.create({
+                    data: {
+                        organizationId,
+                        leadId: parsedLeadId,
+                        assignedToId: userId,
+                        interactionId: interaction.id,
+                        title: `Follow up with ${lead.contactName}`,
+                        description: summary || notes || `Automated follow-up from ${normalizedType.toLowerCase()}`,
+                        dueDate: new Date(followUpDate),
+                        status: 'PENDING',
+                        priority: 'HIGH'
+                    }
+                });
+            }
+
+            // 3. Update lead's lastInteraction
+            await tx.lead.update({
+                where: { id: parsedLeadId },
+                data: { lastInteraction: new Date() }
+            });
+
+            return { interaction, autoTask };
         });
 
         res.status(201).json({
-            ...interaction,
-            type: interaction.type.toLowerCase(),
-            performedBy: interaction.performedBy ? interaction.performedBy.name : 'Unknown'
+            success: true,
+            data: {
+                ...result.interaction,
+                type: result.interaction.type.toLowerCase(),
+                performedBy: result.interaction.performedBy ? result.interaction.performedBy.name : 'Unknown',
+                autoTaskCreated: !!result.autoTask
+            }
         });
     } catch (error) {
         console.error('Error creating interaction:', error);
-        res.status(500).json({ error: 'Failed to create interaction' });
+        res.status(500).json({ success: false, message: 'Failed to create interaction' });
     }
 }
 

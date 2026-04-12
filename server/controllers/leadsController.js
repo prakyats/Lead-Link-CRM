@@ -1,6 +1,6 @@
 const prisma = require('../utils/prisma');
 const { addRiskToLead } = require('../utils/riskCalculator');
-const { validateLeadBody, normalizeEmail, normalizePhone, sanitizeString } = require('../utils/validation');
+
 
 /**
  * Helper to map Prisma Lead to Legacy Frontend Format
@@ -71,10 +71,10 @@ async function getAllLeads(req, res) {
         });
 
         const legacyLeads = leads.map(lead => mapLeadToLegacy(addRiskToLead(lead)));
-        res.json(legacyLeads);
+        res.json({ success: true, data: legacyLeads });
     } catch (error) {
         console.error('Error fetching leads:', error);
-        res.status(500).json({ error: 'Failed to fetch leads from database' });
+        res.status(500).json({ success: false, message: 'Failed to fetch leads from database' });
     }
 }
 
@@ -100,17 +100,17 @@ async function getLeadById(req, res) {
         });
 
         if (!lead) {
-            return res.status(404).json({ error: 'Lead not found' });
+            return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
         if (role === 'SALES' && lead.assignedToId !== userId) {
-            return res.status(403).json({ error: 'Access denied' });
+            return res.status(403).json({ success: false, message: 'Access denied' });
         }
 
-        res.json(mapLeadToLegacy(addRiskToLead(lead)));
+        res.json({ success: true, data: mapLeadToLegacy(addRiskToLead(lead)) });
     } catch (error) {
         console.error('Error fetching lead:', error);
-        res.status(500).json({ error: 'Failed to fetch lead' });
+        res.status(500).json({ success: false, message: 'Failed to fetch lead' });
     }
 }
 
@@ -124,18 +124,11 @@ async function createLead(req, res) {
 
         const { company, contact, email, phone, value, priority, stage, leadScore } = req.body;
 
-        // Validate
-        const { errors, isValid } = validateLeadBody({ company, contact, email, phone, value });
-        if (!isValid) {
-            const firstError = Object.values(errors)[0];
-            return res.status(400).json({ error: firstError, errors });
-        }
-
         // Sanitize
-        const sanitizedEmail = normalizeEmail(email);
-        const sanitizedPhone = phone ? normalizePhone(phone) : null;
-        const sanitizedCompany = sanitizeString(company);
-        const sanitizedContact = sanitizeString(contact);
+        const sanitizedEmail = email ? email.trim().toLowerCase() : null;
+        const sanitizedPhone = phone ? phone.replace(/\D/g, '') : null;
+        const sanitizedCompany = company.trim();
+        const sanitizedContact = contact ? contact.trim() : null;
 
         const newLead = await prisma.lead.create({
             data: {
@@ -154,10 +147,10 @@ async function createLead(req, res) {
             include: { assignedTo: { select: { name: true } } }
         });
 
-        res.status(201).json(mapLeadToLegacy(addRiskToLead(newLead)));
+        res.status(201).json({ success: true, data: mapLeadToLegacy(addRiskToLead(newLead)) });
     } catch (error) {
         console.error('Error creating lead:', error);
-        res.status(500).json({ error: 'Failed to create lead' });
+        res.status(500).json({ success: false, message: 'Failed to create lead' });
     }
 }
 
@@ -171,8 +164,8 @@ async function updateLead(req, res) {
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
         const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
-        if (!existingLead) return res.status(404).json({ error: 'Lead not found' });
-        if (role === 'SALES' && existingLead.assignedToId !== userId) return res.status(403).json({ error: 'Access denied' });
+        if (!existingLead) return res.status(404).json({ success: false, message: 'Lead not found' });
+        if (role === 'SALES' && existingLead.assignedToId !== userId) return res.status(403).json({ success: false, message: 'Access denied' });
 
         const data = { ...req.body };
         if (data.contact) data.contactName = data.contact;
@@ -195,10 +188,10 @@ async function updateLead(req, res) {
             include: { assignedTo: { select: { name: true } } }
         });
 
-        res.json(mapLeadToLegacy(addRiskToLead(updatedLead)));
+        res.json({ success: true, data: mapLeadToLegacy(addRiskToLead(updatedLead)) });
     } catch (error) {
         console.error('Error updating lead:', error);
-        res.status(500).json({ error: 'Failed to update lead' });
+        res.status(500).json({ success: false, message: 'Failed to update lead' });
     }
 }
 
@@ -213,8 +206,8 @@ async function updateLeadStage(req, res) {
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
         const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
-        if (!existingLead) return res.status(404).json({ error: 'Lead not found' });
-        if (role === 'SALES' && existingLead.assignedToId !== userId) return res.status(403).json({ error: 'Access denied' });
+        if (!existingLead) return res.status(404).json({ success: false, message: 'Lead not found' });
+        if (role === 'SALES' && existingLead.assignedToId !== userId) return res.status(403).json({ success: false, message: 'Access denied' });
 
         await prisma.lead.updateMany({
             where: { id: parseInt(id), organizationId },
@@ -229,10 +222,10 @@ async function updateLeadStage(req, res) {
             include: { assignedTo: { select: { name: true } } }
         });
 
-        res.json(mapLeadToLegacy(addRiskToLead(updatedLead)));
+        res.json({ success: true, data: mapLeadToLegacy(addRiskToLead(updatedLead)) });
     } catch (error) {
         console.error('Error updating lead stage:', error);
-        res.status(500).json({ error: 'Failed to update lead stage' });
+        res.status(500).json({ success: false, message: 'Failed to update lead stage' });
     }
 }
 
@@ -243,14 +236,14 @@ async function deleteLead(req, res) {
     try {
         const { id } = req.params;
         const { role, organizationId } = req.user;
-        if (role !== 'MANAGER') return res.status(403).json({ error: 'Only Managers can delete' });
+        if (role !== 'MANAGER') return res.status(403).json({ success: false, message: 'Only Managers can delete' });
 
         const delRes = await prisma.lead.deleteMany({ where: { id: parseInt(id), organizationId } });
-        if (delRes.count === 0) return res.status(404).json({ error: 'Lead not found' });
+        if (delRes.count === 0) return res.status(404).json({ success: false, message: 'Lead not found' });
         res.json({ success: true, message: 'Lead deleted' });
     } catch (error) {
         console.error('Error deleting lead:', error);
-        res.status(500).json({ error: 'Failed to delete lead' });
+        res.status(500).json({ success: false, message: 'Failed to delete lead' });
     }
 }
 
@@ -264,21 +257,21 @@ async function assignLead(req, res) {
         const { role, organizationId } = req.user;
 
         if (role !== 'MANAGER') {
-            return res.status(403).json({ error: 'Only Managers can assign leads' });
+            return res.status(403).json({ success: false, message: 'Only Managers can assign leads' });
         }
 
         if (!assignedToId) {
-            return res.status(400).json({ error: 'assignedToId is required' });
+            return res.status(400).json({ success: false, message: 'assignedToId is required' });
         }
 
         const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
-        if (!existingLead) return res.status(404).json({ error: 'Lead not found' });
+        if (!existingLead) return res.status(404).json({ success: false, message: 'Lead not found' });
 
         // Verify target user exists in the same org
         const targetUser = await prisma.user.findFirst({
             where: { id: parseInt(assignedToId), organizationId }
         });
-        if (!targetUser) return res.status(400).json({ error: 'Target user not found in this organization' });
+        if (!targetUser) return res.status(400).json({ success: false, message: 'Target user not found in this organization' });
 
         await prisma.lead.update({
             where: { id: parseInt(id) },
@@ -290,10 +283,10 @@ async function assignLead(req, res) {
             include: { assignedTo: { select: { name: true } } }
         });
 
-        res.json(mapLeadToLegacy(addRiskToLead(updatedLead)));
+        res.json({ success: true, data: mapLeadToLegacy(addRiskToLead(updatedLead)) });
     } catch (error) {
         console.error('Error assigning lead:', error);
-        res.status(500).json({ error: 'Failed to assign lead' });
+        res.status(500).json({ success: false, message: 'Failed to assign lead' });
     }
 }
 
