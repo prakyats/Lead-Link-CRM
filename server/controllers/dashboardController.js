@@ -159,6 +159,7 @@ async function getDashboardSummary(req, res) {
 
         const [
             users,
+            teamCount,
             taskTotalToday,
             taskCompletedToday,
             taskPending,
@@ -177,6 +178,7 @@ async function getDashboardSummary(req, res) {
                 where: { organizationId, id: { in: accessibleIds } },
                 select: { id: true, name: true }
             }),
+            prisma.user.count({ where: { organizationId, managerId: req.user.id } }),
             prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: todayStart } } }),
             prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'COMPLETED', completedAt: { gte: todayStart } } }),
             prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING' } }),
@@ -257,7 +259,7 @@ async function getDashboardSummary(req, res) {
             alerts.push({ type: 'IDLE', message: `${idleLeadsCount} leads have no interaction in 7+ days`, priority: 'MEDIUM' });
         }
 
-        res.json({ success: true, data: { taskHealth, teamPerformance, keyMetrics, alerts } });
+        res.json({ success: true, data: { taskHealth, teamPerformance, keyMetrics, alerts, hasTeam: teamCount > 0 } });
     } catch (error) {
         console.error('Error fetching dashboard summary:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch dashboard summary' });

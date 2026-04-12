@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from '../components/Sidebar';
 import { 
     Users, UserPlus, Mail, ShieldCheck, Target, 
@@ -23,6 +24,7 @@ interface SystemUser {
 
 export default function Team() {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const [searchParams] = useSearchParams();
     
     // UI State
@@ -93,9 +95,13 @@ export default function Team() {
                 description: `${formData.name} has been authorized for operations.`
             });
             
+            
             setShowCreateModal(false);
             setFormData({ name: '', email: '', password: '', role: 'SALES', managerId: '' });
             fetchUsers();
+            
+            // Invalidate dashboard summary to hide the "Build Your Team" overlay
+            queryClient.invalidateQueries({ queryKey: ['dashboard', 'summary'] });
         } catch (error: any) {
             const msg = error.response?.data?.error || 'Provisioning failed';
             toast.error('Authorization Restricted', { description: msg });

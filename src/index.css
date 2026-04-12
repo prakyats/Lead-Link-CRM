@@ -219,4 +219,35 @@ html,
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-border rounded-full hover:bg-primary/50 transition-colors;
   }
-}
+
+  /* ── Sidebar Custom Redesign ── */
+  .crm-sidebar-logo-square {
+    @apply w-12 h-12 bg-[#00D4AA] rounded-2xl flex items-center justify-center text-[#0B1120] font-black shadow-lg shadow-[#00D4AA]/20 transition-transform hover:scale-105 active:scale-95;
+    font-size: 1.25rem;
+  }
+
+  .crm-sidebar-active {
+    @apply bg-[#00D4AA] text-[#0B1120] font-bold shadow-[0_8px_24px_rgba(0,212,170,0.25)] border-transparent transition-all duration-300;
+  }
+
+  .crm-sidebar-inactive {
+    @apply text-muted-foreground hover:text-foreground hover:bg-muted tracking-tight transition-all duration-200;
+  }
+
+  .crm-sidebar-user-card {
+    @apply bg-muted/30 rounded-[1.75rem] p-5 border border-border shadow-sm mt-auto transition-all hover:bg-muted/50 hover:border-primary/20;
+  }
+
+  .crm-sidebar-avatar {
+    @apply w-10 h-10 rounded-full flex items-center justify-center font-bold text-base bg-primary/10 text-primary border border-primary/20 shadow-inner;
+  }
+
+  .crm-sidebar-signout {
+    @apply flex items-center gap-3 mt-3.5 pt-3.5 border-t border-border text-red-500 font-bold uppercase tracking-widest text-[9px] hover:text-red-400 transition-colors active:scale-95;
+  }
+
+  .crm-sidebar-label {
+    @apply text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground mb-3 ml-2 transition-opacity;
+  }
+
+}

@@ -140,7 +140,7 @@ const DashboardContent = () => {
 
         {loading ? (
           <DashboardSkeleton />
-        ) : user?.role === 'MANAGER' && !user?.hasTeam ? (
+        ) : user?.role === 'MANAGER' && managerSummary && !managerSummary.hasTeam ? (
           <div className="flex flex-col items-center justify-center p-20 glass-morphic border border-dashed border-border rounded-[2.5rem] text-center animate-in zoom-in duration-500">
              <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center mb-8">
                 <UserPlus className="w-12 h-12 text-primary" />
