@@ -384,5 +384,3 @@ export default function TeamInsights() {
     </div>
   );
 }
-  );
-}
