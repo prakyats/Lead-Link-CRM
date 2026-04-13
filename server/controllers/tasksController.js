@@ -116,13 +116,16 @@ async function updateTask(req, res) {
             return res.status(403).json({ success: false, message: 'Access denied: Task ownership is outside your team scope' });
         }
 
-        const updateData = { ...req.body };
-        delete updateData.id;
-        if (updateData.dueDate) updateData.dueDate = new Date(updateData.dueDate);
-        if (updateData.leadId) updateData.leadId = parseInt(updateData.leadId);
-        if (updateData.assignedToId) updateData.assignedToId = parseInt(updateData.assignedToId);
-        if (updateData.status) updateData.status = updateData.status.toUpperCase();
-        if (updateData.priority) updateData.priority = updateData.priority.toUpperCase();
+        const { title, description, dueDate, priority, leadId, assignedToId, status } = req.body;
+        const updateData = {};
+
+        if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+        if (dueDate !== undefined) updateData.dueDate = new Date(dueDate);
+        if (priority !== undefined) updateData.priority = priority.toUpperCase();
+        if (leadId !== undefined) updateData.leadId = parseInt(leadId);
+        if (assignedToId !== undefined) updateData.assignedToId = parseInt(assignedToId);
+        if (status !== undefined) updateData.status = status.toUpperCase();
 
         const updateRes = await prisma.task.updateMany({
             where: { id: parseInt(id), organizationId },

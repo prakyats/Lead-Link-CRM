@@ -12,7 +12,7 @@ const {
 } = require('../controllers/leadsController');
 
 const validate = require('../middleware/validate');
-const { createLeadSchema } = require('../validations/lead.validation');
+const { createLeadSchema, updateLeadSchema } = require('../validations/lead.validation');
 
 // All leads routes require authentication
 router.use(authMiddleware);
@@ -98,7 +98,7 @@ router.get('/:id', getLeadById);
 router.post('/', validate(createLeadSchema), createLead);
 
 // PUT /api/leads/:id - Update lead
-router.put('/:id', updateLead);
+router.put('/:id', validate(updateLeadSchema), updateLead);
 
 /**
  * @swagger

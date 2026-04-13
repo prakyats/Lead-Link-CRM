@@ -12,7 +12,7 @@ const {
 } = require('../controllers/tasksController');
 
 const validate = require('../middleware/validate');
-const { createTaskSchema } = require('../validations/task.validation');
+const { createTaskSchema, updateTaskSchema } = require('../validations/task.validation');
 
 // All task routes require authentication
 router.use(authMiddleware);
@@ -92,7 +92,7 @@ router.post('/', validate(createTaskSchema), createTask);
  *         description: Task deleted
  */
 // PUT /api/tasks/:id - Update task
-router.put('/:id', updateTask);
+router.put('/:id', validate(updateTaskSchema), updateTask);
 
 /**
  * @swagger

@@ -11,6 +11,9 @@ const createLeadSchema = z.object({
     assignedToId: z.number().optional()
 });
 
+const updateLeadSchema = createLeadSchema.partial();
+
 module.exports = {
-    createLeadSchema
+    createLeadSchema,
+    updateLeadSchema
 };

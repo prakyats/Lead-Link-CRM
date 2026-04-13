@@ -36,47 +36,131 @@ async function getKPIs(req, res) {
     try {
         const { organizationId } = req.user;
         const accessibleIds = await getAccessibleUserIds(req.user);
-        let where = { 
+        let where = {
             organizationId,
             assignedToId: { in: accessibleIds }
         };
 
 
         const now = new Date();
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
         const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const atRiskThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const atRiskThreshold = sevenDaysAgo;
 
-        const [totalLeads, activeCustomers, pendingFollowUps, atRiskCustomers] = await Promise.all([
+        const [
+            totalLeads,
+            activeCustomers,
+            pendingFollowUps,
+            atRiskCustomers,
+            totalLeadsPrev,
+            totalLeadsThis,
+            activeCustomersPrev,
+            activeCustomersThis,
+            tasksCompletedPrev,
+            tasksCompletedThis,
+            atRiskPrev
+        ] = await Promise.all([
+            // 1. totalLeads Value
             prisma.lead.count({ where }),
+
+            // 2. activeCustomers Value
             prisma.lead.count({
                 where: { ...where, stage: 'CONVERTED' }
             }),
+
+            // 3. pendingFollowUps Value
             prisma.task.count({
-                where: { 
-                    ...where, 
+                where: {
+                    ...where,
                     status: 'PENDING',
                     dueDate: { gte: now, lte: sevenDaysFromNow }
                 }
             }),
+
+            // 4. atRiskCustomers Value (also serves as atRiskThis)
             prisma.lead.count({
                 where: {
                     ...where,
                     lastInteraction: { lt: atRiskThreshold },
                     stage: { notIn: ['CONVERTED', 'LOST'] }
                 }
+            }),
+
+            // 5. totalLeadsPrev (Trend)
+            prisma.lead.count({
+                where: {
+                    ...where,
+                    createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo }
+                }
+            }),
+
+            // 6. totalLeadsThis (Trend)
+            prisma.lead.count({
+                where: {
+                    ...where,
+                    createdAt: { gte: sevenDaysAgo }
+                }
+            }),
+
+            // 7. activeCustomersPrev (Trend)
+            prisma.lead.count({
+                where: {
+                    ...where,
+                    stage: 'CONVERTED',
+                    convertedAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo }
+                }
+            }),
+
+            // 8. activeCustomersThis (Trend)
+            prisma.lead.count({
+                where: {
+                    ...where,
+                    stage: 'CONVERTED',
+                    convertedAt: { gte: sevenDaysAgo }
+                }
+            }),
+
+            // 9. tasksCompletedPrev (Trend)
+            prisma.task.count({
+                where: {
+                    ...where,
+                    status: 'COMPLETED',
+                    completedAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo }
+                }
+            }),
+
+            // 10. tasksCompletedThis (Trend)
+            prisma.task.count({
+                where: {
+                    ...where,
+                    status: 'COMPLETED',
+                    completedAt: { gte: sevenDaysAgo }
+                }
+            }),
+
+            // 11. atRiskPrev (Trend)
+            prisma.lead.count({
+                where: {
+                    ...where,
+                    lastInteraction: { lt: fourteenDaysAgo },
+                    stage: { notIn: ['CONVERTED', 'LOST'] }
+                }
             })
         ]);
 
-        // Mock trends (as in original)
-        const generateTrend = () => parseFloat((Math.random() * 20 - 5).toFixed(1));
+        const calcTrend = (current, previous) => {
+            if (previous === 0) return current > 0 ? 100 : 0;
+            return parseFloat(((current - previous) / previous * 100).toFixed(1));
+        };
 
         res.json({
             success: true,
             data: {
-                totalLeads: { value: totalLeads, trend: generateTrend() },
-                activeCustomers: { value: activeCustomers, trend: generateTrend() },
-                pendingFollowUps: { value: pendingFollowUps, trend: generateTrend() },
-                atRiskCustomers: { value: atRiskCustomers, trend: generateTrend() }
+                totalLeads: { value: totalLeads, trend: calcTrend(totalLeadsThis, totalLeadsPrev) },
+                activeCustomers: { value: activeCustomers, trend: calcTrend(activeCustomersThis, activeCustomersPrev) },
+                taskCompletion: { value: pendingFollowUps, trend: calcTrend(tasksCompletedThis, tasksCompletedPrev) },
+                atRiskCustomers: { value: atRiskCustomers, trend: calcTrend(atRiskCustomers, atRiskPrev) }
             }
         });
     } catch (error) {
@@ -118,8 +202,8 @@ async function getUpcomingTasks(req, res) {
     try {
         const { organizationId } = req.user;
         const accessibleIds = await getAccessibleUserIds(req.user);
-        let where = { 
-            status: 'PENDING', 
+        let where = {
+            status: 'PENDING',
             organizationId,
             assignedToId: { in: accessibleIds }
         };
@@ -187,13 +271,13 @@ async function getDashboardSummary(req, res) {
             prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED' } }),
             prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: { notIn: ['CONVERTED', 'LOST'] } } }),
             prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds } } }),
-            prisma.lead.count({ 
-                where: { 
-                    organizationId, 
-                    assignedToId: { in: accessibleIds }, 
+            prisma.lead.count({
+                where: {
+                    organizationId,
+                    assignedToId: { in: accessibleIds },
                     stage: { notIn: ['CONVERTED', 'LOST'] },
                     lastInteraction: { lt: idleThreshold }
-                } 
+                }
             }),
             prisma.task.groupBy({
                 by: ['assignedToId', 'status'],
