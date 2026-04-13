@@ -477,10 +477,510 @@ async function getReportsData(req, res) {
     }
 }
 
+/**
+ * GET Team Performance
+ */
+async function getTeamPerformance(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+        const users = await prisma.user.findMany({
+            where: { 
+                organizationId, 
+                id: { in: accessibleIds },
+                role: 'SALES'
+            },
+            select: { id: true, name: true, role: true }
+        });
+
+        const [
+            taskStatusGroups, 
+            taskOverdueGroups, 
+            interactionGroups, 
+            currentConvertedGroups, 
+            currentTotalGroups,
+            baselineConvertedGroups,
+            baselineTotalGroups,
+            lastActivityGroups,
+            lastTaskCompletionGroups,
+            userStageGroups
+        ] = await Promise.all([
+            prisma.task.groupBy({
+                by: ['assignedToId', 'status'],
+                where: { organizationId, assignedToId: { in: accessibleIds } },
+                _count: true
+            }),
+            prisma.task.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: now } },
+                _count: true
+            }),
+            prisma.interaction.groupBy({
+                by: ['performedById'],
+                where: { organizationId, performedById: { in: accessibleIds } },
+                _count: true
+            }),
+            // Current 30 days
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', convertedAt: { gte: thirtyDaysAgo } },
+                _count: true
+            }),
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: thirtyDaysAgo } },
+                _count: true
+            }),
+            // Baseline (30-60 days ago)
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', convertedAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+                _count: true
+            }),
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+                _count: true
+            }),
+            // Last Activity
+            prisma.interaction.groupBy({
+                by: ['performedById'],
+                where: { organizationId, performedById: { in: accessibleIds } },
+                _max: { createdAt: true }
+            }),
+            // Last Task Completion Recency (New Metric Source)
+            prisma.task.groupBy({
+                by: ['assignedToId'],
+                where: { 
+                    organizationId, 
+                    assignedToId: { in: accessibleIds },
+                    status: 'COMPLETED' 
+                },
+                _max: { completedAt: true }
+            }),
+            // Stage Distribution for Stuck Logic
+            prisma.lead.groupBy({
+                by: ['assignedToId', 'stage'],
+                where: { organizationId, assignedToId: { in: accessibleIds } },
+                _count: true
+            })
+        ]);
+
+        const getCount = (groups, userId, key, matchKey, matchVal) => {
+            const group = groups.find(g => g[key] === userId && (matchKey ? g[matchKey] === matchVal : true));
+            return group ? group._count : 0;
+        };
+
+        const getMaxDate = (groups, userId, key, field = 'createdAt') => {
+            const group = groups.find(g => g[key] === userId);
+            return group ? group._max[field] : null;
+        };
+
+        // Team Benchmark Calculation
+        const totalTeamConverted = currentConvertedGroups.reduce((acc, g) => acc + g._count, 0);
+        const totalTeamLeads = currentTotalGroups.reduce((acc, g) => acc + g._count, 0);
+        const teamAvgConversion = totalTeamLeads > 0 ? (totalTeamConverted / totalTeamLeads) * 100 : 0;
+
+        const performanceData = users.map(u => {
+            // Current Rate
+            const curConverted = getCount(currentConvertedGroups, u.id, 'assignedToId');
+            const curTotal = getCount(currentTotalGroups, u.id, 'assignedToId');
+            const curRate = curTotal > 0 ? (curConverted / curTotal) * 100 : (curConverted > 0 ? 100 : 0);
+
+            // Baseline Rate
+            const baseConverted = getCount(baselineConvertedGroups, u.id, 'assignedToId');
+            const baseTotal = getCount(baselineTotalGroups, u.id, 'assignedToId');
+            const baseRate = baseTotal > 0 ? (baseConverted / baseTotal) * 100 : (baseConverted > 0 ? 100 : 0);
+
+            const lastInteraction = getMaxDate(lastActivityGroups, u.id, 'performedById');
+            const lastCompletedAt = getMaxDate(lastTaskCompletionGroups, u.id, 'assignedToId', 'completedAt');
+            const overdueTasks = getCount(taskOverdueGroups, u.id, 'assignedToId');
+            
+            // This metric reflects task completion activity, not interaction logging.
+            const userTaskStats = taskStatusGroups.filter(g => g.assignedToId === u.id);
+            const totalTasksCount = userTaskStats.reduce((acc, g) => acc + g._count, 0);
+            const completedTasksCount = userTaskStats.find(g => g.status === 'COMPLETED')?._count || 0;
+            
+            // 1. Root Cause Insights
+            const insights = [];
+            if (curTotal === 0) {
+                insights.push("No leads assigned in period");
+            } else {
+                // Activity Check (Legacy insight for manager awareness)
+                if (!lastInteraction) {
+                    insights.push("Never Active");
+                } else {
+                    const daysSince = (now - new Date(lastInteraction)) / (1000 * 60 * 60 * 24);
+                    if (daysSince > 7) insights.push("No interactions in 7+ days");
+                }
+
+                // Stuck Stage Detection
+                if (curTotal >= 5) {
+                    const stages = userStageGroups.filter(g => g.assignedToId === u.id);
+                    const activeStages = stages.filter(s => !['CONVERTED', 'LOST'].includes(s.stage));
+                    for (const s of activeStages) {
+                        const stagePercent = (s._count / curTotal) * 100;
+                        if (stagePercent > 50) {
+                            insights.push(`Stuck at ${s.stage} (${s._count} leads)`);
+                        }
+                    }
+                }
+
+                if (overdueTasks > 0) {
+                    insights.push(`${overdueTasks} overdue tasks`);
+                }
+            }
+
+            // 2. Priority Scoring & Reasons Engine
+            let score = 0;
+            const reasons = [];
+
+            if (curTotal === 0 && totalTasksCount === 0) {
+                reasons.push("No workload assigned");
+            } else {
+                if (curTotal === 0) {
+                    score += 50;
+                    reasons.push("No leads assigned");
+                }
+                
+                // Activity Check
+                const inactivityDays = lastInteraction ? (now - new Date(lastInteraction)) / (1000 * 60 * 60 * 24) : 999;
+                if (inactivityDays > 7) {
+                    score += 30;
+                    reasons.push("No recent task activity (7+ days)");
+                }
+
+                if (curRate === 0 && curTotal > 0) {
+                    score += 20;
+                    reasons.push("No conversions from active leads");
+                }
+
+                if (overdueTasks > 0) {
+                    score += 20;
+                    reasons.push("Overdue tasks pending");
+                }
+            }
+
+            // Activity Status Formatting (Final Refinement Mapping)
+            let activityStatus = "Active";
+            if (totalTasksCount === 0) {
+                activityStatus = "No tasks assigned";
+            } else if (completedTasksCount === 0) {
+                activityStatus = "No tasks completed yet";
+            } else {
+                const days = (now - new Date(lastCompletedAt)) / (1000 * 60 * 60 * 24);
+                if (days > 7) activityStatus = "No task completed (7+ days)";
+                else if (days > 3) activityStatus = "No task completed (3+ days)";
+            }
+
+            return {
+                id: u.id,
+                name: u.name,
+                role: u.role,
+                totalLeads: curTotal,
+                convertedLeads: curConverted,
+                conversionRate: parseFloat(curRate.toFixed(1)),
+                conversionDelta: curTotal >= 5 ? parseFloat((curRate - baseRate).toFixed(1)) : null,
+                deltaFromTeam: parseFloat((curRate - teamAvgConversion).toFixed(1)),
+                lastActivity: lastCompletedAt,
+                activityStatus,
+                tasksCompleted: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'COMPLETED'),
+                overdueTasks,
+                interactions: getCount(interactionGroups, u.id, 'performedById'),
+                insights: insights.slice(0, 2),
+                priorityScore: score,
+                priorityReasons: reasons.slice(0, 2)
+            };
+        });
+
+        // 3. Attention Priority Ranking (Stable Sort)
+        performanceData.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return a.conversionRate - b.conversionRate; // Lower conversion = higher priority
+        });
+
+        // Add Rank
+        const rankedData = performanceData.map((d, i) => ({
+            ...d,
+            priorityRank: i + 1
+        }));
+
+        // Calculate Aggregate Metrics for Team Header
+        const totalLeads = rankedData.reduce((acc, r) => acc + r.totalLeads, 0);
+        const totalInactive = rankedData.filter(r => r.activityStatus.includes('inactive') || r.activityStatus.includes('7+ days')).length;
+        const totalNoLeads = rankedData.filter(r => r.totalLeads === 0).length;
+        const leadsPerRep = rankedData.length > 0 ? (totalLeads / rankedData.length).toFixed(1) : 0;
+
+        // Stage Distribution for redundant chart access
+        const distribution = {
+            NEW: getCount(userStageGroups, null, 'assignedToId', 'stage', 'NEW'),
+            CONTACTED: getCount(userStageGroups, null, 'assignedToId', 'stage', 'CONTACTED'),
+            INTERESTED: getCount(userStageGroups, null, 'assignedToId', 'stage', 'INTERESTED'),
+            CONVERTED: getCount(userStageGroups, null, 'assignedToId', 'stage', 'CONVERTED'),
+            LOST: getCount(userStageGroups, null, 'assignedToId', 'stage', 'LOST')
+        };
+
+        res.json({ 
+            success: true, 
+            data: { 
+                performance: rankedData,
+                metrics: {
+                    totalLeads,
+                    totalReps: rankedData.length,
+                    totalInactive,
+                    totalNoLeads,
+                    leadsPerRep,
+                    teamAvgConversion: parseFloat(teamAvgConversion.toFixed(1))
+                },
+                distribution,
+                insights: [
+                    totalInactive > 0 ? `${totalInactive} reps require reactivation — Review inactivity alerts` : "Team activity is stable",
+                    totalNoLeads > 0 ? `${totalNoLeads} reps need lead assignment — Critical for volume` : "Workload is balanced"
+                ]
+            } 
+        });
+    } catch (error) {
+        console.error('Error fetching team performance:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch team performance' });
+    }
+}
+
+/**
+ * GET Team Activity (Latest 5 Interactions)
+ */
+async function getTeamActivity(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        const activities = await prisma.interaction.findMany({
+            where: {
+                organizationId,
+                performedById: { in: accessibleIds }
+            },
+            include: {
+                performedBy: { select: { id: true, name: true } },
+                lead: { select: { id: true, company: true } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 5
+        });
+
+        res.json({ success: true, data: activities });
+    } catch (error) {
+        console.error('Error fetching team activity:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch team activity' });
+    }
+}
+
+/**
+ * GET Pipeline Distribution
+ */
+async function getPipelineDistribution(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        const statusCounts = await prisma.lead.groupBy({
+            by: ['stage'],
+            where: {
+                organizationId,
+                assignedToId: { in: accessibleIds }
+            },
+            _count: { _all: true }
+        });
+
+        const distribution = {
+            NEW: 0,
+            CONTACTED: 0,
+            INTERESTED: 0,
+            CONVERTED: 0,
+            LOST: 0
+        };
+
+        statusCounts.forEach(item => {
+            const stage = item.stage.toUpperCase();
+            if (distribution.hasOwnProperty(stage)) {
+                distribution[stage] = item._count._all;
+            }
+        });
+
+        // Drop-off Analysis
+        const transitions = [
+            { from: 'NEW', to: 'CONTACTED' },
+            { from: 'CONTACTED', to: 'INTERESTED' },
+            { from: 'INTERESTED', to: 'CONVERTED' }
+        ];
+
+        let biggestDropOff = null;
+
+        transitions.forEach(t => {
+            const base = distribution[t.from];
+            const next = distribution[t.to];
+            if (base >= 5) {
+                const dropOff = ((base - next) / base) * 100;
+                if (!biggestDropOff || dropOff > biggestDropOff.percentage) {
+                    biggestDropOff = {
+                        stage: `${t.from} → ${t.to}`,
+                        percentage: parseFloat(dropOff.toFixed(1))
+                    };
+                }
+            }
+        });
+
+        res.json({ 
+            success: true, 
+            data: { 
+                distribution, 
+                biggestDropOff: biggestDropOff || { stage: "Insufficient data", percentage: 0 } 
+            } 
+        });
+    } catch (error) {
+        console.error('Error fetching pipeline distribution:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch pipeline distribution' });
+    }
+}
+
+/**
+ * GET Risk Summary
+ */
+async function getRiskSummary(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        const now = new Date();
+        const inactiveThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const formatCount = (count, word) => {
+            return count === 1 ? `1 ${word}` : `${count} ${word}s`;
+        };
+
+        const [inactiveLeads, overdueTasks, usersWithNoLeads, usersWithNoActivity, pipelineStats] = await Promise.all([
+            prisma.lead.count({
+                where: {
+                    organizationId,
+                    assignedToId: { in: accessibleIds },
+                    assignedTo: { role: 'SALES' },
+                    stage: { notIn: ['CONVERTED', 'LOST'] },
+                    lastInteraction: { lt: inactiveThreshold }
+                }
+            }),
+            prisma.task.count({
+                where: {
+                    organizationId,
+                    assignedToId: { in: accessibleIds },
+                    assignedTo: { role: 'SALES' },
+                    status: 'PENDING',
+                    dueDate: { lt: now }
+                }
+            }),
+            prisma.user.findMany({
+                where: {
+                    organizationId,
+                    id: { in: accessibleIds },
+                    role: 'SALES',
+                    leads: { none: { createdAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } } }
+                },
+                select: { id: true }
+            }),
+            prisma.user.findMany({
+                where: {
+                    organizationId,
+                    id: { in: accessibleIds },
+                    role: 'SALES',
+                    interactions: { none: { createdAt: { gte: inactiveThreshold } } }
+                },
+                select: { id: true }
+            }),
+            prisma.lead.groupBy({
+                by: ['stage'],
+                where: { 
+                    organizationId, 
+                    assignedToId: { in: accessibleIds },
+                    assignedTo: { role: 'SALES' }
+                },
+                _count: true
+            })
+        ]);
+
+        // Pipeline Drop-off Analysis (Internal)
+        const counts = pipelineStats.reduce((acc, curr) => ({ ...acc, [curr.stage]: curr._count }), {});
+        const stages = ['NEW', 'CONTACTED', 'INTERESTED', 'QUOTED', 'NEGOTIATION', 'CONVERTED'];
+        let biggestDropOff = null;
+
+        for (let i = 0; i < stages.length - 1; i++) {
+            const current = counts[stages[i]] || 0;
+            const next = counts[stages[i + 1]] || 0;
+            
+            if (current >= 5) {
+                const dropOff = ((current - next) / current) * 100;
+                if (dropOff > 40 && (!biggestDropOff || dropOff > biggestDropOff.percentage)) {
+                    biggestDropOff = { 
+                        stage: `${stages[i]} → ${stages[i + 1]}`, 
+                        percentage: Math.round(dropOff) 
+                    };
+                }
+            }
+        }
+
+        // Suggestions Engine (Prioritized)
+        const suggestions = [];
+
+        // 1. No Leads (ℹ)
+        if (usersWithNoLeads.length > 0) {
+            suggestions.push(`ℹ ${formatCount(usersWithNoLeads.length, 'rep')} have no leads — consider assigning new leads`);
+        }
+
+        // 2. No Activity (⚠)
+        if (usersWithNoActivity.length > 0) {
+            suggestions.push(`⚠ ${formatCount(usersWithNoActivity.length, 'rep')} inactive for 7+ days — needs attention`);
+        }
+
+        // 3. Drop-off (⚠)
+        if (biggestDropOff) {
+            suggestions.push(`⚠ High drop-off at ${biggestDropOff.stage} (${biggestDropOff.percentage}%)`);
+        }
+
+        // 4. Overdue Tasks (⚠)
+        if (overdueTasks > 0) {
+            suggestions.push(`⚠ ${formatCount(overdueTasks, 'overdue task')} need attention`);
+        }
+
+        // 5. Inactive Leads (ℹ)
+        // Signal De-duplication: Only show if NO activity alert is present
+        if (inactiveLeads > 0 && usersWithNoActivity.length === 0) {
+            suggestions.push(`ℹ ${formatCount(inactiveLeads, 'lead')} inactive for 7+ days`);
+        }
+
+        res.json({
+            success: true,
+            data: {
+                inactiveLeadsCount: inactiveLeads,
+                overdueTasksCount: overdueTasks,
+                thresholdDays: 7,
+                suggestions: [...new Set(suggestions)].filter(Boolean).slice(0, 3)
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching risk summary:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch risk summary' });
+    }
+}
+
 module.exports = {
     getKPIs,
     getRecentLeads,
     getUpcomingTasks,
     getDashboardSummary,
-    getReportsData
+    getReportsData,
+    getTeamPerformance,
+    getTeamActivity,
+    getPipelineDistribution,
+    getRiskSummary
 };

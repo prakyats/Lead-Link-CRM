@@ -250,4 +250,10 @@ html,
     @apply text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground mb-3 ml-2 transition-opacity;
   }
 
+  /* ── Numerical Precision Typography ── */
+  .font-mono-data {
+    font-family: 'JetBrains Mono', monospace;
+    @apply tracking-tighter;
+  }
+
 }
