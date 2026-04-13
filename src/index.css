@@ -1,259 +1,155 @@
 @import "tailwindcss";
 @import "./styles/globals.css";
 
-/* ── Global Theme Variables ── */
-:root {
-  /* CRM palette (light) */
-  --crm-navy: #f8fafc;
-  --crm-navy-deep: #ffffff;
-  --crm-slate: #ffffff;
-  --crm-slate-light: #f1f5f9;
-  --crm-slate-lighter: #e2e8f0;
-  --crm-teal: #00d4aa;
-  --crm-teal-glow: rgba(0, 212, 170, 0.12);
-  --crm-amber: #f59e0b;
-  --crm-amber-glow: rgba(245, 158, 11, 0.12);
-  --crm-white: #0b1120;
-  --crm-muted: #475569;
-  --crm-muted-dim: #64748b;
-  --crm-border: rgba(2, 6, 23, 0.06);
-  --crm-border-hover: rgba(2, 6, 23, 0.12);
-  --crm-glass: rgba(255, 255, 255, 0.7);
-  --crm-glass-border: rgba(2, 6, 23, 0.08);
-
-  /* shadcn-ish tokens */
-  --background: var(--crm-navy);
-  --foreground: var(--crm-white);
-  --card: var(--crm-slate);
-  --card-foreground: var(--crm-white);
-  --popover: var(--crm-slate);
-  --popover-foreground: var(--crm-white);
-  --muted: var(--crm-slate-light);
-  --muted-foreground: var(--crm-muted-dim);
-  --accent: var(--crm-slate-light);
-  --accent-foreground: var(--crm-white);
-  --border: var(--crm-border);
-  --input: transparent;
-  --ring: rgba(0, 212, 170, 0.3);
-  --primary: var(--crm-teal);
-  --primary-foreground: #0b1120;
-  --secondary: var(--crm-slate-light);
-  --secondary-foreground: var(--crm-white);
-
-  /* Font Baseline (Reverted) */
-  --ll-font-display: 'Inter', system-ui, sans-serif;
-  --ll-font-body: 'Inter', system-ui, sans-serif;
-  --ll-orb-opacity: 0.2;
-  --ll-grid-opacity: 0.05;
+/* ── Background Effects ── */
+.ll-hero-grid {
+  @apply absolute inset-0 pointer-events-none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 1) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: var(--ll-grid-opacity);
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 10%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 10%, transparent 80%);
+  z-index: 1;
 }
 
-.dark {
-  /* CRM palette (dark) */
-  --crm-navy: #0B1120;
-  --crm-navy-deep: #060B15;
-  --crm-slate: #161F32;
-  --crm-slate-light: #1E293B;
-  --crm-slate-lighter: #2D3A4F;
-  --crm-teal: #00D4AA;
-  --crm-teal-glow: rgba(0, 212, 170, 0.1);
-  --crm-amber: #F59E0B;
-  --crm-amber-glow: rgba(245, 158, 11, 0.1);
-  --crm-white: #F1F5F9;
-  --crm-muted: #94A3B8;
-  --crm-muted-dim: #64748B;
-  --crm-border: rgba(148, 163, 184, 0.08);
-  --crm-border-hover: rgba(148, 163, 184, 0.14);
-  --crm-glass: rgba(22, 31, 50, 0.6);
-  --crm-glass-border: rgba(148, 163, 184, 0.1);
-
-  --background: var(--crm-navy);
-  --foreground: var(--crm-white);
-  --card: var(--crm-slate);
-  --card-foreground: var(--crm-white);
-  --popover: var(--crm-slate);
-  --popover-foreground: var(--crm-white);
-  --muted: var(--crm-slate-light);
-  --muted-foreground: var(--crm-muted-dim);
-  --accent: var(--crm-slate-light);
-  --accent-foreground: var(--crm-white);
-  --border: var(--crm-border);
-  --ring: rgba(0, 212, 170, 0.35);
-  --primary: var(--crm-teal);
-  --primary-foreground: #0b1120;
-  --secondary: var(--crm-slate-light);
-  --secondary-foreground: var(--crm-white);
-
-  /* Landing Page Ported Tokens (Dark) */
-  --ll-orb-opacity: 0.4;
-  --ll-grid-opacity: 0.03;
+.ll-orb {
+  @apply absolute rounded-full pointer-events-none;
+  filter: blur(100px);
+  opacity: var(--ll-orb-opacity);
+  z-index: 0;
 }
 
-body,
-html,
-#root {
-  background-color: var(--background);
+/* ── Page Layout ── */
+.crm-page-container {
+  @apply flex flex-col lg:flex-row min-h-screen bg-background text-foreground relative overflow-hidden w-full max-w-full;
+}
+
+.crm-main-content {
+  @apply w-full relative z-10 transition-all duration-500 lg:ml-[16rem] lg:w-[calc(100%-16rem)];
+}
+
+.crm-page-title {
+  @apply text-3xl font-bold tracking-tight;
+  color: var(--crm-fg-strong);
+  font-family: var(--ll-font-display);
+}
+
+.crm-page-subtitle {
+  @apply text-[10px] font-bold uppercase tracking-[0.2em];
+  color: var(--crm-muted-dim);
+}
+
+/* ── Component Primitives ── */
+.crm-card {
+  @apply rounded-xl p-6 transition-all duration-300;
+  background: var(--crm-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--crm-glass-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.dark .crm-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.crm-card-hover {
+  @apply hover:-translate-y-1 hover:border-crm-teal/30 hover:shadow-xl hover:shadow-crm-teal/5;
+}
+
+/* Table System */
+.crm-table-container {
+  @apply rounded-[1.5rem] overflow-x-auto pb-2;
+  background: var(--crm-glass);
+  border: 1px solid var(--crm-glass-border);
+}
+
+.crm-table-thead {
+  background: var(--muted);
+  @apply opacity-80;
+}
+
+.crm-table-th {
+  @apply px-6 py-4 text-[10px] font-bold uppercase tracking-widest;
+  color: var(--crm-muted-dim);
+  border-bottom: 1px solid var(--crm-border);
+}
+
+.crm-table-tr {
+  @apply transition-colors border-b border-white/5;
+  &:last-child { border-bottom: 0; }
+  &:hover { background: var(--crm-teal-glow); }
+}
+
+/* Input System */
+.crm-input {
+  @apply w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none transition-all;
+  background: var(--crm-navy-deep);
+  border: 1px solid var(--crm-border);
   color: var(--foreground);
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  font-family: var(--ll-font-body);
-  overflow-x: hidden;
-  max-width: 100vw;
+  &:focus {
+    border-color: var(--crm-teal);
+    box-shadow: 0 0 0 3px var(--crm-teal-glow);
+  }
 }
 
-@layer components {
+.crm-btn-primary {
+  @apply px-6 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2;
+  background: linear-gradient(135deg, #00D4AA, #00B894);
+  color: #0B1120;
+  box-shadow: 0 4px 20px rgba(0, 212, 170, 0.2);
+  &:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0, 212, 170, 0.3); }
+  &:active { transform: translateY(0); }
+}
 
-  /* ── Background Effects ── */
-  .ll-hero-grid {
-    @apply absolute inset-0 pointer-events-none;
-    background-image:
-      linear-gradient(rgba(148, 163, 184, 1) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 1) 1px, transparent 1px);
-    background-size: 60px 60px;
-    opacity: var(--ll-grid-opacity);
-    mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 10%, transparent 80%);
-    -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 10%, transparent 80%);
-    z-index: 1;
-  }
+/* ── Custom Scrollbar Utility ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
 
-  .ll-orb {
-    @apply absolute rounded-full pointer-events-none;
-    filter: blur(100px);
-    opacity: var(--ll-orb-opacity);
-    z-index: 0;
-  }
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-  /* ── Page Layout (Reverted Constraints) ── */
-  .crm-page-container {
-    @apply flex flex-col lg:flex-row min-h-screen bg-background text-foreground relative overflow-hidden w-full max-w-full;
-  }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full hover:bg-primary/50 transition-colors;
+}
 
-  .crm-main-content {
-    @apply w-full relative z-10 transition-all duration-500 lg:ml-[16rem] lg:w-[calc(100%-16rem)];
-  }
+/* ── Sidebar Custom Redesign ── */
+.crm-sidebar-logo-square {
+  @apply w-12 h-12 bg-crm-teal rounded-2xl flex items-center justify-center text-[#0B1120] font-black shadow-lg shadow-crm-teal/20 transition-transform hover:scale-105 active:scale-95;
+  font-size: 1.25rem;
+}
 
-  .crm-page-title {
-    @apply text-3xl font-bold tracking-tight;
-    color: var(--crm-white);
-    font-family: var(--ll-font-display);
-  }
+.crm-sidebar-active {
+  @apply bg-crm-teal text-[#0B1120] font-bold shadow-[0_8px_24px_rgba(0,212,170,0.25)] border-transparent transition-all duration-300;
+}
 
-  .crm-page-subtitle {
-    @apply text-[10px] font-bold uppercase tracking-[0.2em];
-    color: var(--crm-muted-dim);
-  }
+.crm-sidebar-inactive {
+  @apply text-muted-foreground hover:text-foreground hover:bg-muted tracking-tight transition-all duration-200;
+}
 
-  /* ── Component Primitives ── */
-  .crm-card {
-    @apply rounded-xl p-6 transition-all duration-300;
-    background: var(--crm-glass);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid var(--crm-glass-border);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-  }
+.crm-sidebar-user-card {
+  @apply bg-muted/30 rounded-[1.75rem] p-5 border border-border shadow-sm mt-auto transition-all hover:bg-muted/50 hover:border-primary/20;
+}
 
-  .dark .crm-card {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  }
+.crm-sidebar-avatar {
+  @apply w-10 h-10 rounded-full flex items-center justify-center font-bold text-base bg-primary/10 text-primary border border-primary/20 shadow-inner;
+}
 
-  .crm-card-hover {
-    @apply hover:-translate-y-1 hover:border-[#00D4AA]/30 hover:shadow-xl hover:shadow-[#00D4AA]/5;
-  }
+.crm-sidebar-signout {
+  @apply flex items-center gap-3 mt-3.5 pt-3.5 border-t border-border text-red-500 font-bold uppercase tracking-widest text-[9px] hover:text-red-400 transition-colors active:scale-95;
+}
 
-  /* Table System */
-  .crm-table-container {
-    @apply rounded-[1.5rem] overflow-x-auto pb-2;
-    background: var(--crm-glass);
-    border: 1px solid var(--crm-glass-border);
-  }
+.crm-sidebar-label {
+  @apply text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground mb-3 ml-2 transition-opacity;
+}
 
-  .crm-table-thead {
-    background: var(--muted);
-    @apply opacity-80;
-  }
-
-  .crm-table-th {
-    @apply px-6 py-4 text-[10px] font-bold uppercase tracking-widest;
-    color: var(--crm-muted-dim);
-    border-bottom: 1px solid var(--crm-border);
-  }
-
-  .crm-table-tr {
-    @apply transition-colors border-b border-white/5;
-    &:last-child { border-bottom: 0; }
-    &:hover { background: var(--crm-teal-glow); }
-  }
-
-  /* Input System */
-  .crm-input {
-    @apply w-full px-4 py-3 rounded-xl text-sm font-medium focus:outline-none transition-all;
-    background: var(--crm-navy-deep);
-    border: 1px solid var(--crm-border);
-    color: var(--foreground);
-    &:focus {
-      border-color: var(--crm-teal);
-      box-shadow: 0 0 0 3px var(--crm-teal-glow);
-    }
-  }
-
-  .crm-btn-primary {
-    @apply px-6 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2;
-    background: linear-gradient(135deg, #00D4AA, #00B894);
-    color: #0B1120;
-    box-shadow: 0 4px 20px rgba(0, 212, 170, 0.2);
-    &:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0, 212, 170, 0.3); }
-    &:active { transform: translateY(0); }
-  }
-
-  /* ── Custom Scrollbar Utility ── */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full hover:bg-primary/50 transition-colors;
-  }
-
-  /* ── Sidebar Custom Redesign ── */
-  .crm-sidebar-logo-square {
-    @apply w-12 h-12 bg-[#00D4AA] rounded-2xl flex items-center justify-center text-[#0B1120] font-black shadow-lg shadow-[#00D4AA]/20 transition-transform hover:scale-105 active:scale-95;
-    font-size: 1.25rem;
-  }
-
-  .crm-sidebar-active {
-    @apply bg-[#00D4AA] text-[#0B1120] font-bold shadow-[0_8px_24px_rgba(0,212,170,0.25)] border-transparent transition-all duration-300;
-  }
-
-  .crm-sidebar-inactive {
-    @apply text-muted-foreground hover:text-foreground hover:bg-muted tracking-tight transition-all duration-200;
-  }
-
-  .crm-sidebar-user-card {
-    @apply bg-muted/30 rounded-[1.75rem] p-5 border border-border shadow-sm mt-auto transition-all hover:bg-muted/50 hover:border-primary/20;
-  }
-
-  .crm-sidebar-avatar {
-    @apply w-10 h-10 rounded-full flex items-center justify-center font-bold text-base bg-primary/10 text-primary border border-primary/20 shadow-inner;
-  }
-
-  .crm-sidebar-signout {
-    @apply flex items-center gap-3 mt-3.5 pt-3.5 border-t border-border text-red-500 font-bold uppercase tracking-widest text-[9px] hover:text-red-400 transition-colors active:scale-95;
-  }
-
-  .crm-sidebar-label {
-    @apply text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground mb-3 ml-2 transition-opacity;
-  }
-
-  /* ── Numerical Precision Typography ── */
-  .font-mono-data {
-    font-family: 'JetBrains Mono', monospace;
-    @apply tracking-tighter;
-  }
-
+/* ── Numerical Precision Typography ── */
+.font-mono-data {
+  font-family: 'JetBrains Mono', monospace;
+  @apply tracking-tighter;
 }
