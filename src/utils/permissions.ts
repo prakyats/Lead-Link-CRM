@@ -11,6 +11,8 @@ export interface Permissions {
     canShowTeamOversight: boolean;
     canAssignLeads: boolean;
     canAddInteractions: boolean;
+    canManagePipeline: boolean;
+    canViewTeamInsights: boolean;
 }
 
 export const PERMISSIONS: Record<Role, Permissions> = {
@@ -25,18 +27,22 @@ export const PERMISSIONS: Record<Role, Permissions> = {
         canShowTeamOversight: true,
         canAssignLeads: false,
         canAddInteractions: false,
+        canManagePipeline: true,
+        canViewTeamInsights: true,
     },
     [ROLES.MANAGER]: {
         canViewReports: true,
         canModifyTasks: true,
         canCreateLeads: false,
-        canViewGlobalMetrics: false, // Managers see team metrics, not global
+        canViewGlobalMetrics: false,
         canManageSettings: false,
         canOperationalControl: true,
-        canSeeAllLeads: false, // Managers see team leads, not ALL
+        canSeeAllLeads: false,
         canShowTeamOversight: true,
         canAssignLeads: true,
         canAddInteractions: true,
+        canManagePipeline: false,
+        canViewTeamInsights: true,
     },
 
     [ROLES.SALES]: {
@@ -50,6 +56,8 @@ export const PERMISSIONS: Record<Role, Permissions> = {
         canShowTeamOversight: false,
         canAssignLeads: false,
         canAddInteractions: true,
+        canManagePipeline: true,
+        canViewTeamInsights: false,
     },
 };
 

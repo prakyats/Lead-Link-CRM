@@ -26,6 +26,9 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     }
 
     if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+        if (user.role === 'MANAGER') {
+            return <Navigate to="/team-insights" replace />;
+        }
         return <Navigate to="/dashboard" replace />;
     }
 

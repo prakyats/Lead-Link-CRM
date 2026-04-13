@@ -477,10 +477,194 @@ async function getReportsData(req, res) {
     }
 }
 
+/**
+ * GET Team Performance
+ */
+async function getTeamPerformance(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        const users = await prisma.user.findMany({
+            where: { organizationId, id: { in: accessibleIds } },
+            select: { id: true, name: true }
+        });
+
+        const [taskStatusGroups, taskOverdueGroups, interactionGroups, leadConvertedGroups, totalLeadsGroups] = await Promise.all([
+            prisma.task.groupBy({
+                by: ['assignedToId', 'status'],
+                where: { organizationId, assignedToId: { in: accessibleIds } },
+                _count: true
+            }),
+            prisma.task.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: new Date() } },
+                _count: true
+            }),
+            prisma.interaction.groupBy({
+                by: ['performedById'],
+                where: { organizationId, performedById: { in: accessibleIds } },
+                _count: true
+            }),
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED' },
+                _count: true
+            }),
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds } },
+                _count: true
+            })
+        ]);
+
+        const getCount = (groups, userId, key, matchKey, matchVal) => {
+            const group = groups.find(g => g[key] === userId && (matchKey ? g[matchKey] === matchVal : true));
+            return group ? group._count : 0;
+        };
+
+        const performanceData = users.map(u => {
+            const converted = getCount(leadConvertedGroups, u.id, 'assignedToId');
+            const total = getCount(totalLeadsGroups, u.id, 'assignedToId');
+            return {
+                id: u.id,
+                name: u.name,
+                totalLeads: total,
+                convertedLeads: converted,
+                conversionRate: total > 0 ? parseFloat(((converted / total) * 100).toFixed(1)) : 0,
+                tasksCompleted: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'COMPLETED'),
+                tasksPending: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'PENDING'),
+                overdueTasks: getCount(taskOverdueGroups, u.id, 'assignedToId'),
+                interactions: getCount(interactionGroups, u.id, 'performedById')
+            };
+        });
+
+        res.json({ success: true, data: performanceData });
+    } catch (error) {
+        console.error('Error fetching team performance:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch team performance' });
+    }
+}
+
+/**
+ * GET Team Activity (Latest 15 Interactions)
+ */
+async function getTeamActivity(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        const activities = await prisma.interaction.findMany({
+            where: {
+                organizationId,
+                performedById: { in: accessibleIds }
+            },
+            include: {
+                performedBy: { select: { id: true, name: true } },
+                lead: { select: { id: true, company: true } }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 15
+        });
+
+        res.json({ success: true, data: activities });
+    } catch (error) {
+        console.error('Error fetching team activity:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch team activity' });
+    }
+}
+
+/**
+ * GET Pipeline Distribution
+ */
+async function getPipelineDistribution(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        const statusCounts = await prisma.lead.groupBy({
+            by: ['stage'],
+            where: {
+                organizationId,
+                assignedToId: { in: accessibleIds }
+            },
+            _count: { _all: true }
+        });
+
+        const distribution = {
+            NEW: 0,
+            CONTACTED: 0,
+            INTERESTED: 0,
+            CONVERTED: 0,
+            LOST: 0
+        };
+
+        statusCounts.forEach(item => {
+            const stage = item.stage.toUpperCase();
+            if (distribution.hasOwnProperty(stage)) {
+                distribution[stage] = item._count._all;
+            }
+        });
+
+        res.json({ success: true, data: distribution });
+    } catch (error) {
+        console.error('Error fetching pipeline distribution:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch pipeline distribution' });
+    }
+}
+
+/**
+ * GET Risk Summary
+ */
+async function getRiskSummary(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+
+        const now = new Date();
+        const inactiveThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const [inactiveLeads, overdueTasks] = await Promise.all([
+            prisma.lead.count({
+                where: {
+                    organizationId,
+                    assignedToId: { in: accessibleIds },
+                    stage: { notIn: ['CONVERTED', 'LOST'] },
+                    lastInteraction: { lt: inactiveThreshold }
+                }
+            }),
+            prisma.task.count({
+                where: {
+                    organizationId,
+                    assignedToId: { in: accessibleIds },
+                    status: 'PENDING',
+                    dueDate: { lt: now }
+                }
+            })
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                inactiveLeadsCount: inactiveLeads,
+                overdueTasksCount: overdueTasks,
+                thresholdDays: 7
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching risk summary:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch risk summary' });
+    }
+}
+
 module.exports = {
     getKPIs,
     getRecentLeads,
     getUpcomingTasks,
     getDashboardSummary,
-    getReportsData
+    getReportsData,
+    getTeamPerformance,
+    getTeamActivity,
+    getPipelineDistribution,
+    getRiskSummary
 };

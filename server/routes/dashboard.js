@@ -6,7 +6,11 @@ const {
     getRecentLeads,
     getUpcomingTasks,
     getDashboardSummary,
-    getReportsData
+    getReportsData,
+    getTeamPerformance,
+    getTeamActivity,
+    getPipelineDistribution,
+    getRiskSummary
 } = require('../controllers/dashboardController');
 
 // All dashboard routes require authentication
@@ -76,5 +80,17 @@ router.get('/recent-leads', getRecentLeads);
  */
 // GET /api/dashboard/upcoming-tasks - Get upcoming tasks
 router.get('/upcoming-tasks', getUpcomingTasks);
+
+// GET /api/dashboard/team-performance - Get team performance statistics
+router.get('/team-performance', getTeamPerformance);
+
+// GET /api/dashboard/team-activity - Get latest team activity feed
+router.get('/team-activity', getTeamActivity);
+
+// GET /api/dashboard/team-pipeline - Get team pipeline distribution
+router.get('/team-pipeline', getPipelineDistribution);
+
+// GET /api/dashboard/team-risk - Get team risk and alert summary
+router.get('/team-risk', getRiskSummary);
 
 module.exports = router;

@@ -288,7 +288,15 @@ const DashboardContent = () => {
                     </div>
                  </div>
 
-                 <Link to="/reports" className="crm-card flex items-center justify-between group bg-primary/5 border-primary/10 hover:border-primary/30">
+                 <Link to="/team-insights" className="crm-card flex items-center justify-between group bg-[var(--crm-teal-glow)] border-[var(--crm-teal)]/20 hover:border-[var(--crm-teal)]/40 transition-all">
+                    <div>
+                       <p className="font-bold text-[var(--crm-teal)]">Team Insights</p>
+                       <p className="text-xs font-semibold uppercase tracking-wider opacity-40">Monitor team velocity & risk</p>
+                    </div>
+                    <ArrowRight className="w-6 h-6 text-[var(--crm-teal)] group-hover:translate-x-1 transition-transform" />
+                 </Link>
+
+                 <Link to="/reports" className="crm-card flex items-center justify-between group bg-primary/5 border-border/40 hover:border-primary/30 transition-all">
                     <div>
                        <p className="font-bold text-primary">Detailed Reports</p>
                        <p className="text-xs font-semibold uppercase tracking-wider opacity-40">View comprehensive analytics</p>

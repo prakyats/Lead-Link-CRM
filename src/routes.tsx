@@ -16,6 +16,9 @@ const Reports = lazy(() => import("./pages/Reports"));
 const Team = lazy(() => import("./pages/Team"));
 const Settings = lazy(() => import("./pages/Settings"));
 const PdfPreview = lazy(() => import("./pages/PdfPreview"));
+const TeamInsights = lazy(() => import("./pages/TeamInsights"));
+
+import { ROLES } from './utils/roles';
 
 // Loading fallback component
 const PageLoader = () => (
@@ -60,9 +63,19 @@ export const router = createBrowserRouter([
   {
     path: "/kanban",
     element: (
-      <ProtectedRoute allowedRoles={ALL_ROLES}>
+      <ProtectedRoute allowedRoles={[ROLES.SALES, ROLES.ADMIN]}>
         <Suspense fallback={<PageLoader />}>
           <Kanban />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/team-insights",
+    element: (
+      <ProtectedRoute allowedRoles={ADMIN_MANAGER}>
+        <Suspense fallback={<PageLoader />}>
+          <TeamInsights />
         </Suspense>
       </ProtectedRoute>
     ),

@@ -13,19 +13,22 @@ interface MenuItem {
   icon: typeof LayoutDashboard;
   label: string;
   path: string;
-  permission: 'canViewReports' | 'canManageSettings' | 'canSeeAllLeads' | 'isAlwaysVisible' | 'canShowTeamOversight';
+  permission: keyof Permissions | 'isAlwaysVisible';
   desktopRecommended?: boolean;
 }
 
 const MENU_ITEMS: MenuItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', permission: 'isAlwaysVisible' },
   { icon: Users, label: 'Leads', path: '/leads', permission: 'isAlwaysVisible' },
-  { icon: Columns3, label: 'Kanban Pipeline', path: '/kanban', permission: 'isAlwaysVisible', desktopRecommended: true },
+  { icon: BarChart3, label: 'Team Insights', path: '/team-insights', permission: 'canViewTeamInsights' },
+  { icon: Columns3, label: 'Kanban Pipeline', path: '/kanban', permission: 'canManagePipeline', desktopRecommended: true },
   { icon: CheckSquare, label: 'Tasks', path: '/tasks', permission: 'isAlwaysVisible' },
   { icon: BarChart3, label: 'Reports', path: '/reports', permission: 'canViewReports', desktopRecommended: true },
   { icon: Users2, label: 'Team', path: '/team', permission: 'canShowTeamOversight' },
   { icon: Settings, label: 'Settings', path: '/settings', permission: 'canManageSettings' },
 ];
+
+import { Permissions } from '../../utils/permissions';
 
 interface SidebarContentProps {
   onClose?: () => void;
