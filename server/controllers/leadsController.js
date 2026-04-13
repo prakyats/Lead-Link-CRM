@@ -175,15 +175,26 @@ async function updateLead(req, res) {
             return res.status(403).json({ success: false, message: 'Access denied: Lead ownership is outside your team scope' });
         }
 
-        const data = { ...req.body };
-        if (data.contact) data.contactName = data.contact;
-        delete data.contact;
-        delete data.id;
-        if (data.value) data.value = parseFloat(data.value);
-        if (data.leadScore) data.leadScore = parseInt(data.leadScore);
-        if (data.priority) data.priority = data.priority.toUpperCase();
-        if (data.stage) {
-            data.stage = data.stage.toUpperCase();
+        const { company, contact, email, phone, value, priority, stage, leadScore } = req.body;
+        
+        if (Object.prototype.hasOwnProperty.call(req.body, 'stage') && role !== 'SALES') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only sales representatives can update lead stages'
+            });
+        }
+
+        const data = {};
+
+        if (company !== undefined) data.company = company;
+        if (contact !== undefined) data.contactName = contact;
+        if (email !== undefined) data.email = email;
+        if (phone !== undefined) data.phone = phone;
+        if (value !== undefined) data.value = parseFloat(value);
+        if (leadScore !== undefined) data.leadScore = parseInt(leadScore);
+        if (priority !== undefined) data.priority = priority.toUpperCase();
+        if (stage !== undefined) {
+            data.stage = stage.toUpperCase();
             if (data.stage === 'CONVERTED') {
                 data.convertedAt = new Date();
             } else {
@@ -218,7 +229,12 @@ async function updateLeadStage(req, res) {
         const { id } = req.params;
         const { stage } = req.body;
         const { role, id: userId, organizationId } = req.user;
-        if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
+        if (role !== 'SALES') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only sales representatives can update lead stages'
+            });
+        }
 
         const existingLead = await prisma.lead.findFirst({ where: { id: parseInt(id), organizationId } });
         if (!existingLead) return res.status(404).json({ success: false, message: 'Lead not found' });

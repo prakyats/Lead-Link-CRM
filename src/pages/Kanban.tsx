@@ -44,7 +44,11 @@ function LeadCard({ lead, canDrag }: LeadCardProps) {
   return (
     <div
       ref={drag as any}
-      className={`group relative rounded-2xl p-5 transition-all cursor-grab active:cursor-grabbing border border-border/40 hover:border-primary/30 hover:shadow-[0_8px_32px_-8px_rgba(0,212,170,0.15)] bg-card/40 backdrop-blur-sm ${isDragging ? 'opacity-30 rotate-3 scale-95' : 'opacity-100'}`}
+      className={`group relative rounded-2xl p-5 transition-all border border-border/40 bg-card/40 backdrop-blur-sm ${
+        canDrag 
+          ? 'cursor-grab active:cursor-grabbing hover:border-primary/30 hover:shadow-[0_8px_32px_-8px_rgba(0,212,170,0.15)] opacity-100' 
+          : 'cursor-not-allowed opacity-60'
+      } ${isDragging ? 'opacity-30 rotate-3 scale-95' : ''}`}
     >
       <div className="flex items-start justify-between mb-5">
         <div className="flex items-center gap-3">
@@ -191,7 +195,7 @@ function KanbanInnerContent() {
     enabled: !!user?.id
   });
 
-  const canDrag = user?.role !== 'ADMIN';
+  const canDrag = user?.role === 'SALES';
   const isMobile = useMediaQuery('(max-width: 767px)');
 
   const stageMutation = useMutation({
@@ -216,6 +220,7 @@ function KanbanInnerContent() {
   });
 
   const handleDrop = async (leadId: number, newStage: Lead['stage']) => {
+    if (user?.role !== 'SALES') return;
     try {
       await stageMutation.mutateAsync({ id: leadId, stage: newStage });
       toast.success(`Stage: ${newStage}`, {
@@ -254,6 +259,12 @@ function KanbanInnerContent() {
               <p className="text-sm font-medium text-muted-foreground mt-2">Drag and drop leads to update their pipeline stage</p>
             </div>
             <div className="flex items-center gap-6 animate-in slide-in-from-right duration-700">
+              {!canDrag && (
+                <div className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  View Only Access
+                </div>
+              )}
               <div className="flex -space-x-3">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="w-10 h-10 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-background bg-muted/40 shadow-xl">
@@ -268,12 +279,18 @@ function KanbanInnerContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 bg-primary/[0.03] border border-primary/10 rounded-2xl p-4 transition-all hover:bg-primary/[0.05] hover:border-primary/20">
+          <div className={`flex items-center gap-4 border rounded-2xl p-4 transition-all ${
+            canDrag ? 'bg-primary/[0.03] border-primary/10 hover:bg-primary/[0.05] hover:border-primary/20' : 'bg-status-warning/5 border-status-warning/10'
+          }`}>
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Zap size={14} className="text-primary animate-pulse" />
+              <Zap size={14} className={`text-primary ${canDrag ? 'animate-pulse' : ''}`} />
             </div>
             <p className="text-xs font-semibold text-muted-foreground">
-              TIP: <span className="text-foreground/80">DRAG LEADS TO UPDATE THEIR PIPELINE STAGE</span>
+              {canDrag ? (
+                <>TIP: <span className="text-foreground/80">DRAG LEADS TO UPDATE THEIR PIPELINE STAGE</span></>
+              ) : (
+                <>READ-ONLY: <span className="text-foreground/80">ONLY SALES REPRESENTATIVES CAN MOVE LEADS</span></>
+              )}
             </p>
           </div>
         </div>
