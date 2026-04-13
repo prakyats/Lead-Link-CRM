@@ -10,12 +10,15 @@ function mapTaskToLegacy(task) {
     if (!task) return null;
 
     const mapEnum = (val) => val ? val.charAt(0).toUpperCase() + val.slice(1).toLowerCase() : val;
+    const taskType = task.createdById === task.assignedToId ? 'SELF' : 'DELEGATED';
 
     return {
         ...task,
         status: task.status, // Return raw COMPLETED
         priority: task.priority, // Return raw HIGH
         assignedTo: task.assignedTo ? task.assignedTo.name : 'Unassigned',
+        createdBy: task.createdBy ? task.createdBy.name : 'Unknown System',
+        taskType
     };
 }
 
@@ -29,17 +32,17 @@ async function getAllTasks(req, res) {
 
         const tasks = await prisma.task.findMany({
             where: {
-                organizationId,
-                assignedToId: { in: accessibleIds }
+                organizationId: parseInt(req.user.organizationId),
+                OR: [
+                    { assignedToId: { in: accessibleIds } },
+                    { createdById: parseInt(req.user.id) }
+                ]
             },
 
             include: {
                 lead: true,
-                assignedTo: {
-                    select: {
-                        name: true
-                    }
-                }
+                assignedTo: { select: { name: true } },
+                createdBy: { select: { name: true } }
             }
         });
 
@@ -56,14 +59,23 @@ async function getAllTasks(req, res) {
  */
 async function createTask(req, res) {
     try {
-        const { role, id: userId, organizationId } = req.user;
-        if (role === 'ADMIN') return res.status(403).json({ success: false, message: 'ADMIN is read-only' });
+        // Strictly parse IDs from JWT (often strings) to Integers (Prisma/DB requirement)
+        const role = req.user.role;
+        const userId = parseInt(req.user.id);
+        const organizationId = parseInt(req.user.organizationId);
 
-        const { title, description, dueDate, priority, leadId, assignedToId } = req.body;
+        const { 
+            title, 
+            description, 
+            dueDate, 
+            priority, 
+            leadId, 
+            assignedToId,
+            assignmentType = 'USER' // Options: SELF, USER, TEAM
+        } = req.body;
 
         const parsedLeadId = leadId ? parseInt(leadId) : null;
-        const parsedAssignedToId = parseInt(assignedToId) || userId;
-
+        
         // Only validate lead if one is specified
         if (parsedLeadId) {
             const lead = await prisma.lead.findFirst({
@@ -72,27 +84,112 @@ async function createTask(req, res) {
             if (!lead) return res.status(400).json({ success: false, message: 'Invalid lead for this organization' });
         }
 
+        let targetUserIds = [];
+
+        // ── 1. TARGET DISCOVERY & DELEGATION RULES ──
         const accessibleIds = await getAccessibleUserIds(req.user);
-        if (!accessibleIds.includes(parsedAssignedToId)) {
-            return res.status(403).json({ success: false, message: 'Access denied: You cannot assign tasks to users outside your team' });
+
+        if (assignmentType === 'TEAM') {
+            if (role === 'SALES') {
+                return res.status(403).json({ success: false, message: 'Sales representatives cannot perform team assignments.' });
+            }
+            
+            // Fetch and sort sales reps ASC
+            const salesReps = await prisma.user.findMany({
+                where: {
+                    organizationId,
+                    id: { in: accessibleIds },
+                    role: 'SALES'
+                },
+                orderBy: { name: 'asc' },
+                select: { id: true, name: true }
+            });
+
+            if (salesReps.length === 0) {
+                return res.status(400).json({ success: false, message: 'No sales representatives available for team assignment.' });
+            }
+            targetUserIds = salesReps.map(r => r.id);
+        } else {
+            // SINGLE ASSIGNMENT (SELF or USER)
+            // Use derived Integer organizationId for hierarchy checks
+            const parsedAssignedToId = parseInt(assignedToId) || userId;
+            
+            if (!accessibleIds.includes(parsedAssignedToId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized assignment: Target user is outside your authorized hierarchy.' });
+            }
+
+            // ROLE LOCK: Sales can only assign to self
+            if (role === 'SALES' && parsedAssignedToId !== userId) {
+                return res.status(403).json({ success: false, message: 'Sales representatives can only assign tasks to themselves.' });
+            }
+            targetUserIds = [parsedAssignedToId];
         }
 
+        // ── 2. BULK CREATION WITH DUPLICATE GUARD ──
+        const normalizedTitle = title.trim().toLowerCase();
+        const startOfDay = new Date(new Date(dueDate).setHours(0, 0, 0, 0));
+        const endOfDay = new Date(new Date(dueDate).setHours(23, 59, 59, 999));
 
-        const newTask = await prisma.task.create({
-            data: {
-                organizationId,
-                title: title.trim(),
-                description: description ? description.trim() : null,
-                dueDate: dueDate ? new Date(dueDate) : null,
-                priority: priority ? priority.toUpperCase() : 'MEDIUM',
-                status: 'PENDING',
-                leadId: parsedLeadId,
-                assignedToId: parsedAssignedToId
-            },
-            include: { assignedTo: { select: { name: true } } }
+        let createdCount = 0;
+        let skippedCount = 0;
+        let lastCreatedTask = null;
+
+        // Future improvement: Replace loop with createMany if skippedCount tracking isn't needed per-user
+        for (const targetId of targetUserIds) {
+            const existingTask = await prisma.task.findFirst({
+                where: {
+                    assignedToId: targetId,
+                    title: { equals: normalizedTitle, mode: 'insensitive' },
+                    dueDate: { gte: startOfDay, lte: endOfDay }
+                }
+            });
+
+            if (existingTask) {
+                skippedCount++;
+                continue;
+            }
+
+            const newTask = await prisma.task.create({
+                data: {
+                    organizationId,
+                    title: title.trim(),
+                    description: description ? description.trim() : null,
+                    dueDate: dueDate ? new Date(dueDate) : null,
+                    priority: priority ? priority.toUpperCase() : 'MEDIUM',
+                    status: 'PENDING',
+                    leadId: parsedLeadId,
+                    assignedToId: targetId,
+                    createdById: userId
+                },
+                include: { 
+                    assignedTo: { select: { name: true } },
+                    createdBy: { select: { name: true } }
+                }
+            });
+            lastCreatedTask = newTask;
+            createdCount++;
+        }
+
+        if (createdCount === 0 && targetUserIds.length > 0) {
+            return res.status(409).json({ 
+                success: false, 
+                message: targetUserIds.length === 1 
+                    ? `Duplicate task already exists for this assignee on ${new Date(dueDate).toLocaleDateString()}`
+                    : `All ${targetUserIds.length} team assignments skipped (duplicates existing).`
+            });
+        }
+
+        const message = assignmentType === 'TEAM' 
+            ? `Assigned to ${createdCount} reps (${skippedCount} skipped)`
+            : 'Task created successfully';
+
+        res.status(201).json({ 
+            success: true, 
+            message,
+            createdCount,
+            skippedCount,
+            data: lastCreatedTask ? mapTaskToLegacy(lastCreatedTask) : null
         });
-
-        res.status(201).json({ success: true, data: mapTaskToLegacy(newTask) });
     } catch (error) {
         console.error('Error creating task:', error);
         res.status(500).json({ success: false, message: 'Failed to create task' });
@@ -108,7 +205,7 @@ async function updateTask(req, res) {
         const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: parseInt(organizationId) } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const accessibleIds = await getAccessibleUserIds(req.user);
@@ -151,7 +248,7 @@ async function toggleComplete(req, res) {
         const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: parseInt(organizationId) } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const accessibleIds = await getAccessibleUserIds(req.user);
@@ -189,7 +286,7 @@ async function markTaskComplete(req, res) {
         const { role, id: userId, organizationId } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: parseInt(organizationId) } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const accessibleIds = await getAccessibleUserIds(req.user);
@@ -228,8 +325,8 @@ async function getTaskSummary(req, res) {
         endOfToday.setHours(23, 59, 59, 999);
 
         const baseWhere = {
-            organizationId,
-            assignedToId: userId,
+            organizationId: parseInt(organizationId),
+            assignedToId: parseInt(userId),
             status: 'PENDING'
         };
 
@@ -284,12 +381,12 @@ async function getTaskSummary(req, res) {
 async function deleteTask(req, res) {
     try {
         const { id } = req.params;
-        const { role, organizationId } = req.user;
-        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId } });
+        const { role } = req.user;
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: parseInt(req.user.organizationId) } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const accessibleIds = await getAccessibleUserIds(req.user);
-        if (!accessibleIds.includes(existingTask.assignedToId)) {
+        if (!accessibleIds.includes(parseInt(existingTask.assignedToId))) {
             return res.status(403).json({ success: false, message: 'Access denied: Task ownership is outside your team scope' });
         }
 

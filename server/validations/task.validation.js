@@ -6,7 +6,8 @@ const createTaskSchema = z.object({
     dueDate: z.coerce.date().nullable().optional(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
     leadId: z.number().nullable().optional(),
-    assignedToId: z.number().optional()
+    assignedToId: z.number().nullable().optional(),
+    assignmentType: z.enum(['SELF', 'USER', 'TEAM']).optional()
 });
 
 const updateTaskSchema = createTaskSchema.partial();

@@ -35,9 +35,9 @@ function mapTaskToLegacy(task) {
 async function getKPIs(req, res) {
     try {
         const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
         let where = {
-            organizationId,
+            organizationId: parseInt(organizationId),
             assignedToId: { in: accessibleIds }
         };
 
@@ -175,11 +175,11 @@ async function getKPIs(req, res) {
 async function getRecentLeads(req, res) {
     try {
         const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const leads = await prisma.lead.findMany({
             where: {
-                organizationId,
+                organizationId: parseInt(organizationId),
                 assignedToId: { in: accessibleIds }
             },
 
@@ -201,10 +201,10 @@ async function getRecentLeads(req, res) {
 async function getUpcomingTasks(req, res) {
     try {
         const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
         let where = {
             status: 'PENDING',
-            organizationId,
+            organizationId: parseInt(organizationId),
             assignedToId: { in: accessibleIds }
         };
 
@@ -233,9 +233,10 @@ async function getUpcomingTasks(req, res) {
 async function getDashboardSummary(req, res) {
     try {
         if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-        const { organizationId } = req.user;
+        const organizationId = parseInt(req.user.organizationId);
+        const userId = parseInt(req.user.id);
 
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const now = new Date();
         const todayStart = new Date(now.setHours(0, 0, 0, 0));
@@ -357,8 +358,8 @@ async function getDashboardSummary(req, res) {
 async function getReportsData(req, res) {
     try {
         if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-        const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const organizationId = parseInt(req.user.organizationId);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const { filter } = req.query; // today, week, month
 
@@ -482,8 +483,8 @@ async function getReportsData(req, res) {
  */
 async function getTeamPerformance(req, res) {
     try {
-        const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const organizationId = parseInt(req.user.organizationId);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -755,8 +756,8 @@ async function getTeamPerformance(req, res) {
  */
 async function getTeamActivity(req, res) {
     try {
-        const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const organizationId = parseInt(req.user.organizationId);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const activities = await prisma.interaction.findMany({
             where: {
@@ -783,8 +784,8 @@ async function getTeamActivity(req, res) {
  */
 async function getPipelineDistribution(req, res) {
     try {
-        const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const organizationId = parseInt(req.user.organizationId);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const statusCounts = await prisma.lead.groupBy({
             by: ['stage'],
@@ -851,8 +852,8 @@ async function getPipelineDistribution(req, res) {
  */
 async function getRiskSummary(req, res) {
     try {
-        const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const organizationId = parseInt(req.user.organizationId);
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const now = new Date();
         const inactiveThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -894,7 +895,10 @@ async function getRiskSummary(req, res) {
                     organizationId,
                     id: { in: accessibleIds },
                     role: 'SALES',
-                    interactions: { none: { createdAt: { gte: inactiveThreshold } } }
+                    AND: [
+                        { interactions: { none: { createdAt: { gte: inactiveThreshold } } } },
+                        { tasks: { none: { status: 'COMPLETED', completedAt: { gte: inactiveThreshold } } } }
+                    ]
                 },
                 select: { id: true }
             }),

@@ -11,6 +11,8 @@ export interface TaskType {
     assignedTo: string;
     createdAt: string;
     completedAt?: string;
+    createdBy?: string;
+    taskType?: 'SELF' | 'DELEGATED';
 }
 
 export const getTasks = async (): Promise<TaskType[]> => {

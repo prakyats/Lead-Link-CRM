@@ -23,7 +23,7 @@ export function Sidebar() {
 
       {/* Desktop Sidebar */}
       <div 
-        className="hidden md:flex w-64 h-screen flex-col fixed top-0 left-0 z-40 shrink-0"
+        className="hidden lg:flex w-64 h-screen flex-col fixed top-0 left-0 z-40 shrink-0"
         style={{ background: 'var(--crm-navy-deep)', borderRight: '1px solid var(--crm-border)' }}
       >
         <SidebarContent />

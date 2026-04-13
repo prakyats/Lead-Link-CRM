@@ -125,11 +125,11 @@ html,
 
   /* ── Page Layout (Reverted Constraints) ── */
   .crm-page-container {
-    @apply flex flex-col md:flex-row min-h-screen bg-background text-foreground relative overflow-hidden w-full max-w-full;
+    @apply flex flex-col lg:flex-row min-h-screen bg-background text-foreground relative overflow-hidden w-full max-w-full;
   }
 
   .crm-main-content {
-    @apply w-full relative z-10 transition-all duration-500 md:ml-[16rem] md:w-[calc(100vw-16rem)];
+    @apply w-full relative z-10 transition-all duration-500 lg:ml-[16rem] lg:w-[calc(100%-16rem)];
   }
 
   .crm-page-title {
@@ -163,7 +163,7 @@ html,
 
   /* Table System */
   .crm-table-container {
-    @apply rounded-[1.5rem] overflow-hidden;
+    @apply rounded-[1.5rem] overflow-x-auto pb-2;
     background: var(--crm-glass);
     border: 1px solid var(--crm-glass-border);
   }
