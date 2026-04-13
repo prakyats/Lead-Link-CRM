@@ -182,7 +182,14 @@ async function updateLead(req, res) {
         if (data.value) data.value = parseFloat(data.value);
         if (data.leadScore) data.leadScore = parseInt(data.leadScore);
         if (data.priority) data.priority = data.priority.toUpperCase();
-        if (data.stage) data.stage = data.stage.toUpperCase();
+        if (data.stage) {
+            data.stage = data.stage.toUpperCase();
+            if (data.stage === 'CONVERTED') {
+                data.convertedAt = new Date();
+            } else {
+                data.convertedAt = null;
+            }
+        }
         data.lastInteraction = new Date();
 
         const updateRes = await prisma.lead.updateMany({
@@ -225,7 +232,8 @@ async function updateLeadStage(req, res) {
             where: { id: parseInt(id), organizationId },
             data: {
                 stage: stage.toUpperCase(),
-                lastInteraction: new Date()
+                lastInteraction: new Date(),
+                convertedAt: stage.toUpperCase() === 'CONVERTED' ? new Date() : null
             }
         });
 

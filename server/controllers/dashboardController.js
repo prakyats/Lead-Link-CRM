@@ -294,7 +294,7 @@ async function getReportsData(req, res) {
             userTaskOverdueGroups,
             userInteractionGroups,
             userLeadConvertedGroups,
-            userLeadInterestedGroups
+            userTotalLeadsGroups
         ] = await Promise.all([
             prisma.user.findMany({
                 where: { organizationId, id: { in: accessibleIds } },
@@ -332,12 +332,12 @@ async function getReportsData(req, res) {
             }),
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', createdAt: { gte: startDate } },
+                where: { organizationId, assignedToId: { in: accessibleIds }, convertedAt: { gte: startDate } },
                 _count: true
             }),
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED', createdAt: { gte: startDate } },
+                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } },
                 _count: true
             })
         ]);
@@ -361,7 +361,7 @@ async function getReportsData(req, res) {
         // 2. Sales Performance Comparison
         const salesComparison = users.map(u => {
             const converted = getCount(userLeadConvertedGroups, u.id, 'assignedToId');
-            const interested = getCount(userLeadInterestedGroups, u.id, 'assignedToId');
+            const totalInPeriod = getCount(userTotalLeadsGroups, u.id, 'assignedToId');
 
             return {
                 id: u.id,
@@ -369,7 +369,7 @@ async function getReportsData(req, res) {
                 tasksCompleted: getCount(userTaskCompletedGroups, u.id, 'assignedToId'),
                 overdue: getCount(userTaskOverdueGroups, u.id, 'assignedToId'),
                 interactions: getCount(userInteractionGroups, u.id, 'performedById'),
-                conversionRate: interested > 0 ? (converted / interested) * 100 : 0
+                conversionRate: totalInPeriod > 0 ? (converted / totalInPeriod) * 100 : (converted > 0 ? 100 : 0)
             };
         });
 

@@ -268,7 +268,8 @@ function LeadsInnerContent() {
                                             <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Value</th>
                                             {canAssign && <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Assigned</th>}
                                             <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Added On</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-right uppercase tracking-wider">Actions</th>
+                                            {/* <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-right uppercase tracking-wider">Actions</th> */}
+                                            {canAssign && <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-right uppercase tracking-wider">Assign</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -344,9 +345,9 @@ function LeadsInnerContent() {
                                                                 <UserCheck size={16} />
                                                             </button>
                                                         )}
-                                                        <button className="w-9 h-9 flex items-center justify-center rounded-xl transition-all text-muted-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20">
+                                                        {/* <button className="w-9 h-9 flex items-center justify-center rounded-xl transition-all text-muted-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20">
                                                             <MoreHorizontal size={18} />
-                                                        </button>
+                                                        </button> */}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -378,9 +379,9 @@ function LeadsInnerContent() {
                                                         <UserCheck size={16} />
                                                     </button>
                                                 )}
-                                                <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/20 text-muted-foreground border border-border/40">
+                                                {/* <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/20 text-muted-foreground border border-border/40">
                                                     <MoreHorizontal size={16} />
-                                                </button>
+                                                </button> */}
                                             </div>
                                         </div>
 
@@ -447,7 +448,7 @@ function LeadsInnerContent() {
                                     className="crm-btn-primary !px-10 !py-4 mt-8"
                                 >
                                     <Plus size={20} />
-                                    <span>Add Add Lead</span>
+                                    <span>Add Lead</span>
                                 </button>
                             )}
                         </div>

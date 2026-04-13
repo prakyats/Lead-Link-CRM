@@ -56,9 +56,9 @@ function LeadCard({ lead, canDrag }: LeadCardProps) {
             <p className="text-xs text-muted-foreground mt-1 text-muted-foreground/60">{lead.contact}</p>
           </div>
         </div>
-        <button className="w-8 h-8 flex items-center justify-center rounded-lg transition-all text-muted-foreground/40 hover:text-foreground hover:bg-muted/50">
+        {/* <button className="w-8 h-8 flex items-center justify-center rounded-lg transition-all text-muted-foreground/40 hover:text-foreground hover:bg-muted/50">
           <MoreHorizontal size={16} />
-        </button>
+        </button> */}
       </div>
 
       <div className="space-y-4">
