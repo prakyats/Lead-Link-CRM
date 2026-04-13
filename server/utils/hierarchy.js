@@ -7,7 +7,10 @@ const prisma = require('./prisma');
  * ADMIN: ALL users in the organization
  */
 async function getAccessibleUserIds(user) {
-    const { id: userId, role, organizationId } = user;
+    if (!user) return [];
+    const userId = parseInt(user.id);
+    const organizationId = parseInt(user.organizationId);
+    const role = user.role;
 
     if (role === 'ADMIN') {
         const allUsers = await prisma.user.findMany({

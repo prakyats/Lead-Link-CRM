@@ -29,7 +29,7 @@ export function TopNavbar({ onOpenMenu }: TopNavbarProps) {
   };
 
   return (
-    <nav className="md:hidden flex items-center justify-between px-5 h-16 sticky top-0 z-50 border-b border-white/10 backdrop-blur-md bg-[#0B1120]/80">
+    <nav className="lg:hidden flex items-center justify-between px-5 h-16 sticky top-0 z-50 border-b border-white/10 backdrop-blur-md bg-[#0B1120]/80">
       <div className="flex items-center gap-3">
         <motion.button 
           whileTap={{ scale: 0.92 }}

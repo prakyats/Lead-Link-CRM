@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck, Calendar, Activity } from 'lucide-react';
+import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck, Calendar, Activity, ChevronRight, Globe, Shield } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { getLeads, createLead as createLeadApi, assignLead as assignLeadApi, LeadType as Lead } from '../api/leads';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -13,11 +13,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { validateLeadForm, validateCompany, validateName, validateEmail, validatePhone, type ValidationErrors } from '../utils/validation';
 
+
 function LeadsInnerContent() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
+    const [expandedLeadId, setExpandedLeadId] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [assignModal, setAssignModal] = useState<{ open: boolean; leadId: number | null }>({ open: false, leadId: null });
     const [salesUsers, setSalesUsers] = useState<{ id: number; name: string; role: string }[]>([]);
@@ -140,8 +142,8 @@ function LeadsInnerContent() {
             <div className="ll-orb w-[500px] h-[500px] -top-32 -left-32 bg-primary/10 blur-[100px]" />
             <div className="ll-orb w-[400px] h-[400px] bottom-0 -right-32 bg-teal-500/5 blur-[120px]" />
 
-            <div className="max-w-7xl mx-auto p-8 space-y-8 relative z-10">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <div className="w-full mx-auto px-6 py-8 space-y-8 relative z-10">
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
                     <div className="animate-in slide-in-from-left duration-700">
                         <h1 className="text-3xl font-bold tracking-tight text-foreground">Leads Registry</h1>
                         <p className="text-sm font-medium text-muted-foreground mt-2">Manage and track your active prospects and client pipeline</p>
@@ -158,8 +160,8 @@ function LeadsInnerContent() {
                 </div>
 
                 {/* Controls Section */}
-                <div className="crm-card !p-4 flex flex-col md:flex-row gap-4 items-center justify-between border-border/40">
-                    <div className="relative w-full md:w-[400px] group">
+                <div className="crm-card !p-4 flex flex-col lg:flex-row gap-4 items-center justify-between border-border/40">
+                    <div className="relative w-full lg:w-[400px] group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                         <input
                             type="text"
@@ -169,7 +171,7 @@ function LeadsInnerContent() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="flex items-center gap-3 w-full lg:w-auto">
                         <button 
                             onClick={() => setShowFilters(!showFilters)}
                             className={`crm-btn-secondary !px-5 !py-3 flex items-center justify-center gap-2 ${showFilters ? 'bg-primary/10 text-primary border-primary/20 shadow-lg shadow-primary/5' : ''}`}
@@ -189,7 +191,7 @@ function LeadsInnerContent() {
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                         >
-                            <div className="crm-card !p-8 grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 border-primary/10 bg-primary/[0.02]">
+                            <div className="crm-card !p-8 grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8 border-primary/10 bg-primary/[0.02]">
                                 <div className="space-y-3">
                                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Stage</label>
                                     <select 
@@ -257,107 +259,177 @@ function LeadsInnerContent() {
                     ) : filteredLeads.length > 0 ? (
                         <>
                             {/* Pro Desktop Grid View */}
-                            <div className="hidden md:block crm-table-container">
-                                <table className="crm-table">
-                                    <thead className="bg-muted/30 border-b border-border/50">
+                            <div className="hidden lg:block crm-table-container">
+                                <table className="w-full table-fixed border-collapse">
+                                    <thead className="bg-muted/30 border-b border-border/50 sticky top-0 z-20 backdrop-blur-md">
                                         <tr>
-                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Organization</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Contact Person</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Status</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Priority</th>
-                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Value</th>
-                                            {canAssign && <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Assigned</th>}
-                                            <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-left uppercase tracking-wider">Added On</th>
-                                            {/* <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-right uppercase tracking-wider">Actions</th> */}
-                                            {canAssign && <th className="px-6 py-4 text-xs font-semibold text-muted-foreground text-right uppercase tracking-wider">Assign</th>}
+                                            <th className="w-[24%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Organization</th>
+                                            <th className="w-[18%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Person</th>
+                                            <th className="w-[14%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Status</th>
+                                            <th className="w-[12%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Priority</th>
+                                            <th className="w-[14%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Value</th>
+                                            {canAssign && <th className="w-[10%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Agent</th>}
+                                            {canAssign && <th className="w-[8%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-right">Action</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredLeads.map((lead, i) => (
-                                            <tr key={lead.id} className={`crm-table-tr group animate-in slide-in-from-bottom duration-500 delay-${Math.min(i * 50, 400)}`}>
-                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-11 h-11 rounded-xl flex items-center justify-center font-semibold text-base transition-all group-hover:scale-110 bg-primary/10 text-primary border border-primary/20 shadow-inner group-hover:rotate-6">
-                                                            {lead.company.charAt(0)}
-                                                        </div>
-                                                        <span className="font-semibold text-foreground">{lead.company}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
-                                                    <div className="space-y-1">
-                                                        <p className="font-medium text-foreground">{lead.contact}</p>
-                                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-widest">
-                                                            <Mail size={12} className="opacity-60" />
-                                                            {lead.email}
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
-                                                    <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
-                                                            lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
-                                                                lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
-                                                                    lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
-                                                                        'badge-stage-lost'
-                                                        }`}>
-                                                        {lead.stage}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
-                                                    <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
-                                                        lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
-                                                            'badge-priority-low'
-                                                        }`}>
-                                                        {lead.priority}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
-                                                    <div className="flex items-center gap-1 font-medium text-sm text-foreground">
-                                                        <span className="text-muted-foreground mr-0.5">₹</span>
-                                                        {lead.value.toLocaleString('en-IN')}
-                                                    </div>
-                                                </td>
-                                                {canAssign && (
-                                                    <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/20 flex items-center justify-center text-[10px] font-bold text-purple-600 dark:text-purple-400">
-                                                                {(lead.assignedTo || '?').charAt(0)}
+                                        {filteredLeads.map((lead, i) => {
+                                            const isExpanded = expandedLeadId === lead.id;
+                                            
+                                            const toggleExpand = (e: React.MouseEvent | React.KeyboardEvent) => {
+                                                // Prevent expansion when clicking buttons/interactive elements
+                                                if ((e.target as HTMLElement).closest('button')) return;
+                                                setExpandedLeadId(isExpanded ? null : lead.id);
+                                            };
+
+                                            return (
+                                                <React.Fragment key={lead.id}>
+                                                    <tr 
+                                                        tabIndex={0}
+                                                        onClick={toggleExpand}
+                                                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleExpand(e); }}
+                                                        className={`crm-table-tr group/row outline-none cursor-pointer border-l-2 transition-all ${
+                                                            isExpanded ? 'border-primary bg-primary/5' : 'border-transparent'
+                                                        }`}
+                                                    >
+                                                        <td className="px-4 py-3 border-b border-border/40">
+                                                            <div className="flex items-center gap-3">
+                                                                <motion.div
+                                                                    animate={{ rotate: isExpanded ? 90 : 0 }}
+                                                                    transition={{ duration: 0.2 }}
+                                                                    className="text-muted-foreground/40 group-hover/row:text-primary transition-colors"
+                                                                >
+                                                                    <ChevronRight size={16} />
+                                                                </motion.div>
+                                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] bg-primary/10 text-primary border border-primary/20 shrink-0">
+                                                                    {lead.company.charAt(0)}
+                                                                </div>
+                                                                <span className="font-bold text-sm text-foreground truncate max-w-[140px] block">
+                                                                    {lead.company}
+                                                                </span>
                                                             </div>
-                                                            <span className="text-xs font-medium text-muted-foreground">
-                                                                {lead.assignedTo || 'UNASSIGNED'}
+                                                        </td>
+                                                        <td className="px-4 py-3 border-b border-border/40">
+                                                            <p className="font-bold text-sm text-foreground truncate">{lead.contact}</p>
+                                                        </td>
+                                                        <td className="px-4 py-3 border-b border-border/40">
+                                                            <span className={`crm-badge scale-90 origin-left ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                                                    lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
+                                                                        lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
+                                                                            lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
+                                                                                'badge-stage-lost'
+                                                                }`}>
+                                                                {lead.stage}
                                                             </span>
-                                                        </div>
-                                                    </td>
-                                                )}
-                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap">
-                                                    <div className="flex flex-col gap-0.5">
-                                                        <span className="text-sm font-medium text-muted-foreground">{formatDate(lead.createdAt)}</span>
-                                                        
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 border-b border-border/40 whitespace-nowrap text-right">
-                                                    <div className="flex items-center gap-1.5 justify-end">
+                                                        </td>
+                                                        <td className="px-4 py-3 border-b border-border/40">
+                                                            <span className={`crm-badge scale-90 origin-left ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                                                                lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
+                                                                    'badge-priority-low'
+                                                                }`}>
+                                                                {lead.priority}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 border-b border-border/40">
+                                                            <div className="flex items-center gap-1 font-bold text-sm text-foreground">
+                                                                <span className="text-muted-foreground/60 mr-0.5">₹</span>
+                                                                {lead.value.toLocaleString('en-IN')}
+                                                            </div>
+                                                        </td>
                                                         {canAssign && (
-                                                            <button
-                                                                onClick={() => { setAssignModal({ open: true, leadId: lead.id }); setSelectedAssignee(''); }}
-                                                                className="w-9 h-9 flex items-center justify-center rounded-xl transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400 border border-transparent hover:border-purple-500/20"
-                                                                title="Assign Lead"
-                                                            >
-                                                                <UserCheck size={16} />
-                                                            </button>
+                                                            <td className="px-4 py-3 border-b border-border/40">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/20 flex items-center justify-center text-[9px] font-black text-purple-400 shrink-0">
+                                                                        {(lead.assignedTo || '?').charAt(0)}
+                                                                    </div>
+                                                                    <span className="text-[11px] font-bold text-muted-foreground truncate max-w-[80px]">
+                                                                        {lead.assignedTo || 'NONE'}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
                                                         )}
-                                                        {/* <button className="w-9 h-9 flex items-center justify-center rounded-xl transition-all text-muted-foreground hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20">
-                                                            <MoreHorizontal size={18} />
-                                                        </button> */}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                        <td className="px-4 py-3 border-b border-border/40 text-right">
+                                                            {canAssign && (
+                                                                <button
+                                                                    onClick={(e) => { 
+                                                                        e.stopPropagation();
+                                                                        setAssignModal({ open: true, leadId: lead.id }); 
+                                                                        setSelectedAssignee(''); 
+                                                                    }}
+                                                                    className="w-8 h-8 flex items-center justify-center rounded-lg transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400 border border-transparent hover:border-purple-500/20 active:scale-95"
+                                                                    title="Assign Lead"
+                                                                >
+                                                                    <UserCheck size={14} />
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+
+                                                    {/* Expansion Row */}
+                                                    <AnimatePresence initial={false}>
+                                                        {isExpanded && (
+                                                            <tr>
+                                                                <td colSpan={7} className="px-0 py-0 border-b border-border/40 bg-muted/5">
+                                                                    <motion.div
+                                                                        initial={{ height: 0, opacity: 0 }}
+                                                                        animate={{ height: "auto", opacity: 1 }}
+                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                                        className="overflow-hidden"
+                                                                    >
+                                                                        <div className="p-6 ml-12 grid grid-cols-1 md:grid-cols-2 gap-8 border-l border-primary/20">
+                                                                            <div className="space-y-4">
+                                                                                <div>
+                                                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2 mb-2">
+                                                                                        <Mail size={12} className="text-primary" />
+                                                                                        Communication Channel
+                                                                                    </p>
+                                                                                    <p className="text-sm font-bold text-foreground bg-card/40 px-3 py-2 rounded-lg border border-white/5 inline-block">
+                                                                                        {lead.email}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div className="flex gap-10">
+                                                                                    <div>
+                                                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2 mb-2">
+                                                                                            <Calendar size={12} />
+                                                                                            Registry Date
+                                                                                        </p>
+                                                                                        <p className="text-xs font-bold text-muted-foreground">{formatDate(lead.createdAt)}</p>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2 mb-2">
+                                                                                            <Shield size={12} />
+                                                                                            Lead Integrity
+                                                                                        </p>
+                                                                                        <p className="text-xs font-bold text-teal-500/80 uppercase tracking-widest">Verified Systemic</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            
+                                                                            <div className="hidden lg:flex flex-col justify-center border-l border-white/5 pl-8">
+                                                                                <div className="flex items-center gap-3 text-muted-foreground/40 mb-3">
+                                                                                    <Globe size={16} />
+                                                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em]">Operational Context</span>
+                                                                                </div>
+                                                                                <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
+                                                                                    This prospect is currently undergoing active lifecycle evaluation. Pipeline integrity is maintained via real-time risk diagnostic engines.
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </motion.div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </React.Fragment>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
 
                             {/* Mobile View */}
-                            <div className="md:hidden space-y-4">
+                            <div className="lg:hidden space-y-4">
                                 {filteredLeads.map((lead) => (
                                     <div key={lead.id} className="crm-card border-border/40 shadow-xl active:scale-[0.98] transition-all bg-muted/5">
                                         <div className="flex items-center justify-between mb-6">
