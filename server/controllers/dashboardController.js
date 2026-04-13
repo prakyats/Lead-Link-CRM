@@ -485,12 +485,25 @@ async function getTeamPerformance(req, res) {
         const { organizationId } = req.user;
         const accessibleIds = await getAccessibleUserIds(req.user);
 
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
         const users = await prisma.user.findMany({
             where: { organizationId, id: { in: accessibleIds } },
             select: { id: true, name: true }
         });
 
-        const [taskStatusGroups, taskOverdueGroups, interactionGroups, leadConvertedGroups, totalLeadsGroups] = await Promise.all([
+        const [
+            taskStatusGroups, 
+            taskOverdueGroups, 
+            interactionGroups, 
+            currentConvertedGroups, 
+            currentTotalGroups,
+            baselineConvertedGroups,
+            baselineTotalGroups,
+            lastActivityGroups
+        ] = await Promise.all([
             prisma.task.groupBy({
                 by: ['assignedToId', 'status'],
                 where: { organizationId, assignedToId: { in: accessibleIds } },
@@ -498,7 +511,7 @@ async function getTeamPerformance(req, res) {
             }),
             prisma.task.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: new Date() } },
+                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: now } },
                 _count: true
             }),
             prisma.interaction.groupBy({
@@ -506,15 +519,33 @@ async function getTeamPerformance(req, res) {
                 where: { organizationId, performedById: { in: accessibleIds } },
                 _count: true
             }),
+            // Current 30 days
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED' },
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', convertedAt: { gte: thirtyDaysAgo } },
                 _count: true
             }),
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds } },
+                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: thirtyDaysAgo } },
                 _count: true
+            }),
+            // Baseline (30-60 days ago)
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', convertedAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+                _count: true
+            }),
+            prisma.lead.groupBy({
+                by: ['assignedToId'],
+                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+                _count: true
+            }),
+            // Last Activity
+            prisma.interaction.groupBy({
+                by: ['performedById'],
+                where: { organizationId, performedById: { in: accessibleIds } },
+                _max: { createdAt: true }
             })
         ]);
 
@@ -523,17 +554,31 @@ async function getTeamPerformance(req, res) {
             return group ? group._count : 0;
         };
 
+        const getMaxDate = (groups, userId, key) => {
+            const group = groups.find(g => g[key] === userId);
+            return group ? group._max.createdAt : null;
+        };
+
         const performanceData = users.map(u => {
-            const converted = getCount(leadConvertedGroups, u.id, 'assignedToId');
-            const total = getCount(totalLeadsGroups, u.id, 'assignedToId');
+            // Current Rate
+            const curConverted = getCount(currentConvertedGroups, u.id, 'assignedToId');
+            const curTotal = getCount(currentTotalGroups, u.id, 'assignedToId');
+            const curRate = curTotal > 0 ? (curConverted / curTotal) * 100 : (curConverted > 0 ? 100 : 0);
+
+            // Baseline Rate
+            const baseConverted = getCount(baselineConvertedGroups, u.id, 'assignedToId');
+            const baseTotal = getCount(baselineTotalGroups, u.id, 'assignedToId');
+            const baseRate = baseTotal > 0 ? (baseConverted / baseTotal) * 100 : (baseConverted > 0 ? 100 : 0);
+
             return {
                 id: u.id,
                 name: u.name,
-                totalLeads: total,
-                convertedLeads: converted,
-                conversionRate: total > 0 ? parseFloat(((converted / total) * 100).toFixed(1)) : 0,
+                totalLeads: curTotal,
+                convertedLeads: curConverted,
+                conversionRate: parseFloat(curRate.toFixed(1)),
+                conversionDelta: parseFloat((curRate - baseRate).toFixed(1)),
+                lastActivity: getMaxDate(lastActivityGroups, u.id, 'performedById'),
                 tasksCompleted: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'COMPLETED'),
-                tasksPending: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'PENDING'),
                 overdueTasks: getCount(taskOverdueGroups, u.id, 'assignedToId'),
                 interactions: getCount(interactionGroups, u.id, 'performedById')
             };
