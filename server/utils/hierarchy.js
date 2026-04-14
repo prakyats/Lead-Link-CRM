@@ -10,6 +10,7 @@ async function getAccessibleUserIds(user) {
     if (!user) return [];
     const userId = parseInt(user.id);
     const organizationId = parseInt(user.organizationId);
+    if (isNaN(userId) || isNaN(organizationId)) return [];
     const role = user.role;
 
     if (role === 'ADMIN') {

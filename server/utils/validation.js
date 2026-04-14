@@ -174,6 +174,29 @@ function validateUserBody(body) {
     return { errors, isValid: Object.keys(errors).length === 0 };
 }
 
+/**
+ * Ensures ID is a valid integer, returning null otherwise.
+ */
+function validateId(value) {
+    const parsed = parseInt(value);
+    return isNaN(parsed) ? null : parsed;
+}
+
+/**
+ * Validates the user context, ensuring essential fields are present and numeric.
+ * Returns { orgId, userId, isValid }
+ */
+function validateUserContext(user) {
+    if (!user) return { isValid: false };
+    const orgId = parseInt(user.organizationId);
+    const userId = parseInt(user.id);
+    return {
+        orgId,
+        userId,
+        isValid: !isNaN(orgId) && !isNaN(userId)
+    };
+}
+
 module.exports = {
     validateEmail,
     validatePhone,
@@ -187,6 +210,8 @@ module.exports = {
     validateTaskBody,
     validateAuthBody,
     validateUserBody,
+    validateId,
+    validateUserContext,
     sanitizeString,
     normalizeEmail,
     normalizePhone,
