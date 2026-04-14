@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Calendar, Clock, User, CheckCircle2, AlertCircle, Plus, Zap, Target, Activity, ChevronDown, ChevronRight, Shield, Users, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle2, AlertCircle, Plus, Zap, Target, Activity, ChevronDown, ChevronRight, Shield, Users, TrendingUp, Check, X, Circle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { InteractiveCard } from '../components/ui/InteractiveCard';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTasks, createTask as createTaskApi, toggleCompleteTask, type TaskType, type AdminManagerSummary, type ManagerRepGroup, type RoleTaskResponse, type SalesTaskData } from '@/api/tasks';
 import { Button } from '@/components/ui/button';
@@ -68,14 +69,15 @@ function TaskRow({ task, onToggle, canControl }: { task: TaskType; onToggle: (id
         >
           {task.status === 'COMPLETED' ? (
             <div className="w-8 h-8 rounded-xl flex items-center justify-center text-primary-foreground bg-status-success shadow-[0_4px_16px_-4px_rgba(34,197,94,0.4)]">
-              <CheckCircle2 size={16} />
+              <Check size={16} />
+            </div>
+          ) : taskOverdue ? (
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all border-status-danger/40 bg-status-danger/10 text-status-danger">
+              <X size={16} className="text-red-500 opacity-90 drop-shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
             </div>
           ) : (
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all ${
-              taskOverdue ? 'border-status-danger/40 bg-status-danger/10 text-status-danger' : 
-              'border-border/60 text-transparent hover:border-primary/40 hover:text-primary/40'
-            }`}>
-              <CheckCircle2 size={16} />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all border-border/60 text-transparent hover:border-primary/40 hover:text-primary/40">
+              <Circle size={16} />
             </div>
           )}
         </button>
@@ -614,100 +616,88 @@ export default function Tasks() {
           {/* KPI Filter Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             {/* Total */}
-            <button
+            <InteractiveCard
+              isActive={activeFilter === 'ALL'}
               onClick={() => toggleFilter('ALL')}
-              className={`crm-card !p-5 text-left group transition-all duration-300 relative overflow-hidden ${
-                activeFilter === 'ALL' 
-                  ? 'ring-2 ring-primary border-primary/40 bg-primary/[0.03] shadow-[0_8px_30px_rgb(0,0,0,0.08)]' 
-                  : 'hover:border-primary/20 hover:scale-[1.02] active:scale-95'
-              }`}
+              className="crm-card !p-5 text-left group overflow-hidden"
             >
               <div className="flex justify-between items-start relative z-10">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-2 text-muted-foreground/40 group-hover:text-primary/60 transition-colors">All Tasks</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-4 text-muted-foreground/40 group-hover:text-primary/60 transition-colors">All Tasks</p>
                   <p className="text-3xl font-bold tracking-tighter tabular-nums">{kpiCounts.total}</p>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
                   activeFilter === 'ALL' 
                     ? 'bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.3)] ring-2 ring-primary/30 scale-110 border-transparent' 
                     : 'bg-muted/5 border-border/10 text-muted-foreground/40 group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/20'
                 }`}>
-                  <Activity size={20} />
+                  <Activity size={17} />
                 </div>
               </div>
-            </button>
+            </InteractiveCard>
 
             {/* Overdue */}
-            <button
+            <InteractiveCard
+              isActive={activeFilter === 'OVERDUE'}
               onClick={() => toggleFilter('OVERDUE')}
-              className={`crm-card !p-5 text-left group transition-all duration-300 relative overflow-hidden ${
-                activeFilter === 'OVERDUE' 
-                  ? 'ring-2 ring-status-danger border-status-danger/40 bg-status-danger/[0.01] shadow-[0_8px_30px_rgb(0,0,0,0.08)]' 
-                  : 'hover:border-status-danger/20 hover:scale-[1.02] active:scale-95'
-              }`}
+              className="crm-card !p-5 text-left group overflow-hidden"
             >
               <div className="flex justify-between items-start relative z-10">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-2 text-muted-foreground/40 group-hover:text-status-danger/60 transition-colors">Overdue</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-4 text-muted-foreground/40 group-hover:text-status-danger/60 transition-colors">Overdue</p>
                   <p className="text-3xl font-bold tracking-tighter tabular-nums text-status-danger">{kpiCounts.overdue}</p>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
                   activeFilter === 'OVERDUE' 
                     ? 'bg-status-danger text-white shadow-[0_0_20px_rgba(239,68,68,0.3)] ring-2 ring-status-danger/30 scale-110 border-transparent' 
                     : 'bg-muted/5 border-border/10 text-muted-foreground/40 group-hover:bg-status-danger/10 group-hover:text-status-danger group-hover:border-status-danger/20'
                 }`}>
-                  <AlertCircle size={20} />
+                  <AlertCircle size={17} />
                 </div>
               </div>
-            </button>
+            </InteractiveCard>
 
             {/* Pending */}
-            <button
+            <InteractiveCard
+              isActive={activeFilter === 'PENDING'}
               onClick={() => toggleFilter('PENDING')}
-              className={`crm-card !p-5 text-left group transition-all duration-300 relative overflow-hidden ${
-                activeFilter === 'PENDING' 
-                  ? 'ring-2 ring-status-warning border-status-warning/40 bg-status-warning/[0.01] shadow-[0_8px_30px_rgb(0,0,0,0.08)]' 
-                  : 'hover:border-status-warning/20 hover:scale-[1.02] active:scale-95'
-              }`}
+              className="crm-card !p-5 text-left group overflow-hidden"
             >
               <div className="flex justify-between items-start relative z-10">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-2 text-muted-foreground/40 group-hover:text-status-warning/60 transition-colors">Pending</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-4 text-muted-foreground/40 group-hover:text-status-warning/60 transition-colors">Pending</p>
                   <p className="text-3xl font-bold tracking-tighter tabular-nums text-status-warning">{kpiCounts.pending}</p>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
                   activeFilter === 'PENDING' 
                     ? 'bg-status-warning text-white shadow-[0_0_20px_rgba(245,158,11,0.3)] ring-2 ring-status-warning/30 scale-110 border-transparent' 
                     : 'bg-muted/5 border-border/10 text-muted-foreground/40 group-hover:bg-status-warning/10 group-hover:text-status-warning group-hover:border-status-warning/20'
                 }`}>
-                  <TrendingUp size={20} />
+                  <TrendingUp size={17} />
                 </div>
               </div>
-            </button>
+            </InteractiveCard>
 
             {/* Completed */}
-            <button
+            <InteractiveCard
+              isActive={activeFilter === 'COMPLETED'}
               onClick={() => toggleFilter('COMPLETED')}
-              className={`crm-card !p-5 text-left group transition-all duration-300 relative overflow-hidden ${
-                activeFilter === 'COMPLETED' 
-                  ? 'ring-2 ring-status-success border-status-success/40 bg-status-success/[0.01] shadow-[0_8px_30px_rgb(0,0,0,0.08)]' 
-                  : 'hover:border-status-success/20 hover:scale-[1.02] active:scale-95'
-              }`}
+              className="crm-card !p-5 text-left group overflow-hidden"
             >
               <div className="flex justify-between items-start relative z-10">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-2 text-muted-foreground/40 group-hover:text-status-success/60 transition-colors">Completed</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-4 text-muted-foreground/40 group-hover:text-status-success/60 transition-colors">Completed</p>
                   <p className="text-3xl font-bold tracking-tighter tabular-nums text-status-success">{kpiCounts.completed}</p>
                 </div>
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all duration-500 ${
                   activeFilter === 'COMPLETED' 
                     ? 'bg-status-success text-white shadow-[0_0_20px_rgba(34,197,94,0.3)] ring-2 ring-status-success/30 scale-110 border-transparent' 
                     : 'bg-muted/5 border-border/10 text-muted-foreground/40 group-hover:bg-status-success/10 group-hover:text-status-success group-hover:border-status-success/20'
                 }`}>
-                  <CheckCircle2 size={20} />
+                  <CheckCircle2 size={17} />
                 </div>
               </div>
-            </button>
+            </InteractiveCard>
           </div>
 
           {/* Main Content Panel */}

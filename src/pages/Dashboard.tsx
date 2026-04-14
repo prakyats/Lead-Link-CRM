@@ -337,19 +337,7 @@ const DashboardContent = () => {
                         <Icon className="w-6 h-6" style={{ color: colors.iconColor }} />
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {card.trend !== 0 && (
-                          <div className={`flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold border ${
-                            ((card.isInverse ? card.trend < 0 : card.trend > 0))
-                              ? 'bg-status-success/5 border-status-success/20 text-status-success' 
-                              : 'bg-status-danger/5 border-status-danger/20 text-status-danger'
-                          }`}>
-                            {card.trend > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-                            {Math.abs(card.trend)}%
-                          </div>
-                        )}
-                        <div className="p-2 rounded-lg bg-muted/50 border border-border/40">
-                          <Icon className="w-4 h-4 opacity-40 shrink-0" />
-                        </div>
+                        {/* Metrics removed for cleaner UI */}
                       </div>
                     </div>
                     <div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from '../components/Sidebar';
+import { InteractiveCard } from '../components/ui/InteractiveCard';
 import { 
     Users, UserPlus, Mail, ShieldCheck, Target, 
     BarChart3, Search, Eye, EyeOff, Loader2, X, Plus,
@@ -193,45 +194,38 @@ export default function Team() {
                                     const isActive = activeFilter === stat.id;
                                     
                                     return (
-                                        <motion.div 
+                                        <motion.div
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: i * 0.1 }}
-                                            key={i} 
-                                            onClick={() => setActiveFilter(stat.id as any)}
-                                            className={`crm-card relative group cursor-pointer overflow-hidden transition-all duration-300 ease-out border-white/5 backdrop-blur-xl flex items-center gap-6 ${stat.shadow} ${
-                                                isActive 
-                                                    ? 'ring-2 ring-primary/80 bg-primary/10 scale-[1.02] shadow-[0_0_30px_rgba(34,197,94,0.2)]' 
-                                                    : 'bg-card/40 opacity-70 hover:opacity-100 hover:bg-card/60 hover:scale-[1.02]'
-                                            } active:scale-95`}
+                                            key={i}
+                                            className="h-full"
                                         >
-                                            {/* Top Accent Bar */}
-                                            <div className={`absolute top-0 left-0 h-[3px] w-full transition-all duration-500 ${
-                                                isActive ? 'bg-primary opacity-100' : 'bg-transparent opacity-0'
-                                            }`} />
-
-                                            {/* Active Glow Pulse */}
-                                            {isActive && (
-                                                <div className="absolute inset-0 bg-primary/5 animate-[pulse_3s_ease-in-out_infinite]" />
-                                            )}
-
-                                            <div className={`w-16 h-16 rounded-[1.25rem] relative z-10 flex items-center justify-center transition-all duration-500 shadow-inner ${
-                                                isActive ? 'scale-110' : 'group-hover:scale-110'
-                                            }`} style={{ background: `${stat.color}15`, border: `1px solid ${isActive ? stat.color : stat.color + '20'}` }}>
-                                                <stat.icon size={28} style={{ color: isActive ? '#fff' : stat.color }} strokeWidth={isActive ? 2.5 : 1.5} className="transition-all" />
-                                            </div>
-                                            <div className="relative z-10">
-                                                <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-1.5 transition-colors ${
-                                                    isActive ? 'text-primary' : 'text-muted-foreground/40'
-                                                }`}>
-                                                    {stat.label}
-                                                </p>
-                                                <p className={`text-4xl font-bold tracking-tighter tabular-nums transition-colors ${
-                                                    isActive ? 'text-white' : 'text-foreground/80'
-                                                }`}>
-                                                    {stat.value.toString().padStart(2, '0')}
-                                                </p>
-                                            </div>
+                                            <InteractiveCard
+                                                isActive={isActive}
+                                                onClick={() => setActiveFilter(stat.id as any)}
+                                                className={`crm-card h-full !p-6 flex items-center gap-12 border-white/5 backdrop-blur-xl ${stat.shadow} ${
+                                                    isActive ? 'bg-primary/10' : 'bg-card/40'
+                                                }`}
+                                            >
+                                                <div className={`w-12 h-12 rounded-[1.25rem] relative z-10 flex items-center justify-center transition-all duration-500 shadow-inner ${
+                                                    isActive ? 'scale-110' : 'group-hover:scale-110'
+                                                }`} style={{ background: `${stat.color}15`, border: `1px solid ${isActive ? stat.color : stat.color + '20'}` }}>
+                                                    <stat.icon size={22} style={{ color: isActive ? '#fff' : stat.color }} strokeWidth={isActive ? 2.5 : 1.5} className="transition-all" />
+                                                </div>
+                                                <div className="relative z-10">
+                                                    <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 transition-colors ${
+                                                        isActive ? 'text-primary' : 'text-muted-foreground/40'
+                                                    }`}>
+                                                        {stat.label}
+                                                    </p>
+                                                    <p className={`text-4xl font-bold tracking-tighter tabular-nums transition-colors ${
+                                                        isActive ? 'text-white' : 'text-foreground/80'
+                                                    }`}>
+                                                        {stat.value.toString().padStart(2, '0')}
+                                                    </p>
+                                                </div>
+                                            </InteractiveCard>
                                         </motion.div>
                                     );
                                 })}
