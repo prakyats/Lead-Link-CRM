@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck, Calendar, Activity, ChevronRight, Globe, Shield } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
@@ -13,28 +13,15 @@ import { formatDate } from '../utils/dateHelpers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { validateLeadForm, validateCompany, validateName, validateEmail, validatePhone, type ValidationErrors } from '../utils/validation';
-import { useModalEffect } from '../hooks/useModalEffect';
+import { CreateLeadModal } from '../components/CreateLeadModal';
+import { AssignLeadModal } from '../components/AssignLeadModal';
 
 
 function LeadsInnerContent() {
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
-    const [expandedLeadId, setExpandedLeadId] = useState<number | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [assignModal, setAssignModal] = useState<{ open: boolean; leadId: number | null }>({ open: false, leadId: null });
-    const [salesUsers, setSalesUsers] = useState<{ id: number; name: string; role: string }[]>([]);
     const [selectedAssignee, setSelectedAssignee] = useState('');
-    const [formData, setFormData] = useState({
-        company: '',
-        contact: '',
-        email: '',
-        phone: '',
-        value: 0,
-        priority: 'MEDIUM' as const,
-        stage: 'NEW' as const
-    });
 
     const [showFilters, setShowFilters] = useState(false);
     const [filterSettings, setFilterSettings] = useState({
@@ -45,17 +32,25 @@ function LeadsInnerContent() {
         maxValue: ''
     });
 
-    // ── Modal Lifecycles ──
-    const { modalRef: createModalRef } = useModalEffect({ 
-        isOpen: isModalOpen, 
-        onClose: () => setIsModalOpen(false),
-        disableClose: true // Prevent accidental data loss
+    const [salesUsers, setSalesUsers] = useState<any[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [assignModal, setAssignModal] = useState<{ open: boolean; leadId: number | null }>({
+        open: false,
+        leadId: null
     });
+    const [expandedLeadId, setExpandedLeadId] = useState<number | null>(null);
 
-    const { modalRef: assignModalRef } = useModalEffect({ 
-        isOpen: assignModal.open, 
-        onClose: () => setAssignModal({ open: false, leadId: null })
-    });
+    // ── Modal Handlers ──
+    const handleOpenCreateModal = useCallback(() => setIsModalOpen(true), []);
+    const handleCloseCreateModal = useCallback(() => setIsModalOpen(false), []);
+    
+    const handleOpenAssignModal = useCallback((leadId: number) => {
+        setAssignModal({ open: true, leadId });
+    }, []);
+    
+    const handleCloseAssignModal = useCallback(() => {
+        setAssignModal({ open: false, leadId: null });
+    }, []);
 
     const { data: leads = [], isLoading: loading } = useQuery({
         queryKey: ['leads', filterSettings],
@@ -91,46 +86,17 @@ function LeadsInnerContent() {
         onError: () => toast.error('Assignment failure')
     });
 
-    const handleCreateSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const errors = validateLeadForm(formData);
-        if (Object.keys(errors).length > 0) {
-            setFieldErrors(errors);
-            return;
-        }
-        try {
-            await createMutation.mutateAsync(formData);
-            setIsModalOpen(false);
-            setFieldErrors({});
-            setFormData({
-                company: '',
-                contact: '',
-                email: '',
-                phone: '',
-                value: 0,
-                priority: 'MEDIUM',
-                stage: 'NEW'
-            });
-        } catch (error) {
-            console.error('Failed to create lead:', error);
-        }
-    };
+    const handleCreateLead = useCallback(async (data: any) => {
+        await createMutation.mutateAsync(data);
+    }, [createMutation]);
 
-    const handleLeadFieldBlur = (field: keyof typeof formData) => {
-        if (field === 'company') {
-            const err = validateCompany(formData.company);
-            setFieldErrors((prev: ValidationErrors) => ({ ...prev, company: err || '' }));
-        } else if (field === 'contact') {
-            const err = validateName(formData.contact, 'Contact name');
-            setFieldErrors((prev: ValidationErrors) => ({ ...prev, contact: err || '' }));
-        } else if (field === 'email') {
-            const err = validateEmail(formData.email);
-            setFieldErrors((prev: ValidationErrors) => ({ ...prev, email: err || '' }));
-        } else if (field === 'phone') {
-            const err = validatePhone(String(formData.phone || ''));
-            setFieldErrors((prev: ValidationErrors) => ({ ...prev, phone: err || '' }));
-        }
-    };
+    const handleAssignLead = useCallback(async (assigneeId: string) => {
+        if (!assignModal.leadId) return;
+        await assignMutation.mutateAsync({
+            id: assignModal.leadId,
+            assignedToId: parseInt(assigneeId)
+        });
+    }, [assignMutation, assignModal.leadId]);
 
     const filteredLeads = leads.filter(lead => {
         const matchesSearch = 
@@ -179,7 +145,7 @@ function LeadsInnerContent() {
                     </div>
                     {canCreate && (
                         <button
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={handleOpenCreateModal}
                             className="crm-btn-primary animate-in slide-in-from-right duration-700"
                         >
                             <Plus size={20} />
@@ -422,8 +388,7 @@ function LeadsInnerContent() {
                                                                 <button
                                                                     onClick={(e) => { 
                                                                         e.stopPropagation();
-                                                                        setAssignModal({ open: true, leadId: lead.id }); 
-                                                                        setSelectedAssignee(''); 
+                                                                        handleOpenAssignModal(lead.id); 
                                                                     }}
                                                                     className="w-8 h-8 flex items-center justify-center rounded-lg transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400 border border-transparent hover:border-purple-500/20 ml-auto"
                                                                     title="Assign Lead"
@@ -519,7 +484,7 @@ function LeadsInnerContent() {
                                             <div className="flex items-center gap-2">
                                                 {canAssign && (
                                                     <button 
-                                                        onClick={() => { setAssignModal({ open: true, leadId: lead.id }); setSelectedAssignee(''); }}
+                                                        onClick={() => handleOpenAssignModal(lead.id)}
                                                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20"
                                                     >
                                                         <UserCheck size={16} />
@@ -598,7 +563,7 @@ function LeadsInnerContent() {
                             </div>
                             {canCreate && (
                                 <button
-                                    onClick={() => setIsModalOpen(true)}
+                                    onClick={handleOpenCreateModal}
                                     className="crm-btn-primary !px-10 !py-4 mt-8"
                                 >
                                     <Plus size={20} />
@@ -611,224 +576,21 @@ function LeadsInnerContent() {
             </div>
         </main>
 
-            {/* Creation Modal */}
-            <AnimatePresence>
-                {isModalOpen && (
-                    <div className="ll-modal-overlay">
-                        <motion.div 
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
-                            exit={{ opacity: 0 }} 
-                            className="absolute inset-0" 
-                        />
-                        <motion.div 
-                            ref={createModalRef}
-                            role="dialog"
-                            aria-modal="true"
-                            aria-labelledby="create-lead-title"
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            className="ll-modal-container modal-md"
-                        >
-                            <div className="ll-modal-header">
-                                <div>
-                                    <h2 id="create-lead-title" className="text-2xl font-semibold uppercase tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Add Lead</h2>
-                                    <p className="mt-2 font-bold text-sm text-muted-foreground flex items-center gap-2">
-                                        <Activity size={14} className="text-primary animate-pulse" />
-                                        Enter details for the new prospect
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="w-11 h-11 flex items-center justify-center rounded-2xl transition-all group hover:bg-muted"
-                                >
-                                    <X className="w-6 h-6 group-hover:rotate-90 transition-transform opacity-40 group-hover:opacity-100" />
-                                </button>
-                            </div>
+             <CreateLeadModal
+                isOpen={isModalOpen}
+                onClose={handleCloseCreateModal}
+                onSubmit={handleCreateLead}
+                isPending={createMutation.isPending}
+             />
 
-                            <form onSubmit={handleCreateSubmit} className="flex flex-col h-full min-h-0 overflow-hidden">
-                                <div className="ll-modal-body space-y-10">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                        <div className="space-y-3">
-                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">COMPANY NAME</label>
-                                            <div className="relative group">
-                                                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                                <input
-                                                    required
-                                                    type="text"
-                                                    className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.company ? 'border-red-500/50' : ''}`}
-                                                    placeholder="e.g. LeadLink Enterprise"
-                                                    value={formData.company}
-                                                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                                                    onBlur={() => handleLeadFieldBlur('company')}
-                                                />
-                                            </div>
-                                            {fieldErrors.company && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.company}</p>}
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">CONTACT PERSON</label>
-                                            <div className="relative group">
-                                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                                <input
-                                                    required
-                                                    type="text"
-                                                    className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.contact ? 'border-red-500/50' : ''}`}
-                                                    placeholder="Lead representative"
-                                                    value={formData.contact}
-                                                    onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                                                    onBlur={() => handleLeadFieldBlur('contact')}
-                                                />
-                                            </div>
-                                            {fieldErrors.contact && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.contact}</p>}
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">EMAIL ADDRESS</label>
-                                            <div className="relative group">
-                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                                <input
-                                                    required
-                                                    type="email"
-                                                    className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.email ? 'border-red-500/50' : ''}`}
-                                                    placeholder="contact@entity.com"
-                                                    value={formData.email}
-                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                    onBlur={() => handleLeadFieldBlur('email')}
-                                                />
-                                            </div>
-                                            {fieldErrors.email && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.email}</p>}
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">PHONE NUMBER</label>
-                                            <div className="relative group">
-                                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                                <input
-                                                    type="tel"
-                                                    className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.phone ? 'border-red-500/50' : ''}`}
-                                                    placeholder="Voice frequency"
-                                                    value={formData.phone}
-                                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                    onBlur={() => handleLeadFieldBlur('phone')}
-                                                />
-                                            </div>
-                                            {fieldErrors.phone && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.phone}</p>}
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">ESTIMATED VALUE (₹)</label>
-                                            <div className="relative group">
-                                                <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                                <input required type="number" className="crm-input !pl-12 !py-4 font-bold border-border/40 bg-muted/20" placeholder="Revenue forecast" value={formData.value} onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })} />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">PRIORITY</label>
-                                            <select className="crm-input !py-4 font-semibold tracking-widest bg-muted/20 border-border/40 cursor-pointer" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
-                                                <option value="LOW">Low Priority</option>
-                                                <option value="MEDIUM">Medium Priority</option>
-                                                <option value="HIGH">High Priority</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="ll-modal-footer flex gap-6">
-                                    <button type="button" disabled={createMutation.isPending} onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4 !text-xs font-semibold tracking-wider">CANCEL</button>
-                                    <button type="submit" disabled={createMutation.isPending} className="crm-btn-primary w-full !py-4 !text-xs font-semibold tracking-wider">
-                                        {createMutation.isPending ? 'SAVING...' : 'CREATE LEAD'}
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
-            {/* Assignment Modal */}
-            <AnimatePresence>
-                {assignModal.open && (
-                    <div className="ll-modal-overlay">
-                        <motion.div 
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
-                            exit={{ opacity: 0 }} 
-                            className="absolute inset-0" 
-                            onClick={() => setAssignModal({ open: false, leadId: null })} 
-                        />
-                        <motion.div 
-                            ref={assignModalRef}
-                            role="dialog"
-                            aria-modal="true"
-                            aria-labelledby="assign-lead-title"
-                            initial={{ scale: 0.95, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.95, opacity: 0 }}
-                            className="ll-modal-container modal-sm min-h-0"
-                        >
-                            <div className="ll-modal-header !pb-4">
-                                <div>
-                                    <h2 id="assign-lead-title" className="text-xl font-semibold uppercase tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Assign Lead</h2>
-                                    <p className="mt-2 text-xs font-bold text-muted-foreground">Choose a team member to handle this lead</p>
-                                </div>
-                                <button
-                                    onClick={() => setAssignModal({ open: false, leadId: null })}
-                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/40 transition-colors hover:bg-muted/60"
-                                >
-                                    <X size={20} className="opacity-40" />
-                                </button>
-                            </div>
-                            
-                            <div className="flex flex-col h-full min-h-0 overflow-hidden">
-                                <div className="ll-modal-body space-y-8">
-                                    <div className="space-y-3">
-                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">SELECT USER</label>
-                                        <div className="relative">
-                                            <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
-                                            <select
-                                                value={selectedAssignee}
-                                                onChange={(e) => setSelectedAssignee(e.target.value)}
-                                                className="crm-input !pl-12 !py-4 font-semibold tracking-widest bg-muted/20 appearance-none cursor-pointer"
-                                            >
-                                                <option value="">Select team member...</option>
-                                                {salesUsers.map(u => (
-                                                    <option key={u.id} value={u.id}>{u.name.toUpperCase()} ({u.role})</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="ll-modal-footer flex gap-4">
-                                    <button
-                                        type="button"
-                                        disabled={assignMutation.isPending}
-                                        onClick={() => setAssignModal({ open: false, leadId: null })}
-                                        className="crm-btn-secondary w-full !py-4 !text-xs font-semibold tracking-wider"
-                                    >
-                                        ABORT
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled={!selectedAssignee || assignMutation.isPending}
-                                        onClick={async () => {
-                                            if (assignModal.leadId && selectedAssignee) {
-                                                try {
-                                                    await assignMutation.mutateAsync({ id: assignModal.leadId, assignedToId: parseInt(selectedAssignee) });
-                                                    setAssignModal({ open: false, leadId: null });
-                                                } catch (err) {
-                                                    console.error('Failed to assign lead:', err);
-                                                }
-                                            }
-                                        }}
-                                        className="crm-btn-primary w-full !py-4 !text-xs font-semibold tracking-wider"
-                                    >
-                                        {assignMutation.isPending ? 'ASSIGNING...' : 'ASSIGN'}
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+             <AssignLeadModal
+                isOpen={assignModal.open}
+                onClose={handleCloseAssignModal}
+                leadId={assignModal.leadId}
+                salesUsers={salesUsers}
+                onAssign={handleAssignLead}
+                isPending={assignMutation.isPending}
+             />
         </>
     );
 }

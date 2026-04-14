@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Calendar, Clock, User, CheckCircle2, AlertCircle, Plus, Zap, Target, Activity, ChevronDown, ChevronRight, Shield, Users, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -431,6 +431,8 @@ export default function Tasks() {
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const handleOpenModal = useCallback(() => setIsModalOpen(true), []);
+  const handleCloseModal = useCallback(() => setIsModalOpen(false), []);
 
   const { data: taskResponse, isLoading, isError } = useQuery<RoleTaskResponse>({
     queryKey: ['tasks', user?.id],
@@ -600,7 +602,7 @@ export default function Tasks() {
             </div>
             {hasPermission(user?.role as Role, 'canOperationalControl') && (
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleOpenModal}
                 className="crm-btn-primary animate-in slide-in-from-right duration-700"
               >
                 <Plus size={18} />
@@ -767,7 +769,7 @@ export default function Tasks() {
       {user && (
         <TaskModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={handleCloseModal}
           user={user}
           teamMembers={teamMembers as any}
           createMutation={createMutation}
