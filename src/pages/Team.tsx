@@ -19,7 +19,7 @@ interface SystemUser {
     name: string;
     email: string;
     role: string;
-    createdAt: string;
+    createdAt?: string;
     manager?: { name: string };
 }
 
@@ -283,7 +283,7 @@ export default function Team() {
                                                     <td className="px-10 py-8">
                                                         <div className="flex flex-col">
                                                             <span className="text-xs font-semibold text-foreground/60 tabular-nums">
-                                                                {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).toUpperCase()}
+                                                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).toUpperCase() : 'SYSTEM SYNC'}
                                                             </span>
                                                             <span className="text-[9px] font-semibold text-muted-foreground/20 uppercase tracking-widest mt-1">Cycle Logged</span>
                                                         </div>

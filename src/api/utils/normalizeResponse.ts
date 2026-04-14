@@ -33,12 +33,25 @@ export const normalizeResponse = (data: any) => {
   // 4. GUARD & FALLBACK
   // Log unexpected shapes for debugging, but do not mutate for safety.
   if (typeof data === 'object' && !Array.isArray(data)) {
+    // Detect valid shapes explicitly to avoid noise
+    const isSuccessEnvelope = data.success !== undefined && data.data !== undefined;
+    const isRolePayloadShape = data.role && data.payload !== undefined;
+    const isPayloadOnlyShape = data.payload !== undefined;
+    
+    // If it's a known valid structure, we're done (no warning)
+    if (isSuccessEnvelope || isRolePayloadShape || isPayloadOnlyShape) {
+      return data;
+    }
+
     const keys = Object.keys(data);
     const commonKeys = ['success', 'message', 'errors'];
-    const hasUnrecognizedShape = keys.some(k => !commonKeys.includes(k));
     
-    if (hasUnrecognizedShape) {
-      console.warn("[API] Unexpected response shape detected:", data);
+    // Check if the object has any keys other than the standard success/message ones.
+    // If it does, and it hasn't matched a known pattern above, it's an "unrecognized" shape.
+    const hasOperationalData = keys.some(k => !commonKeys.includes(k));
+    
+    if (hasOperationalData) {
+      console.warn("[API] Unrecognized response shape detected:", data);
     }
   }
 
