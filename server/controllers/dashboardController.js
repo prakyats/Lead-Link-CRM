@@ -276,7 +276,8 @@ async function getDashboardSummary(req, res) {
             taskOverdueGroups,
             interactionTodayGroups,
             interactionWeekGroups,
-            leadStageGroups
+            leadStageGroups,
+            taskCompletedWeekGroups
         ] = await Promise.all([
             prisma.user.findMany({
                 where: { organizationId: orgId, id: { in: accessibleIds } },
@@ -322,6 +323,16 @@ async function getDashboardSummary(req, res) {
             prisma.lead.groupBy({
                 by: ['assignedToId', 'stage'],
                 where: { organizationId: orgId, assignedToId: { in: accessibleIds } },
+                _count: true
+            }),
+            prisma.task.groupBy({
+                by: ['assignedToId'],
+                where: { 
+                    organizationId: orgId, 
+                    assignedToId: { in: accessibleIds }, 
+                    status: 'COMPLETED',
+                    completedAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) }
+                },
                 _count: true
             })
         ]);
@@ -399,8 +410,10 @@ async function getDashboardSummary(req, res) {
                 const totalLeads = userLeadGroups.reduce((acc, g) => acc + g._count, 0);
                 const conversions = userLeadGroups.filter(g => g.stage === 'CONVERTED').reduce((acc, g) => acc + g._count, 0);
 
-                // Definition: Inactive if 7+ days (using interactionsWeek as proxy here for simplicity in single fetch)
-                const isInactive = getCount(interactionWeekGroups, u.id, 'performedById') === 0;
+                // Definition: Inactive if 7+ days (Checks both interactions and task completions)
+                const hasInteractions = getCount(interactionWeekGroups, u.id, 'performedById') > 0;
+                const hasTaskCompletions = getCount(taskCompletedWeekGroups, u.id, 'assignedToId') > 0;
+                const isInactive = !hasInteractions && !hasTaskCompletions;
 
                 const repData = {
                     repId: String(u.id),
