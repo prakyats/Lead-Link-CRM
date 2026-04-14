@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck, Calendar, Activity, ChevronRight, Globe, Shield } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
@@ -40,6 +40,7 @@ function LeadsInnerContent() {
     const [filterSettings, setFilterSettings] = useState({
         stage: 'ALL',
         priority: 'ALL',
+        manager: 'ALL',
         minValue: '',
         maxValue: ''
     });
@@ -139,13 +140,28 @@ function LeadsInnerContent() {
 
         const matchesStage = filterSettings.stage === 'ALL' || lead.stage === filterSettings.stage;
         const matchesPriority = filterSettings.priority === 'ALL' || lead.priority === filterSettings.priority;
+        const matchesStaff = user?.role === 'MANAGER' 
+            ? (filterSettings.manager === 'ALL' || lead.assignedTo === filterSettings.manager)
+            : (filterSettings.manager === 'ALL' || lead.managerName === filterSettings.manager);
         
         const value = lead.value || 0;
         const matchesMinVal = filterSettings.minValue === '' || value >= parseFloat(filterSettings.minValue);
         const matchesMaxVal = filterSettings.maxValue === '' || value <= parseFloat(filterSettings.maxValue);
 
-        return matchesSearch && matchesStage && matchesPriority && matchesMinVal && matchesMaxVal;
+        return matchesSearch && matchesStage && matchesPriority && matchesStaff && matchesMinVal && matchesMaxVal;
     });
+
+    const uniqueManagers = useMemo(() => {
+        return Array.from(
+            new Set(leads.map(l => l.managerName).filter((name): name is string => !!name))
+        ).sort();
+    }, [leads]);
+
+    const uniqueAgents = useMemo(() => {
+        return Array.from(
+            new Set(leads.map(l => l.assignedTo).filter((name): name is string => !!name))
+        ).sort();
+    }, [leads]);
 
     return (
         <>
@@ -204,7 +220,7 @@ function LeadsInnerContent() {
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                         >
-                            <div className="crm-card !p-8 grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8 border-primary/10 bg-primary/[0.02]">
+                            <div className="crm-card !p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 mb-8 border-primary/10 bg-primary/[0.02]">
                                 <div className="space-y-3">
                                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Stage</label>
                                     <select 
@@ -234,6 +250,21 @@ function LeadsInnerContent() {
                                     </select>
                                 </div>
                                 <div className="space-y-3">
+                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
+                                        {user?.role === 'MANAGER' ? 'Representative' : 'Manager Oversight'}
+                                    </label>
+                                    <select 
+                                        value={filterSettings.manager}
+                                        onChange={(e) => setFilterSettings({ ...filterSettings, manager: e.target.value })}
+                                        className="crm-input text-[11px] font-bold tracking-widest bg-muted/20"
+                                    >
+                                        <option value="ALL">{user?.role === 'MANAGER' ? 'All Reps' : 'All Managers'}</option>
+                                        {(user?.role === 'MANAGER' ? uniqueAgents : uniqueManagers).map((name: string) => (
+                                            <option key={name} value={name}>{name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-3">
                                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Value Range (₹)</label>
                                     <div className="flex items-center gap-3">
                                         <input 
@@ -254,7 +285,7 @@ function LeadsInnerContent() {
                                 </div>
                                 <div className="flex items-end">
                                     <button 
-                                        onClick={() => setFilterSettings({ stage: 'ALL', priority: 'ALL', minValue: '', maxValue: '' })}
+                                        onClick={() => setFilterSettings({ stage: 'ALL', priority: 'ALL', manager: 'ALL', minValue: '', maxValue: '' })}
                                         className="crm-btn-secondary w-full !py-3.5 !text-xs font-semibold tracking-wider border-dashed"
                                     >
                                         Reset Filters
@@ -273,60 +304,63 @@ function LeadsInnerContent() {
                         <>
                             {/* Pro Desktop Grid View */}
                             <div className="hidden lg:block crm-table-container">
-                                <table className="w-full table-fixed border-collapse">
-                                    <thead className="bg-muted/30 border-b border-border/50 sticky top-0 z-20 backdrop-blur-md">
-                                        <tr>
-                                            <th className="w-[30%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Organization</th>
-                                            <th className="w-[20%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Person</th>
-                                            <th className="w-[12%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Status</th>
-                                            <th className="w-[12%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Priority</th>
-                                            <th className="w-[12%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Value</th>
-                                            {canAssign && <th className="w-[8%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Agent</th>}
-                                            {canAssign && <th className="w-[6%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-right">Action</th>}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                                <div className="w-full min-w-full">
+                                    {/* Modern Ledger Header */}
+                                    <div className="flex items-center w-full bg-muted/30 border-b border-border/50 sticky top-0 z-20 backdrop-blur-md">
+                                        <div className="w-[48px] px-4 py-3.5"></div>
+                                        <div className="flex-1 px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Organization</div>
+                                        <div className="w-[140px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Status</div>
+                                        <div className="w-[130px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Priority</div>
+                                        <div className="w-[160px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-right">Value</div>
+                                        {canAssign && <div className="w-[150px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Agent</div>}
+                                        {user?.role === 'ADMIN' && <div className="w-[150px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Manager</div>}
+                                        {canAssign && <div className="w-[80px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-right">Action</div>}
+                                    </div>
+
+                                    {/* Data Rows */}
+                                    <div>
                                         {filteredLeads.map((lead, i) => {
                                             const isExpanded = expandedLeadId === lead.id;
                                             
                                             const toggleExpand = (e: React.MouseEvent | React.KeyboardEvent) => {
-                                                // Prevent expansion when clicking buttons/interactive elements
                                                 if ((e.target as HTMLElement).closest('button')) return;
                                                 setExpandedLeadId(isExpanded ? null : lead.id);
                                             };
 
                                             return (
-                                                <React.Fragment key={lead.id}>
-                                                    <tr 
+                                                <div key={lead.id} className="w-full group/row-container">
+                                                    <div 
                                                         tabIndex={0}
                                                         onClick={toggleExpand}
                                                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleExpand(e); }}
-                                                        className={`crm-table-tr group/row outline-none cursor-pointer border-l-2 transition-all ${
+                                                        className={`flex items-center w-full crm-table-tr select-none group/row outline-none cursor-pointer border-l-2 transition-all ${
                                                             isExpanded ? 'border-primary bg-primary/5' : 'border-transparent'
                                                         }`}
                                                     >
-                                                        <td className="px-4 py-3 border-b border-border/40">
-                                                            <div className="flex items-center gap-3">
-                                                                <motion.div
-                                                                    animate={{ rotate: isExpanded ? 90 : 0 }}
-                                                                    transition={{ duration: 0.2 }}
-                                                                    className="text-muted-foreground/40 group-hover/row:text-primary transition-colors"
-                                                                >
-                                                                    <ChevronRight size={16} />
-                                                                </motion.div>
-                                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] bg-primary/10 text-primary border border-primary/20 shrink-0">
-                                                                    {lead.company.charAt(0)}
-                                                                </div>
-                                                                <span className="font-bold text-sm text-foreground truncate max-w-[140px] block">
-                                                                    {lead.company}
-                                                                </span>
+                                                        {/* Icon + Logo + Organization */}
+                                                        <div className="w-[48px] px-4 py-3 flex items-center justify-center">
+                                                            <motion.div
+                                                                animate={{ rotate: isExpanded ? 90 : 0 }}
+                                                                transition={{ duration: 0.2 }}
+                                                                className="text-muted-foreground/40 group-hover/row:text-primary transition-colors"
+                                                            >
+                                                                <ChevronRight size={16} />
+                                                            </motion.div>
+                                                        </div>
+
+                                                        <div className="flex-1 px-4 py-3 flex items-center gap-3 overflow-hidden">
+                                                            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] bg-primary/10 text-primary border border-primary/20 shrink-0">
+                                                                {lead.company.charAt(0)}
                                                             </div>
-                                                        </td>
-                                                        <td className="px-4 py-3 border-b border-border/40">
-                                                            <p className="font-bold text-sm text-foreground truncate">{lead.contact}</p>
-                                                        </td>
-                                                        <td className="px-4 py-3 border-b border-border/40">
-                                                            <span className={`crm-badge scale-90 origin-left whitespace-nowrap ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                                            <span className="font-bold text-sm text-foreground truncate block">
+                                                                {lead.company}
+                                                            </span>
+                                                        </div>
+
+
+                                                        {/* Status */}
+                                                        <div className="w-[140px] px-4 py-3 whitespace-nowrap">
+                                                            <span className={`crm-badge scale-90 origin-left ${lead.stage === 'NEW' ? 'badge-stage-new' :
                                                                     lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
                                                                         lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
                                                                             lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
@@ -334,111 +368,138 @@ function LeadsInnerContent() {
                                                                 }`}>
                                                                 {lead.stage}
                                                             </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 border-b border-border/40">
-                                                            <span className={`crm-badge scale-90 origin-left whitespace-nowrap ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                                                        </div>
+
+                                                        {/* Priority */}
+                                                        <div className="w-[130px] px-4 py-3 whitespace-nowrap">
+                                                            <span className={`crm-badge scale-90 origin-left ${lead.priority === 'HIGH' ? 'badge-priority-high' :
                                                                 lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
                                                                     'badge-priority-low'
                                                                 }`}>
                                                                 {lead.priority}
                                                             </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 border-b border-border/40">
-                                                            <div className="flex items-center gap-1 font-bold text-sm text-foreground">
-                                                                <span className="text-muted-foreground/60 mr-0.5">₹</span>
+                                                        </div>
+
+                                                        {/* Value */}
+                                                        <div className="w-[160px] px-4 py-3 text-right whitespace-nowrap font-mono-data">
+                                                            <div className="flex items-center justify-end gap-1 font-bold text-sm text-foreground">
+                                                                <span className="text-muted-foreground/60 mr-0.5 font-sans">₹</span>
                                                                 {lead.value.toLocaleString('en-IN')}
                                                             </div>
-                                                        </td>
+                                                        </div>
+
+                                                        {/* Agent */}
                                                         {canAssign && (
-                                                            <td className="px-4 py-3 border-b border-border/40">
+                                                            <div className="w-[150px] px-4 py-3 whitespace-nowrap">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/20 flex items-center justify-center text-[9px] font-black text-purple-400 shrink-0">
                                                                         {(lead.assignedTo || '?').charAt(0)}
                                                                     </div>
-                                                                    <span className="text-[11px] font-bold text-muted-foreground truncate max-w-[80px]">
+                                                                    <span className="text-[11px] font-bold text-muted-foreground truncate">
                                                                         {lead.assignedTo || 'NONE'}
                                                                     </span>
                                                                 </div>
-                                                            </td>
+                                                            </div>
                                                         )}
-                                                        <td className="px-4 py-3 border-b border-border/40 text-right">
-                                                            {canAssign && (
+
+                                                        {/* Manager */}
+                                                        {user?.role === 'ADMIN' && (
+                                                            <div className="w-[150px] px-4 py-3 whitespace-nowrap">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/20 flex items-center justify-center text-[9px] font-black text-blue-400 shrink-0">
+                                                                        <Shield size={10} />
+                                                                    </div>
+                                                                    <span className="text-[11px] font-bold text-foreground truncate">
+                                                                        {lead.managerName || '—'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Action */}
+                                                        {canAssign && (
+                                                            <div className="w-[80px] px-4 py-3 text-right whitespace-nowrap">
                                                                 <button
                                                                     onClick={(e) => { 
                                                                         e.stopPropagation();
                                                                         setAssignModal({ open: true, leadId: lead.id }); 
                                                                         setSelectedAssignee(''); 
                                                                     }}
-                                                                    className="w-8 h-8 flex items-center justify-center rounded-lg transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400 border border-transparent hover:border-purple-500/20 active:scale-95"
+                                                                    className="w-8 h-8 flex items-center justify-center rounded-lg transition-all text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400 border border-transparent hover:border-purple-500/20 ml-auto"
                                                                     title="Assign Lead"
                                                                 >
                                                                     <UserCheck size={14} />
                                                                 </button>
-                                                            )}
-                                                        </td>
-                                                    </tr>
+                                                            </div>
+                                                        )}
+                                                    </div>
 
-                                                    {/* Expansion Row */}
+                                                    {/* Expansion Row - Rebuilt for Flex */}
                                                     <AnimatePresence initial={false}>
                                                         {isExpanded && (
-                                                            <tr>
-                                                                <td colSpan={7} className="px-0 py-0 border-b border-border/40 bg-muted/5">
-                                                                    <motion.div
-                                                                        initial={{ height: 0, opacity: 0 }}
-                                                                        animate={{ height: "auto", opacity: 1 }}
-                                                                        exit={{ height: 0, opacity: 0 }}
-                                                                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                                                                        className="overflow-hidden"
-                                                                    >
-                                                                        <div className="p-6 ml-12 grid grid-cols-1 md:grid-cols-2 gap-8 border-l border-primary/20">
-                                                                            <div className="space-y-4">
-                                                                                <div>
-                                                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2 mb-2">
-                                                                                        <Mail size={12} className="text-primary" />
-                                                                                        Communication Channel
-                                                                                    </p>
-                                                                                    <p className="text-sm font-bold text-foreground bg-card/40 px-3 py-2 rounded-lg border border-white/5 inline-block">
-                                                                                        {lead.email}
-                                                                                    </p>
-                                                                                </div>
-                                                                                <div className="flex gap-10">
-                                                                                    <div>
-                                                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2 mb-2">
-                                                                                            <Calendar size={12} />
-                                                                                            Registry Date
-                                                                                        </p>
-                                                                                        <p className="text-xs font-bold text-muted-foreground">{formatDate(lead.createdAt)}</p>
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2 mb-2">
-                                                                                            <Shield size={12} />
-                                                                                            Lead Integrity
-                                                                                        </p>
-                                                                                        <p className="text-xs font-bold text-teal-500/80 uppercase tracking-widest">Verified Systemic</p>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                            
-                                                                            <div className="hidden lg:flex flex-col justify-center border-l border-white/5 pl-8">
-                                                                                <div className="flex items-center gap-3 text-muted-foreground/40 mb-3">
-                                                                                    <Globe size={16} />
-                                                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em]">Operational Context</span>
-                                                                                </div>
-                                                                                <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
-                                                                                    This prospect is currently undergoing active lifecycle evaluation. Pipeline integrity is maintained via real-time risk diagnostic engines.
-                                                                                </p>
-                                                                            </div>
+                                                            <motion.div
+                                                                initial={{ height: 0, opacity: 0 }}
+                                                                animate={{ height: "auto", opacity: 1 }}
+                                                                exit={{ height: 0, opacity: 0 }}
+                                                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                                className="overflow-hidden w-full border-b border-border/40 bg-muted/5"
+                                                            >
+                                                                <div className="p-8 pb-10 ml-12 grid grid-cols-1 md:grid-cols-2 gap-10 border-l border-primary/20">
+                                                                    <div className="space-y-8">
+                                                                        <div className="group/detail">
+                                                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2.5 mb-3 group-hover/detail:text-primary transition-colors">
+                                                                                <Mail size={12} className="text-primary/60" />
+                                                                                Communication Channel
+                                                                            </p>
+                                                                            <p className="text-sm font-bold text-foreground bg-card/40 px-4 py-3 rounded-xl border border-white/5 inline-block shadow-sm">
+                                                                                {lead.email}
+                                                                            </p>
                                                                         </div>
-                                                                    </motion.div>
-                                                                </td>
-                                                            </tr>
+                                                                        <div className="flex flex-wrap gap-x-12 gap-y-6">
+                                                                            <div>
+                                                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2.5 mb-2.5">
+                                                                                    <Calendar size={12} className="text-muted-foreground/40" />
+                                                                                    Registry Date
+                                                                                </p>
+                                                                                <p className="text-sm font-bold text-muted-foreground">{formatDate(lead.createdAt)}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2.5 mb-2.5">
+                                                                                    <User size={12} className="text-muted-foreground/40" />
+                                                                                    Point of Contact
+                                                                                </p>
+                                                                                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{lead.contact}</p>
+                                                                            </div>
+                                                                            {user?.role === 'ADMIN' && lead.managerName && (
+                                                                                <div>
+                                                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2.5 mb-2.5">
+                                                                                        <Users size={12} className="text-muted-foreground/40" />
+                                                                                        Managerial Oversight
+                                                                                    </p>
+                                                                                    <p className="text-sm font-bold text-blue-400 uppercase tracking-widest leading-none">{lead.managerName}</p>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div className="hidden lg:flex flex-col justify-center border-l border-white/5 pl-10">
+                                                                        <div className="flex items-center gap-3 text-muted-foreground/40 mb-3">
+                                                                            <Globe size={16} />
+                                                                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Operational Context</span>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
+                                                                            This prospect is currently undergoing active lifecycle evaluation. Pipeline integrity is maintained via real-time risk diagnostic engines.
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </motion.div>
                                                         )}
                                                     </AnimatePresence>
-                                                </React.Fragment>
+                                                </div>
                                             );
                                         })}
-                                    </tbody>
-                                </table>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Mobile View */}
@@ -470,43 +531,51 @@ function LeadsInnerContent() {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4 mb-6">
-                                            <div className="p-4 rounded-2xl bg-muted/10 border border-border/40">
-                                                <p className="text-xs font-semibold text-muted-foreground mb-1.5">Vector Status</p>
-                                                <div className="scale-75 origin-left">
-                                                    <span className={`crm-badge ${lead.stage === 'NEW' ? 'badge-stage-new' :
-                                                        lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
-                                                            lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
-                                                                'badge-stage-lost'}`}>
-                                                        {lead.stage}
-                                                    </span>
-                                                </div>
+                                        <div className="grid grid-cols-2 gap-3 mb-6">
+                                            <div className="px-4 py-3 rounded-2xl bg-muted/10 border border-border/40 flex flex-col items-start justify-center">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 mb-2">Vector Status</p>
+                                                <span className={`crm-badge text-[10px] leading-none py-1.5 ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                                    lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
+                                                        lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
+                                                            'badge-stage-lost'}`}>
+                                                    {lead.stage}
+                                                </span>
                                             </div>
-                                            <div className="p-4 rounded-2xl bg-muted/10 border border-border/40 text-right">
-                                                <p className="text-xs font-semibold text-muted-foreground mb-1.5">Urgency TIER</p>
-                                                <div className="scale-75 origin-right">
-                                                    <span className={`crm-badge ${lead.priority === 'HIGH' ? 'badge-priority-high' :
-                                                        lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
-                                                            'badge-priority-low'}`}>
-                                                        {lead.priority}
-                                                    </span>
-                                                </div>
+                                            <div className="px-4 py-3 rounded-2xl bg-muted/10 border border-border/40 flex flex-col items-end justify-center">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 mb-2">Urgency Tier</p>
+                                                <span className={`crm-badge text-[10px] leading-none py-1.5 ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                                                    lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
+                                                        'badge-priority-low'}`}>
+                                                    {lead.priority}
+                                                </span>
                                             </div>
                                         </div>
 
                                         <div className="flex items-end justify-between pt-6 border-t border-border/20">
-                                            <div className="space-y-2">
-                                                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                    <Mail size={12} className="text-primary opacity-60" />
+                                            <div className="space-y-3">
+                                                <p className="text-sm font-bold text-foreground flex items-center gap-2">
+                                                    <Mail size={14} className="text-primary/60" />
                                                     {lead.email}
                                                 </p>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-4 h-4 rounded-full bg-purple-500/20 flex items-center justify-center text-[7px] font-semibold text-purple-400">
-                                                        {(lead.assignedTo || '?').charAt(0)}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-[10px] font-black text-purple-400">
+                                                            {(lead.assignedTo || '?').charAt(0)}
+                                                        </div>
+                                                        <p className="text-xs font-bold text-muted-foreground">
+                                                            Agent: <span className="text-foreground">{lead.assignedTo || 'UNASSIGNED'}</span>
+                                                        </p>
                                                     </div>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Agent: <span className="text-foreground">{lead.assignedTo || 'UNASSIGNED'}</span>
-                                                    </p>
+                                                    {user?.role === 'ADMIN' && lead.managerName && (
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                                                                <Shield size={10} />
+                                                            </div>
+                                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-extrabold flex items-center gap-1.5">
+                                                                Manager: <span className="text-foreground">{lead.managerName}</span>
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-right">

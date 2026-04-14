@@ -275,11 +275,12 @@ async function getDashboardSummary(req, res) {
             taskStatusGroups,
             taskOverdueGroups,
             interactionTodayGroups,
-            interactionWeekGroups
+            interactionWeekGroups,
+            leadStageGroups
         ] = await Promise.all([
             prisma.user.findMany({
                 where: { organizationId: orgId, id: { in: accessibleIds } },
-                select: { id: true, name: true }
+                select: { id: true, name: true, managerId: true, role: true }
             }),
             prisma.user.count({ where: { organizationId: orgId, managerId: userId } }),
             prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: todayStart } } }),
@@ -317,6 +318,11 @@ async function getDashboardSummary(req, res) {
                 by: ['performedById'],
                 where: { organizationId: orgId, performedById: { in: accessibleIds }, createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } },
                 _count: true
+            }),
+            prisma.lead.groupBy({
+                by: ['assignedToId', 'stage'],
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds } },
+                _count: true
             })
         ]);
 
@@ -334,45 +340,178 @@ async function getDashboardSummary(req, res) {
             overdue: taskOverdue
         };
 
-        // 2. Team Performance
-        const teamPerformance = users.map(u => {
-            const userStatusGroups = taskStatusGroups.filter(g => g.assignedToId === u.id);
-            const pendingCount = userStatusGroups
-                .filter(g => g.status !== 'COMPLETED')
-                .reduce((acc, g) => acc + g._count, 0);
-            const completedCount = userStatusGroups
-                .filter(g => g.status === 'COMPLETED')
-                .reduce((acc, g) => acc + g._count, 0);
+        // 2. Team Performance (Hierarchical for ADMIN)
+        let teamPerformance = [];
+        let riskItems = [];
+        let actions = [];
+        let managersWithInactiveTeams = 0;
+        let managersWithNoLeads = 0;
+
+        if (req.user.role === 'ADMIN') {
+            const managerMap = new Map();
+            
+            // Initialize Manager buckets
+            users.forEach(u => {
+                if (u.role === 'MANAGER' || u.role === 'ADMIN') {
+                    managerMap.set(String(u.id), {
+                        managerId: String(u.id),
+                        managerName: u.name,
+                        repsCount: 0,
+                        totalLeads: 0,
+                        conversions: 0,
+                        overdueCount: 0,
+                        pendingCount: 0,
+                        totalTasks: 0,
+                        inactiveReps: 0,
+                        reps: []
+                    });
+                }
+            });
+
+            // Ensure "Executive Direct" bucket exists if there are unmanaged reps
+            users.forEach(u => {
+                const effectiveManagerId = u.managerId ? String(u.managerId) : 'EXECUTIVE_DIRECT';
+                if (!managerMap.has(effectiveManagerId) && u.role === 'SALES') {
+                    managerMap.set('EXECUTIVE_DIRECT', {
+                        managerId: 'EXECUTIVE_DIRECT',
+                        managerName: 'Executive Direct',
+                        repsCount: 0,
+                        totalLeads: 0,
+                        conversions: 0,
+                        overdueCount: 0,
+                        pendingCount: 0,
+                        totalTasks: 0,
+                        inactiveReps: 0,
+                        reps: []
+                    });
+                }
+            });
+
+            // Distribute Reps into Manager buckets
+            users.filter(u => u.role === 'SALES').forEach(u => {
+                const userStatusGroups = taskStatusGroups.filter(g => g.assignedToId === u.id);
+                const userLeadGroups = leadStageGroups.filter(g => g.assignedToId === u.id);
                 
-            return {
-                id: u.id,
-                name: u.name,
-                pending: pendingCount,
-                completed: completedCount,
-                overdue: getCount(taskOverdueGroups, u.id, 'assignedToId'),
-                interactionsToday: getCount(interactionTodayGroups, u.id, 'performedById'),
-                interactionsWeek: getCount(interactionWeekGroups, u.id, 'performedById')
-            };
-        }).sort((a, b) => b.overdue - a.overdue);
+                const pending = userStatusGroups.filter(g => g.status !== 'COMPLETED').reduce((acc, g) => acc + g._count, 0);
+                const completed = userStatusGroups.filter(g => g.status === 'COMPLETED').reduce((acc, g) => acc + g._count, 0);
+                const overdue = getCount(taskOverdueGroups, u.id, 'assignedToId');
+                
+                const totalLeads = userLeadGroups.reduce((acc, g) => acc + g._count, 0);
+                const conversions = userLeadGroups.filter(g => g.stage === 'CONVERTED').reduce((acc, g) => acc + g._count, 0);
+
+                // Definition: Inactive if 7+ days (using interactionsWeek as proxy here for simplicity in single fetch)
+                const isInactive = getCount(interactionWeekGroups, u.id, 'performedById') === 0;
+
+                const repData = {
+                    repId: String(u.id),
+                    repName: u.name,
+                    pending,
+                    completed,
+                    overdue,
+                    totalLeads,
+                    conversions,
+                    totalTasks: pending + completed,
+                    isInactive
+                };
+
+                const effectiveManagerId = u.managerId ? String(u.managerId) : 'EXECUTIVE_DIRECT';
+                const manager = managerMap.get(effectiveManagerId);
+                if (manager) {
+                    manager.reps.push(repData);
+                    manager.repsCount++;
+                    manager.overdueCount += overdue;
+                    manager.pendingCount += pending;
+                    manager.totalLeads += totalLeads;
+                    manager.conversions += conversions;
+                    manager.totalTasks += (pending + completed);
+                    if (isInactive) manager.inactiveReps++;
+                }
+            });
+
+            // Convert Map to Array and Sort
+            teamPerformance = Array.from(managerMap.values())
+                .filter(m => m.repsCount > 0) // Only show managers with active teams
+                .sort((a, b) => {
+                    if (b.overdueCount !== a.overdueCount) return b.overdueCount - a.overdueCount;
+                    return b.totalLeads - a.totalLeads;
+                });
+
+            // Derive Risks and Actions
+            riskItems = teamPerformance
+                .filter(m => m.overdueCount > 0)
+                .map(m => ({
+                    managerName: m.managerName,
+                    overdueTasks: m.overdueCount
+                }));
+
+            actions = teamPerformance
+                .filter(m => m.inactiveReps > 0 || m.overdueCount > 10)
+                .map(m => ({
+                    managerName: m.managerName,
+                    issue: m.inactiveReps > 0 ? `${m.inactiveReps} reps inactive` : 'High overdue volume'
+                }));
+
+            managersWithInactiveTeams = teamPerformance.filter(m => m.inactiveReps > 0).length;
+            managersWithNoLeads = teamPerformance.filter(m => m.totalLeads === 0).length;
+
+        } else {
+            // ORIGINAL FLAT STRUCTURE (ROLE-SAFE)
+            teamPerformance = users.map(u => {
+                const userStatusGroups = taskStatusGroups.filter(g => g.assignedToId === u.id);
+                const pendingCount = userStatusGroups.filter(g => g.status !== 'COMPLETED').reduce((acc, g) => acc + g._count, 0);
+                const completedCount = userStatusGroups.filter(g => g.status === 'COMPLETED').reduce((acc, g) => acc + g._count, 0);
+                    
+                return {
+                    id: u.id,
+                    name: u.name,
+                    pending: pendingCount,
+                    completed: completedCount,
+                    overdue: getCount(taskOverdueGroups, u.id, 'assignedToId'),
+                    interactionsToday: getCount(interactionTodayGroups, u.id, 'performedById'),
+                    interactionsWeek: getCount(interactionWeekGroups, u.id, 'performedById')
+                };
+            }).sort((a, b) => b.overdue - a.overdue);
+        }
 
         // 3. Key Metrics
         const keyMetrics = {
-            taskCompletionRate: totalTasks > 0 ? (taskCompletedToday / totalTasks) * 100 : 0, // Simplified approximation
+            taskCompletionRate: totalTasks > 0 ? (taskCompletedToday / totalTasks) * 100 : 0,
             activeLeads,
-            conversionRate: interestedLeads > 0 ? (convertedLeads / interestedLeads) * 100 : 0
+            conversionRate: interestedLeads > 0 ? (convertedLeads / interestedLeads) * 100 : 0,
+            // Hierarchical KPIs (used by Admin)
+            managersWithInactiveTeams,
+            managersWithNoLeads
         };
 
-        // 4. Alerts
+        // 4. Alerts (Derived from teamPerformance for both roles safely)
         const alerts = [];
-        teamPerformance.filter(u => u.overdue > 0).forEach(u => {
-            alerts.push({ type: 'OVERDUE', message: `${u.name} has ${u.overdue} overdue follow-ups`, priority: 'HIGH' });
-        });
+        if (req.user.role === 'ADMIN') {
+            teamPerformance.filter(m => m.overdueCount > 0).forEach(m => {
+                alerts.push({ type: 'OVERDUE', message: `${m.managerName}'s team has ${m.overdueCount} overdue follow-ups`, priority: 'HIGH' });
+            });
+        } else {
+            teamPerformance.filter(u => u.overdue > 0).forEach(u => {
+                alerts.push({ type: 'OVERDUE', message: `${u.name} has ${u.overdue} overdue follow-ups`, priority: 'HIGH' });
+            });
+        }
 
         if (idleLeadsCount > 0) {
             alerts.push({ type: 'IDLE', message: `${idleLeadsCount} leads have no interaction in 7+ days`, priority: 'MEDIUM' });
         }
 
-        res.json({ success: true, data: { taskHealth, teamPerformance, keyMetrics, alerts, hasTeam: teamCount > 0 } });
+        res.json({ 
+            success: true, 
+            data: { 
+                taskHealth, 
+                teamPerformance, 
+                keyMetrics, 
+                alerts, 
+                hasTeam: teamCount > 0,
+                // Admin specific derived context
+                riskItems,
+                actions
+            } 
+        });
     } catch (error) {
         console.error('Error fetching dashboard summary:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch dashboard summary' });
@@ -413,7 +552,7 @@ async function getReportsData(req, res) {
         ] = await Promise.all([
             prisma.user.findMany({
                 where: { organizationId: orgId, id: { in: accessibleIds } },
-                select: { id: true, name: true }
+                select: { id: true, name: true, managerId: true, role: true }
             }),
             prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } } }),
             prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate }, status: 'COMPLETED' } }),

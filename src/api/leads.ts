@@ -28,6 +28,7 @@ export interface LeadType {
     createdAt: string;
     assignedTo?: string;
     assignedToId?: number;
+    managerName?: string | null;
     risk?: 'high' | 'medium' | 'low';
     interactions?: InteractionType[];
 }
