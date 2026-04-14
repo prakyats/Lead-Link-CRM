@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User as UserIcon, X, Zap, Plus, AlertCircle, ShieldCheck } from 'lucide-react';
 import { validateTaskForm, validateTaskTitle, validateDescription, type ValidationErrors } from '../utils/validation';
@@ -15,7 +15,7 @@ interface TaskModalProps {
   createMutation: any; // Mutation types are complex, keeping any for now but checking types
 }
 
-export const TaskModal: React.FC<TaskModalProps> = ({
+const TaskModalComponent: React.FC<TaskModalProps> = ({
   isOpen,
   onClose,
   user,
@@ -35,7 +35,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     assignedToId: user?.id
   });
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     onClose();
     setFieldErrors({});
     setShowConfirm(false);
@@ -47,7 +47,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       dueDate: new Date().toISOString().slice(0, 16),
       assignedToId: user?.id
     });
-  };
+  }, [onClose, user?.id]);
 
   const { modalRef } = useModalEffect({
     isOpen,
@@ -106,13 +106,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     }
   };
 
-
-  if (!isOpen) return null;
+  console.count("TaskModal Render");
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="ll-modal-overlay">
+    <div className="ll-modal-overlay" style={{ display: isOpen ? 'flex' : 'none' }}>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -337,7 +334,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             </AnimatePresence>
           </motion.div>
         </div>
-      )}
-    </AnimatePresence>
-  );
+    );
 };
+export const TaskModal = React.memo(TaskModalComponent, (prev, next) => {
+  return prev.isOpen === next.isOpen && prev.teamMembers === next.teamMembers;
+});

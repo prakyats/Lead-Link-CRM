@@ -10,13 +10,36 @@ export function useModalEffect({ isOpen, onClose, disableClose = false }: UseMod
   const previousFocus = useRef<HTMLElement | null>(null);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
+  // 1. Initial Focus Logic (LOCKED FIX)
   useEffect(() => {
     if (!isOpen) return;
 
-    // 1. Capture Previous Focus
+    let isMounted = true;
+    const timer = setTimeout(() => {
+      if (!isMounted) return;
+      
+      // Focus the first available input or interactive element
+      const input = modalRef.current?.querySelector(
+        'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])'
+      ) as HTMLElement;
+
+      input?.focus();
+    }, 100);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [isOpen]); // 🔒 Only re-run when modal actually opens/closes
+
+  // 2. Modal Interface Logic (Scroll lock, escape, and tab trap)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Capture Previous Focus
     previousFocus.current = document.activeElement as HTMLElement;
 
-    // 2. Scroll Lock with Jitter Prevention
+    // Scroll Lock with Jitter Prevention
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     const originalPadding = window.getComputedStyle(document.body).paddingRight;
     const originalOverflow = document.body.style.overflow;
@@ -24,24 +47,11 @@ export function useModalEffect({ isOpen, onClose, disableClose = false }: UseMod
     document.body.style.paddingRight = `${scrollbarWidth}px`;
     document.body.style.overflow = 'hidden';
 
-    // 3. Focus management initialization (slight delay to let animation finish)
-    const timeout = setTimeout(() => {
-      const focusableElements = modalRef.current?.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusableElements && focusableElements.length > 0) {
-        (focusableElements[0] as HTMLElement).focus();
-      }
-    }, 100);
-
-    // 4. Keyboard Listeners
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape Handling
       if (e.key === 'Escape' && !disableClose) {
         onClose();
       }
 
-      // Tab Trap
       if (e.key === 'Tab') {
         const focusableElements = modalRef.current?.querySelectorAll(
           'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -69,19 +79,15 @@ export function useModalEffect({ isOpen, onClose, disableClose = false }: UseMod
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      clearTimeout(timeout);
       window.removeEventListener('keydown', handleKeyDown);
-      
-      // Cleanup Scroll Lock
       document.body.style.paddingRight = originalPadding;
       document.body.style.overflow = originalOverflow;
 
-      // Restore Focus
       if (previousFocus.current) {
         previousFocus.current.focus();
       }
     };
-  }, [isOpen, onClose, disableClose]);
+  }, [isOpen, onClose, disableClose]); // These can be unstable without resetting focus
 
   return { modalRef };
 }
