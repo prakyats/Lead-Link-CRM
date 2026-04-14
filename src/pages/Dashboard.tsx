@@ -13,6 +13,15 @@ import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { DashboardSkeleton } from '@/components/ui/skeleton';
 
+const COLOR_MAP: Record<string, { iconBg: string; iconColor: string }> = {
+  teal: { iconBg: 'var(--crm-teal-glow)', iconColor: 'var(--crm-teal)' },
+  green: { iconBg: 'rgba(34,197,94,0.12)', iconColor: '#4ADE80' },
+  amber: { iconBg: 'var(--crm-amber-glow)', iconColor: 'var(--crm-amber)' },
+  red: { iconBg: 'rgba(239,68,68,0.12)', iconColor: '#F87171' },
+  blue: { iconBg: 'rgba(96,165,250,0.12)', iconColor: '#60A5FA' },
+  purple: { iconBg: 'rgba(192,132,252,0.12)', iconColor: '#C084FC' },
+};
+
 const DashboardContent = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -89,14 +98,24 @@ const DashboardContent = () => {
     ];
   }, [kpis]);
 
-  const colorMap: Record<string, { iconBg: string; iconColor: string }> = {
-    teal: { iconBg: 'var(--crm-teal-glow)', iconColor: 'var(--crm-teal)' },
-    green: { iconBg: 'rgba(34,197,94,0.12)', iconColor: '#4ADE80' },
-    amber: { iconBg: 'var(--crm-amber-glow)', iconColor: 'var(--crm-amber)' },
-    red: { iconBg: 'rgba(239,68,68,0.12)', iconColor: '#F87171' },
-    blue: { iconBg: 'rgba(96,165,250,0.12)', iconColor: '#60A5FA' },
-    purple: { iconBg: 'rgba(192,132,252,0.12)', iconColor: '#C084FC' },
-  };
+  const managerKPIRibbon = useMemo(() => {
+    if (!managerSummary) return [];
+    return [
+      { title: 'Activity', value: managerSummary.taskHealth.total, icon: Activity, color: 'blue', label: 'Tasks Created' },
+      { title: 'Completed', value: managerSummary.taskHealth.completed, icon: CheckCircle2, color: 'green', label: 'Tasks Completed' },
+      { title: 'Pending', value: managerSummary.taskHealth.pending, icon: Clock, color: 'amber', label: 'Pending Tasks' },
+      { title: 'Overdue', value: managerSummary.taskHealth.overdue, icon: AlertTriangle, color: 'red', label: 'Overdue Tasks' },
+    ];
+  }, [managerSummary]);
+
+  const keyMetricCards = useMemo(() => {
+    if (!managerSummary) return [];
+    return [
+      { label: 'Efficiency', value: `${Math.round(managerSummary.keyMetrics.taskCompletionRate)}%`, icon: CheckCircle2, color: 'var(--crm-teal)' },
+      { label: 'Pipeline', value: managerSummary.keyMetrics.activeLeads, icon: Target, color: '#60A5FA' },
+      { label: 'Conversion', value: `${Math.round(managerSummary.keyMetrics.conversionRate)}%`, icon: TrendingUp, color: '#C084FC' },
+    ];
+  }, [managerSummary]);
 
   const completeTaskMutation = useMutation({
     mutationFn: markTaskComplete,
@@ -169,13 +188,8 @@ const DashboardContent = () => {
           <div className="space-y-8 animate-in fade-in duration-700">
             {/* KPI Ribbon */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {[
-                { title: 'Activity', value: managerSummary.taskHealth.total, icon: Activity, color: 'blue', label: 'Tasks Created' },
-                { title: 'Completed', value: managerSummary.taskHealth.completed, icon: CheckCircle2, color: 'green', label: 'Tasks Completed' },
-                { title: 'Pending', value: managerSummary.taskHealth.pending, icon: Clock, color: 'amber', label: 'Pending Tasks' },
-                { title: 'Overdue', value: managerSummary.taskHealth.overdue, icon: AlertTriangle, color: 'red', label: 'Overdue Tasks' },
-              ].map((item, i) => {
-                const colors = colorMap[item.color] || colorMap.teal;
+              {managerKPIRibbon.map((item, i) => {
+                const colors = COLOR_MAP[item.color] || COLOR_MAP.teal;
                 return (
                   <div key={item.title} className={`crm-card group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
                     <div className="flex justify-between items-center mb-4">
@@ -243,11 +257,7 @@ const DashboardContent = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                   {[
-                     { label: 'Efficiency', value: `${Math.round(managerSummary.keyMetrics.taskCompletionRate)}%`, icon: CheckCircle2, color: 'var(--crm-teal)' },
-                     { label: 'Pipeline', value: managerSummary.keyMetrics.activeLeads, icon: Target, color: '#60A5FA' },
-                     { label: 'Conversion', value: `${Math.round(managerSummary.keyMetrics.conversionRate)}%`, icon: TrendingUp, color: '#C084FC' },
-                   ].map(metric => (
+                   {keyMetricCards.map(metric => (
                       <div key={metric.label} className="crm-card flex items-center gap-4 active:scale-95 cursor-pointer">
                          <div className="p-3 rounded-xl bg-muted/50 border border-border/40">
                             <metric.icon className="w-5 h-5" style={{ color: metric.color }} />
@@ -312,7 +322,7 @@ const DashboardContent = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {salesKPIs.map((card, i) => {
                 const Icon = card.icon;
-                const colors = colorMap[card.color] || colorMap.teal;
+                const colors = COLOR_MAP[card.color] || COLOR_MAP.teal;
                 return (
                   <div key={card.title} className={`crm-card crm-card-hover group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
                     <div className="flex justify-between items-start mb-6">

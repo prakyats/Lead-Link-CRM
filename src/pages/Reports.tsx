@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Sidebar } from '../components/Sidebar';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, Users, Target, Activity, Calendar, ArrowUpRight, DollarSign, Zap, PieChart as PieIcon, BarChart3, ShieldAlert } from 'lucide-react';
@@ -8,26 +9,14 @@ import { motion } from 'framer-motion';
 
 export default function Reports() {
   const [filter, setFilter] = useState<'today' | 'week' | 'month'>('month');
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  const fetchReportsData = async () => {
-    try {
-      setLoading(true);
-      const normalizedData = await getReportsData(filter);
-      setData(normalizedData);
-    } catch (error) {
-      console.error('[Reports] Fetch failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading } = useQuery({
+    queryKey: ['reports', filter],
+    queryFn: () => getReportsData(filter),
+    staleTime: 30000,
+  });
 
-  useEffect(() => {
-    fetchReportsData();
-  }, [filter]);
-
-  const tooltipStyle = {
+  const tooltipStyle = useMemo(() => ({
     contentStyle: { 
       background: 'rgba(15, 23, 42, 0.9)', 
       backdropFilter: 'blur(16px)',
@@ -39,14 +28,14 @@ export default function Reports() {
     },
     itemStyle: { fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.1em' },
     labelStyle: { color: 'var(--primary)', fontWeight: '900', fontSize: '11px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.15em' },
-  };
+  }), []);
 
-  const funnelData = data ? [
+  const funnelData = useMemo(() => data ? [
     { name: 'NEW VECTOR', value: data.leadFlow.new, color: '#60A5FA' },
     { name: 'ACTIVE CONTACT', value: data.leadFlow.contacted, color: '#FBBF24' },
     { name: 'QUALIFIED', value: data.leadFlow.interested, color: '#C084FC' },
     { name: 'CONVERTED', value: data.leadFlow.converted, color: 'var(--primary)' },
-  ] : [];
+  ] : [], [data]);
 
   return (
     <div className="crm-page-container">
@@ -80,7 +69,7 @@ export default function Reports() {
               </div>
             </div>
 
-            {loading ? (
+            {isLoading ? (
               <ReportsSkeleton />
             ) : data && (
               <div className="space-y-10">
