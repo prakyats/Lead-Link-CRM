@@ -6,6 +6,8 @@ export interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'SALES';
+  createdAt?: string;
+  manager?: { name: string };
 }
 
 export const getUsers = async (): Promise<User[]> => {
