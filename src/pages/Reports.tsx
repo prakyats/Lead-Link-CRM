@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { TrendingUp, Users, Target, Activity, Calendar, ArrowUpRight, DollarSign, Zap, PieChart as PieIcon, BarChart3, ShieldAlert } from 'lucide-react';
-import api from '../utils/api';
+import { getReportsData } from '../api/reports';
 import { ReportsSkeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
 
@@ -14,10 +14,10 @@ export default function Reports() {
   const fetchReportsData = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/dashboard/reports?filter=${filter}`);
-      setData(res.data);
+      const normalizedData = await getReportsData(filter);
+      setData(normalizedData);
     } catch (error) {
-      console.error('Error fetching reports:', error);
+      console.error('[Reports] Fetch failed:', error);
     } finally {
       setLoading(false);
     }

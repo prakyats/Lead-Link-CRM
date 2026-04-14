@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, X, Clock, User2, AlertCircle, Box } from 'lucide-react';
 import { formatRelativeTime } from '../../utils/dateHelpers';
+import { useModalEffect } from '../../hooks/useModalEffect';
 
 interface Lead {
   id: number;
@@ -25,11 +26,11 @@ interface MobileKanbanProps {
   columns: Column[];
   onUpdateStage: (leadId: number, newStage: Lead['stage']) => Promise<void>;
   canDrag: boolean;
+  setSelectedLead: (lead: Lead | null) => void;
 }
 
-export function MobileKanban({ leads, columns, onUpdateStage, canDrag }: MobileKanbanProps) {
+export function MobileKanban({ leads, columns, onUpdateStage, canDrag, setSelectedLead }: MobileKanbanProps) {
   const [expandedStage, setExpandedStage] = useState<Lead['stage'] | null>('NEW');
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   const colorVariants: Record<string, string> = {
     teal: '#00D4AA',
@@ -37,14 +38,6 @@ export function MobileKanban({ leads, columns, onUpdateStage, canDrag }: MobileK
     purple: '#C084FC',
     green: '#4ADE80',
     blue: '#60A5FA',
-  };
-
-  const handleStageUpdate = async (newStage: Lead['stage']) => {
-    if (selectedLead && newStage !== selectedLead.stage) {
-      await onUpdateStage(selectedLead.id, newStage);
-      setExpandedStage(newStage); // Automatically expand the new stage to show moved item
-    }
-    setSelectedLead(null);
   };
 
   return (
@@ -138,67 +131,6 @@ export function MobileKanban({ leads, columns, onUpdateStage, canDrag }: MobileK
           );
         })}
       </div>
-
-      {/* Bottom Sheet for Status Update */}
-      <AnimatePresence>
-        {selectedLead && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 z-40 backdrop-blur-[2px]"
-              onClick={() => setSelectedLead(null)}
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] pb-safe"
-            >
-              <div className="px-6 pt-4 pb-8">
-                <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-6" />
-                
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-bold text-foreground font-outfit uppercase tracking-tight">{selectedLead.company}</h3>
-                    <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">Update Pipeline Stage</p>
-                  </div>
-                  <button onClick={() => setSelectedLead(null)} className="p-2 bg-muted/20 hover:bg-muted/40 rounded-full text-foreground transition-colors">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  {columns.map(col => {
-                    const isActive = selectedLead.stage === col.stage;
-                    const cColor = colorVariants[col.color] || colorVariants.teal;
-                    return (
-                      <button
-                        key={col.stage}
-                        onClick={() => handleStageUpdate(col.stage)}
-                        disabled={isActive}
-                        className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all active:scale-[0.98] min-h-[44px] ${
-                          isActive 
-                            ? 'bg-muted/10 border-border opacity-50 cursor-not-allowed' 
-                            : 'bg-card border-border hover:border-foreground'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 rounded-full" style={{ background: cColor }} />
-                          <span className="font-bold text-sm tracking-widest uppercase">{col.title}</span>
-                        </div>
-                        {isActive && <span className="text-[10px] font-bold text-[#00D4AA] uppercase tracking-widest">Current</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

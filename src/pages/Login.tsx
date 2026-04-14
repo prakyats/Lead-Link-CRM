@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2, Building2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, CheckCircle2, Loader2, Building2, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -72,7 +72,6 @@ export default function Login() {
             localStorage.setItem('organizationSlug', organizationSlug);
             await login(organizationSlug, normalizeEmail(email), password);
             
-            // Premium Success Sequence
             setIsSuccess(true);
             toast.success('Access Granted! Welcome back.', {
                 description: 'Redirecting to your dashboard...'
@@ -113,8 +112,7 @@ export default function Login() {
     `;
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background">
-            {/* Cinematic Background */}
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-y-auto custom-scrollbar bg-background">
             <div className="absolute inset-0 z-0">
                 <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-[#00D4AA]/10 blur-[120px] animate-pulse" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-amber-500/5 blur-[120px]" />

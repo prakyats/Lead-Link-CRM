@@ -10,12 +10,19 @@ import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useModalEffect } from '../hooks/useModalEffect';
 
 export default function CustomerDetail() {
   const { id } = useParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { modalRef } = useModalEffect({
+    isOpen: isModalOpen,
+    onClose: () => setIsModalOpen(false),
+    disableClose: true // Form persistence safety
+  });
 
   // Form states
   const [form, setForm] = useState({
@@ -114,8 +121,8 @@ export default function CustomerDetail() {
   return (
     <div className="crm-page-container">
       <Sidebar />
-
-      <main className="crm-main-content">
+      <>
+        <main className="crm-main-content">
         {/* ── Background Effects ── */}
         <div className="ll-hero-grid opacity-[0.02] dark:opacity-[0.05]" />
         <div className="ll-orb w-[600px] h-[600px] -top-64 -right-32 bg-primary/5 blur-[120px]" />
@@ -125,7 +132,7 @@ export default function CustomerDetail() {
             <div className="mb-12 animate-in slide-in-from-left duration-700">
               <div className="flex items-center gap-4 mb-3">
                 <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[9px] font-semibold uppercase tracking-widest border border-primary/20">
-                    Lead ID: #{id.padStart(4, '0')}
+                    Lead ID: #{(id || '0').padStart(4, '0')}
                 </span>
                 <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
               </div>
@@ -336,23 +343,27 @@ export default function CustomerDetail() {
       {/* ── Interaction Modal ── */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-hidden">
+          <div className="ll-modal-overlay">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 backdrop-blur-xl bg-black/40 dark:bg-black/80"
-              onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0"
+              // Background click disabled via hook for interaction form
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 40 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 40 }}
-              className="rounded-[3rem] w-full max-w-xl relative overflow-hidden bg-card/90 backdrop-blur-2xl border border-white/10 shadow-[0_32px_120px_-20px_rgba(0,0,0,0.5)]"
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="interaction-modal-title"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="ll-modal-container modal-sm"
             >
-              <div className="px-10 py-10 flex justify-between items-start border-b border-white/5 relative z-10">
+              <div className="ll-modal-header">
                 <div>
-                  <h2 className="text-3xl font-semibold tracking-tight text-foreground leading-tight uppercase" style={{ fontFamily: 'var(--ll-font-display)' }}>Log Engagement</h2>
+                  <h2 id="interaction-modal-title" className="text-3xl font-semibold tracking-tight text-foreground leading-tight uppercase" style={{ fontFamily: 'var(--ll-font-display)' }}>Log Engagement</h2>
                   <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-primary">Synchronizing with {leadData.company}</p>
                 </div>
                 <button 
@@ -363,90 +374,95 @@ export default function CustomerDetail() {
                 </button>
               </div>
 
-              <form onSubmit={handleLogInteraction} className="p-10 space-y-8 relative z-10">
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Vector Type</label>
-                    <div className="relative">
-                      <select 
-                        value={form.type}
-                        onChange={(e) => setForm({...form, type: e.target.value})}
-                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer"
-                      >
-                        <option value="CALL">VOICE COMMS</option>
-                        <option value="EMAIL">DIGITAL MAIL</option>
-                        <option value="MEETING">DIRECT MISSION</option>
-                        <option value="WHATSAPP">SIGNAL LINK</option>
-                        <option value="OTHER">OTHER ACTIVITIES</option>
-                      </select>
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
-                          <Plus size={14} className="rotate-45" />
+              <form onSubmit={handleLogInteraction} className="flex flex-col h-full min-h-0 overflow-hidden">
+                <div className="ll-modal-body space-y-8">
+                  <div className="grid grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Vector Type</label>
+                      <div className="relative">
+                        <select 
+                          value={form.type}
+                          onChange={(e) => setForm({...form, type: e.target.value})}
+                          className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer"
+                        >
+                          <option value="CALL">VOICE COMMS</option>
+                          <option value="EMAIL">DIGITAL MAIL</option>
+                          <option value="MEETING">DIRECT MISSION</option>
+                          <option value="WHATSAPP">SIGNAL LINK</option>
+                          <option value="OTHER">OTHER ACTIVITIES</option>
+                        </select>
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+                            <Plus size={14} className="rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Vector Outcome</label>
+                      <div className="relative">
+                        <select 
+                          value={form.outcome}
+                          onChange={(e) => setForm({...form, outcome: e.target.value})}
+                          className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer"
+                        >
+                          <option value="Interested">QUALIFIED</option>
+                          <option value="Not Interested">TERMINATED</option>
+                          <option value="Follow-up Required">PENDING SYNC</option>
+                          <option value="No Response">NO RESPONSE</option>
+                        </select>
+                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+                            <Plus size={14} className="rotate-45" />
+                        </div>
                       </div>
                     </div>
                   </div>
+
                   <div className="space-y-3">
-                    <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Vector Outcome</label>
-                    <div className="relative">
-                      <select 
-                        value={form.outcome}
-                        onChange={(e) => setForm({...form, outcome: e.target.value})}
-                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer"
-                      >
-                        <option value="Interested">QUALIFIED</option>
-                        <option value="Not Interested">TERMINATED</option>
-                        <option value="Follow-up Required">PENDING SYNC</option>
-                        <option value="No Response">NO RESPONSE</option>
-                      </select>
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
-                          <Plus size={14} className="rotate-45" />
-                      </div>
-                    </div>
+                    <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Activity Notes</label>
+                    <textarea 
+                      required
+                      placeholder="Log detailed interaction summary..."
+                      value={form.summary}
+                      onChange={(e) => setForm({...form, summary: e.target.value})}
+                      className="crm-input !bg-white/5 !border-white/10 min-h-[140px] !px-6 !py-5 resize-none text-sm font-medium leading-relaxed"
+                    ></textarea>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Next Synchronization Window</label>
+                    <input 
+                      type="date"
+                      value={form.followUpDate}
+                      onChange={(e) => setForm({...form, followUpDate: e.target.value})}
+                      className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest"
+                    />
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Activity Notes</label>
-                  <textarea 
-                    required
-                    placeholder="Log detailed interaction summary..."
-                    value={form.summary}
-                    onChange={(e) => setForm({...form, summary: e.target.value})}
-                    className="crm-input !bg-white/5 !border-white/10 min-h-[140px] !px-6 !py-5 resize-none text-sm font-medium leading-relaxed"
-                  ></textarea>
+                <div className="ll-modal-footer">
+                  <button 
+                    type="submit"
+                    disabled={interactionMutation.isPending}
+                    className="crm-btn-primary w-full !py-4 !text-xs font-semibold tracking-wider flex items-center justify-center gap-3"
+                  >
+                    {interactionMutation.isPending ? (
+                      <>
+                        <Clock size={16} className="animate-spin" />
+                        <span>Syncing registry...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={14} fill="currentColor" />
+                        Authorize Registry Link
+                      </>
+                    )}
+                  </button>
                 </div>
-
-                <div className="space-y-3">
-                  <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Next Synchronization Window</label>
-                  <input 
-                    type="date"
-                    value={form.followUpDate}
-                    onChange={(e) => setForm({...form, followUpDate: e.target.value})}
-                    className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest"
-                  />
-                </div>
-
-                <button 
-                  type="submit"
-                  disabled={interactionMutation.isPending}
-                  className="w-full h-16 rounded-[1.5rem] bg-primary text-black text-xs font-semibold uppercase tracking-wider hover:opacity-90 shadow-xl shadow-primary/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
-                >
-                  {interactionMutation.isPending ? (
-                    <>
-                      <Clock size={16} className="animate-spin" />
-                      <span>Syncing registry...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap size={14} fill="currentColor" />
-                      Authorize Registry Link
-                    </>
-                  )}
-                </button>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-    </div>
-  );
+    </>
+  </div>
+);
 }

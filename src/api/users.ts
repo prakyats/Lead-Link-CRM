@@ -1,4 +1,5 @@
 import api from '../utils/api';
+import { normalizeResponse } from './utils/normalizeResponse';
 
 export interface User {
   id: number;
@@ -9,5 +10,10 @@ export interface User {
 
 export const getUsers = async (): Promise<User[]> => {
   const response = await api.get('/users');
-  return response.data;
+  return normalizeResponse(response.data);
+};
+
+export const getSalesUsers = async (): Promise<User[]> => {
+  const response = await api.get('/users/sales');
+  return normalizeResponse(response.data);
 };

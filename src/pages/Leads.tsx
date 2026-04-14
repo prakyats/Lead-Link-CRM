@@ -3,6 +3,7 @@ import { Sidebar } from '../components/Sidebar';
 import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck, Calendar, Activity, ChevronRight, Globe, Shield } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { getLeads, createLead as createLeadApi, assignLead as assignLeadApi, LeadType as Lead } from '../api/leads';
+import { getSalesUsers } from '../api/users';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +13,7 @@ import { formatDate } from '../utils/dateHelpers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { validateLeadForm, validateCompany, validateName, validateEmail, validatePhone, type ValidationErrors } from '../utils/validation';
+import { useModalEffect } from '../hooks/useModalEffect';
 
 
 function LeadsInnerContent() {
@@ -42,6 +44,18 @@ function LeadsInnerContent() {
         maxValue: ''
     });
 
+    // ── Modal Lifecycles ──
+    const { modalRef: createModalRef } = useModalEffect({ 
+        isOpen: isModalOpen, 
+        onClose: () => setIsModalOpen(false),
+        disableClose: true // Prevent accidental data loss
+    });
+
+    const { modalRef: assignModalRef } = useModalEffect({ 
+        isOpen: assignModal.open, 
+        onClose: () => setAssignModal({ open: false, leadId: null })
+    });
+
     const { data: leads = [], isLoading: loading } = useQuery({
         queryKey: ['leads', filterSettings],
         queryFn: getLeads,
@@ -52,9 +66,7 @@ function LeadsInnerContent() {
 
     useEffect(() => {
         if (canAssign) {
-            import('../utils/api').then(({ default: api }) => {
-                api.get('/users/sales').then(res => setSalesUsers(res.data)).catch(() => {});
-            });
+            getSalesUsers().then(res => setSalesUsers(res)).catch(() => {});
         }
     }, [canAssign]);
 
@@ -136,7 +148,8 @@ function LeadsInnerContent() {
     });
 
     return (
-        <main className="crm-main-content">
+        <>
+            <main className="crm-main-content">
             {/* ── Background Effects ── */}
             <div className="ll-hero-grid opacity-[0.03] dark:opacity-[0.05]" />
             <div className="ll-orb w-[500px] h-[500px] -top-32 -left-32 bg-primary/10 blur-[100px]" />
@@ -263,13 +276,13 @@ function LeadsInnerContent() {
                                 <table className="w-full table-fixed border-collapse">
                                     <thead className="bg-muted/30 border-b border-border/50 sticky top-0 z-20 backdrop-blur-md">
                                         <tr>
-                                            <th className="w-[24%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Organization</th>
-                                            <th className="w-[18%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Person</th>
-                                            <th className="w-[14%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Status</th>
+                                            <th className="w-[30%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Organization</th>
+                                            <th className="w-[20%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Person</th>
+                                            <th className="w-[12%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Status</th>
                                             <th className="w-[12%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Priority</th>
-                                            <th className="w-[14%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Value</th>
-                                            {canAssign && <th className="w-[10%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Agent</th>}
-                                            {canAssign && <th className="w-[8%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-right">Action</th>}
+                                            <th className="w-[12%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Value</th>
+                                            {canAssign && <th className="w-[8%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Agent</th>}
+                                            {canAssign && <th className="w-[6%] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-right">Action</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -313,7 +326,7 @@ function LeadsInnerContent() {
                                                             <p className="font-bold text-sm text-foreground truncate">{lead.contact}</p>
                                                         </td>
                                                         <td className="px-4 py-3 border-b border-border/40">
-                                                            <span className={`crm-badge scale-90 origin-left ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                                            <span className={`crm-badge scale-90 origin-left whitespace-nowrap ${lead.stage === 'NEW' ? 'badge-stage-new' :
                                                                     lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
                                                                         lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
                                                                             lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
@@ -323,7 +336,7 @@ function LeadsInnerContent() {
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3 border-b border-border/40">
-                                                            <span className={`crm-badge scale-90 origin-left ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                                                            <span className={`crm-badge scale-90 origin-left whitespace-nowrap ${lead.priority === 'HIGH' ? 'badge-priority-high' :
                                                                 lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
                                                                     'badge-priority-low'
                                                                 }`}>
@@ -527,29 +540,31 @@ function LeadsInnerContent() {
                     )}
                 </div>
             </div>
+        </main>
 
             {/* Creation Modal */}
             <AnimatePresence>
                 {isModalOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="ll-modal-overlay">
                         <motion.div 
                             initial={{ opacity: 0 }} 
                             animate={{ opacity: 1 }} 
                             exit={{ opacity: 0 }} 
-                            className="absolute inset-0 backdrop-blur-xl bg-background/60" 
-                            onClick={() => setIsModalOpen(false)} 
+                            className="absolute inset-0" 
                         />
                         <motion.div 
-                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            className="rounded-[2.5rem] w-full max-w-2xl relative overflow-hidden bg-background/80 border border-white/10 shadow-[0_32px_128px_-16px_rgba(0,0,0,0.5)] dark:shadow-[0_32px_128px_-16px_rgba(0,0,0,0.8)] backdrop-blur-2xl"
+                            ref={createModalRef}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="create-lead-title"
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="ll-modal-container modal-md"
                         >
-                            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-                            
-                            <div className="p-10 flex justify-between items-start border-b border-border/40">
+                            <div className="ll-modal-header">
                                 <div>
-                                    <h2 className="text-2xl font-semibold uppercase tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Add Lead</h2>
+                                    <h2 id="create-lead-title" className="text-2xl font-semibold uppercase tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Add Lead</h2>
                                     <p className="mt-2 font-bold text-sm text-muted-foreground flex items-center gap-2">
                                         <Activity size={14} className="text-primary animate-pulse" />
                                         Enter details for the new prospect
@@ -563,89 +578,91 @@ function LeadsInnerContent() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handleCreateSubmit} className="p-10 space-y-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                    <div className="space-y-3">
-                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">COMPANY NAME</label>
-                                        <div className="relative group">
-                                            <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                            <input
-                                                required
-                                                type="text"
-                                                className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.company ? 'border-red-500/50' : ''}`}
-                                                placeholder="e.g. LeadLink Enterprise"
-                                                value={formData.company}
-                                                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                                                onBlur={() => handleLeadFieldBlur('company')}
-                                            />
+                            <form onSubmit={handleCreateSubmit} className="flex flex-col h-full min-h-0 overflow-hidden">
+                                <div className="ll-modal-body space-y-10">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        <div className="space-y-3">
+                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">COMPANY NAME</label>
+                                            <div className="relative group">
+                                                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.company ? 'border-red-500/50' : ''}`}
+                                                    placeholder="e.g. LeadLink Enterprise"
+                                                    value={formData.company}
+                                                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                                                    onBlur={() => handleLeadFieldBlur('company')}
+                                                />
+                                            </div>
+                                            {fieldErrors.company && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.company}</p>}
                                         </div>
-                                        {fieldErrors.company && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.company}</p>}
-                                    </div>
-                                    <div className="space-y-3">
-                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">CONTACT PERSON</label>
-                                        <div className="relative group">
-                                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                            <input
-                                                required
-                                                type="text"
-                                                className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.contact ? 'border-red-500/50' : ''}`}
-                                                placeholder="Lead representative"
-                                                value={formData.contact}
-                                                onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                                                onBlur={() => handleLeadFieldBlur('contact')}
-                                            />
+                                        <div className="space-y-3">
+                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">CONTACT PERSON</label>
+                                            <div className="relative group">
+                                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.contact ? 'border-red-500/50' : ''}`}
+                                                    placeholder="Lead representative"
+                                                    value={formData.contact}
+                                                    onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                                                    onBlur={() => handleLeadFieldBlur('contact')}
+                                                />
+                                            </div>
+                                            {fieldErrors.contact && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.contact}</p>}
                                         </div>
-                                        {fieldErrors.contact && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.contact}</p>}
-                                    </div>
-                                    <div className="space-y-3">
-                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">EMAIL ADDRESS</label>
-                                        <div className="relative group">
-                                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                            <input
-                                                required
-                                                type="email"
-                                                className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.email ? 'border-red-500/50' : ''}`}
-                                                placeholder="contact@entity.com"
-                                                value={formData.email}
-                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                onBlur={() => handleLeadFieldBlur('email')}
-                                            />
+                                        <div className="space-y-3">
+                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">EMAIL ADDRESS</label>
+                                            <div className="relative group">
+                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                                <input
+                                                    required
+                                                    type="email"
+                                                    className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.email ? 'border-red-500/50' : ''}`}
+                                                    placeholder="contact@entity.com"
+                                                    value={formData.email}
+                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                    onBlur={() => handleLeadFieldBlur('email')}
+                                                />
+                                            </div>
+                                            {fieldErrors.email && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.email}</p>}
                                         </div>
-                                        {fieldErrors.email && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.email}</p>}
-                                    </div>
-                                    <div className="space-y-3">
-                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">PHONE NUMBER</label>
-                                        <div className="relative group">
-                                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                            <input
-                                                type="tel"
-                                                className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.phone ? 'border-red-500/50' : ''}`}
-                                                placeholder="Voice frequency"
-                                                value={formData.phone}
-                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                onBlur={() => handleLeadFieldBlur('phone')}
-                                            />
+                                        <div className="space-y-3">
+                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">PHONE NUMBER</label>
+                                            <div className="relative group">
+                                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                                <input
+                                                    type="tel"
+                                                    className={`crm-input !pl-12 !py-4 font-bold border-border/40 focus:border-primary/40 focus:bg-primary/[0.02] ${fieldErrors.phone ? 'border-red-500/50' : ''}`}
+                                                    placeholder="Voice frequency"
+                                                    value={formData.phone}
+                                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                    onBlur={() => handleLeadFieldBlur('phone')}
+                                                />
+                                            </div>
+                                            {fieldErrors.phone && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.phone}</p>}
                                         </div>
-                                        {fieldErrors.phone && <p className="text-red-400 text-[10px] font-bold uppercase tracking-widest ml-1">{fieldErrors.phone}</p>}
-                                    </div>
-                                    <div className="space-y-3">
-                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">ESTIMATED VALUE (₹)</label>
-                                        <div className="relative group">
-                                            <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
-                                            <input required type="number" className="crm-input !pl-12 !py-4 font-bold border-border/40 bg-muted/20" placeholder="Revenue forecast" value={formData.value} onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })} />
+                                        <div className="space-y-3">
+                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">ESTIMATED VALUE (₹)</label>
+                                            <div className="relative group">
+                                                <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all text-muted-foreground/40 group-focus-within:text-primary group-focus-within:scale-110" />
+                                                <input required type="number" className="crm-input !pl-12 !py-4 font-bold border-border/40 bg-muted/20" placeholder="Revenue forecast" value={formData.value} onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })} />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">PRIORITY</label>
-                                        <select className="crm-input !py-4 font-semibold tracking-widest bg-muted/20 border-border/40 cursor-pointer" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
-                                            <option value="LOW">Low Priority</option>
-                                            <option value="MEDIUM">Medium Priority</option>
-                                            <option value="HIGH">High Priority</option>
-                                        </select>
+                                        <div className="space-y-3">
+                                            <label className="crm-label font-semibold text-xs tracking-wider ml-1">PRIORITY</label>
+                                            <select className="crm-input !py-4 font-semibold tracking-widest bg-muted/20 border-border/40 cursor-pointer" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
+                                                <option value="LOW">Low Priority</option>
+                                                <option value="MEDIUM">Medium Priority</option>
+                                                <option value="HIGH">High Priority</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="flex gap-6 pt-6">
+                                <div className="ll-modal-footer flex gap-6">
                                     <button type="button" disabled={createMutation.isPending} onClick={() => { setIsModalOpen(false); setFieldErrors({}); }} className="crm-btn-secondary w-full !py-4 !text-xs font-semibold tracking-wider">CANCEL</button>
                                     <button type="submit" disabled={createMutation.isPending} className="crm-btn-primary w-full !py-4 !text-xs font-semibold tracking-wider">
                                         {createMutation.isPending ? 'SAVING...' : 'CREATE LEAD'}
@@ -660,50 +677,58 @@ function LeadsInnerContent() {
             {/* Assignment Modal */}
             <AnimatePresence>
                 {assignModal.open && (
-                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="ll-modal-overlay">
                         <motion.div 
                             initial={{ opacity: 0 }} 
                             animate={{ opacity: 1 }} 
                             exit={{ opacity: 0 }} 
-                            className="absolute inset-0 backdrop-blur-xl bg-background/60" 
+                            className="absolute inset-0" 
                             onClick={() => setAssignModal({ open: false, leadId: null })} 
                         />
                         <motion.div 
-                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            className="rounded-[2.5rem] w-full max-w-md relative overflow-hidden bg-background/80 border border-white/10 shadow-2xl backdrop-blur-2xl"
+                            ref={assignModalRef}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="assign-lead-title"
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="ll-modal-container modal-sm min-h-0"
                         >
-                            <div className="p-8 flex justify-between items-start border-b border-border/40">
+                            <div className="ll-modal-header !pb-4">
                                 <div>
-                                    <h2 className="text-xl font-semibold uppercase tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Assign Lead</h2>
+                                    <h2 id="assign-lead-title" className="text-xl font-semibold uppercase tracking-tight text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Assign Lead</h2>
                                     <p className="mt-2 text-xs font-bold text-muted-foreground">Choose a team member to handle this lead</p>
                                 </div>
                                 <button
                                     onClick={() => setAssignModal({ open: false, leadId: null })}
-                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/40"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-muted/40 transition-colors hover:bg-muted/60"
                                 >
                                     <X size={20} className="opacity-40" />
                                 </button>
                             </div>
-                            <div className="p-8 space-y-8">
-                                <div className="space-y-3">
-                                    <label className="crm-label font-semibold text-xs tracking-wider ml-1">SELECT USER</label>
-                                    <div className="relative">
-                                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
-                                        <select
-                                            value={selectedAssignee}
-                                            onChange={(e) => setSelectedAssignee(e.target.value)}
-                                            className="crm-input !pl-12 !py-4 font-semibold tracking-widest bg-muted/20 appearance-none cursor-pointer"
-                                        >
-                                            <option value="">Select team member...</option>
-                                            {salesUsers.map(u => (
-                                                <option key={u.id} value={u.id}>{u.name.toUpperCase()} ({u.role})</option>
-                                            ))}
-                                        </select>
+                            
+                            <div className="flex flex-col h-full min-h-0 overflow-hidden">
+                                <div className="ll-modal-body space-y-8">
+                                    <div className="space-y-3">
+                                        <label className="crm-label font-semibold text-xs tracking-wider ml-1">SELECT USER</label>
+                                        <div className="relative">
+                                            <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
+                                            <select
+                                                value={selectedAssignee}
+                                                onChange={(e) => setSelectedAssignee(e.target.value)}
+                                                className="crm-input !pl-12 !py-4 font-semibold tracking-widest bg-muted/20 appearance-none cursor-pointer"
+                                            >
+                                                <option value="">Select team member...</option>
+                                                {salesUsers.map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name.toUpperCase()} ({u.role})</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                                 <div className="flex gap-4">
+                                
+                                <div className="ll-modal-footer flex gap-4">
                                     <button
                                         type="button"
                                         disabled={assignMutation.isPending}
@@ -735,7 +760,7 @@ function LeadsInnerContent() {
                     </div>
                 )}
             </AnimatePresence>
-        </main>
+        </>
     );
 }
 

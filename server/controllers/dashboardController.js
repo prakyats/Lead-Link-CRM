@@ -73,7 +73,7 @@ async function getKPIs(req, res) {
             prisma.task.count({
                 where: {
                     ...where,
-                    status: 'PENDING',
+                    status: { not: 'COMPLETED' },
                     dueDate: { gte: now, lte: sevenDaysFromNow }
                 }
             }),
@@ -203,7 +203,7 @@ async function getUpcomingTasks(req, res) {
         const { organizationId } = req.user;
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
         let where = {
-            status: 'PENDING',
+            status: { not: 'COMPLETED' },
             organizationId: parseInt(organizationId),
             assignedToId: { in: accessibleIds }
         };
@@ -239,7 +239,8 @@ async function getDashboardSummary(req, res) {
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const now = new Date();
-        const todayStart = new Date(now.setHours(0, 0, 0, 0));
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
         const idleThreshold = new Date(new Date().setDate(new Date().getDate() - 7));
 
         const [
@@ -263,11 +264,11 @@ async function getDashboardSummary(req, res) {
                 where: { organizationId, id: { in: accessibleIds } },
                 select: { id: true, name: true }
             }),
-            prisma.user.count({ where: { organizationId, managerId: req.user.id } }),
+            prisma.user.count({ where: { organizationId, managerId: userId } }),
             prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: todayStart } } }),
             prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'COMPLETED', completedAt: { gte: todayStart } } }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING' } }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: new Date() } } }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' } } }),
+            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: todayStart } } }),
             prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED' } }),
             prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED' } }),
             prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: { notIn: ['CONVERTED', 'LOST'] } } }),
@@ -287,7 +288,7 @@ async function getDashboardSummary(req, res) {
             }),
             prisma.task.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: new Date() } },
+                where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: todayStart } },
                 _count: true
             }),
             prisma.interaction.groupBy({
@@ -317,15 +318,25 @@ async function getDashboardSummary(req, res) {
         };
 
         // 2. Team Performance
-        const teamPerformance = users.map(u => ({
-            id: u.id,
-            name: u.name,
-            pending: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'PENDING'),
-            completed: getCount(taskStatusGroups, u.id, 'assignedToId', 'status', 'COMPLETED'),
-            overdue: getCount(taskOverdueGroups, u.id, 'assignedToId'),
-            interactionsToday: getCount(interactionTodayGroups, u.id, 'performedById'),
-            interactionsWeek: getCount(interactionWeekGroups, u.id, 'performedById')
-        })).sort((a, b) => b.overdue - a.overdue);
+        const teamPerformance = users.map(u => {
+            const userStatusGroups = taskStatusGroups.filter(g => g.assignedToId === u.id);
+            const pendingCount = userStatusGroups
+                .filter(g => g.status !== 'COMPLETED')
+                .reduce((acc, g) => acc + g._count, 0);
+            const completedCount = userStatusGroups
+                .filter(g => g.status === 'COMPLETED')
+                .reduce((acc, g) => acc + g._count, 0);
+                
+            return {
+                id: u.id,
+                name: u.name,
+                pending: pendingCount,
+                completed: completedCount,
+                overdue: getCount(taskOverdueGroups, u.id, 'assignedToId'),
+                interactionsToday: getCount(interactionTodayGroups, u.id, 'performedById'),
+                interactionsWeek: getCount(interactionWeekGroups, u.id, 'performedById')
+            };
+        }).sort((a, b) => b.overdue - a.overdue);
 
         // 3. Key Metrics
         const keyMetrics = {
@@ -363,7 +374,8 @@ async function getReportsData(req, res) {
 
         const { filter } = req.query; // today, week, month
 
-        let startDate = new Date();
+        const now = new Date();
+        let startDate = new Date(now);
         if (filter === 'today') startDate.setHours(0, 0, 0, 0);
         else if (filter === 'week') startDate.setDate(startDate.getDate() - 7);
         else startDate.setDate(startDate.getDate() - 30); // Default month
@@ -407,7 +419,7 @@ async function getReportsData(req, res) {
             }),
             prisma.task.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: new Date() } },
+                where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: now } },
                 _count: true
             }),
             prisma.interaction.groupBy({
@@ -518,7 +530,7 @@ async function getTeamPerformance(req, res) {
             }),
             prisma.task.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, status: 'PENDING', dueDate: { lt: now } },
+                where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: now } },
                 _count: true
             }),
             prisma.interaction.groupBy({
@@ -877,7 +889,7 @@ async function getRiskSummary(req, res) {
                     organizationId,
                     assignedToId: { in: accessibleIds },
                     assignedTo: { role: 'SALES' },
-                    status: 'PENDING',
+                    status: { not: 'COMPLETED' },
                     dueDate: { lt: now }
                 }
             }),
