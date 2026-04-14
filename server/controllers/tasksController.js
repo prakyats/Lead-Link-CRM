@@ -1,7 +1,22 @@
 const prisma = require('../utils/prisma');
 const { getAccessibleUserIds } = require('../utils/hierarchy');
 
+/**
+ * LOCKED STATUS DEFINITIONS (Shared Logic)
+ */
+function computeTaskState(task) {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
+    const isCompleted = task.status === 'COMPLETED';
+    const isPending = !isCompleted;
+    const isOverdue = 
+        task.dueDate && 
+        new Date(task.dueDate) < startOfToday && 
+        !isCompleted;
+
+    return { isCompleted, isPending, isOverdue };
+}
 
 /**
  * Helper to map Prisma Task to Legacy Frontend Format
@@ -23,22 +38,140 @@ function mapTaskToLegacy(task) {
 }
 
 /**
- * Get all tasks with server-side RBAC
+ * Helper: Compute task category for urgency sorting
+ */
+function getTaskCategory(dueDate, startOfToday, endOfToday) {
+    if (!dueDate) return 3; // No date = Bottom
+    const d = new Date(dueDate);
+    if (d < startOfToday) return 0; // Overdue
+    if (d <= endOfToday) return 1;  // Today
+    return 2;                       // Upcoming
+}
+
+/**
+ * Helper: Apply urgency-based sort to a task array (mutates in place)
+ */
+function sortTasksByUrgency(tasks, startOfToday, endOfToday) {
+    tasks.sort((a, b) => {
+        const catA = getTaskCategory(a.dueDate, startOfToday, endOfToday);
+        const catB = getTaskCategory(b.dueDate, startOfToday, endOfToday);
+        if (catA !== catB) return catA - catB;
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate) - new Date(b.dueDate);
+    });
+    return tasks;
+}
+
+/**
+ * Get all tasks with role-awareness
  */
 async function getAllTasks(req, res) {
     try {
-        const { organizationId } = req.user;
-        const accessibleIds = await getAccessibleUserIds(req.user);
+        const { role, id: userId, organizationId } = req.user;
+        const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
+        // UTILITY: Compute counts from a list of tasks using consistent logic
+        const computeCounts = (tasks) => {
+            return tasks.reduce((acc, t) => {
+                const { isPending, isOverdue, isCompleted } = computeTaskState(t);
+                return {
+                    totalTasks: acc.totalTasks + 1,
+                    pendingCount: acc.pendingCount + (isPending ? 1 : 0),
+                    overdueCount: acc.overdueCount + (isOverdue ? 1 : 0),
+                    completedCount: acc.completedCount + (isCompleted ? 1 : 0)
+                };
+            }, { totalTasks: 0, pendingCount: 0, overdueCount: 0, completedCount: 0 });
+        };
+
+        const now = new Date();
+        const startOfToday = new Date(now);
+        startOfToday.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(now);
+        endOfToday.setHours(23, 59, 59, 999);
+
+        // ── ADMIN: Manager-level aggregated summary ──────────────────────────
+        if (role === 'ADMIN') {
+            const managers = await prisma.user.findMany({
+                where: { organizationId: parseInt(organizationId), role: 'MANAGER' },
+                select: { id: true, name: true }
+            });
+
+            const result = await Promise.all(managers.map(async (manager) => {
+                const salesRepIds = (await prisma.user.findMany({
+                    where: { organizationId: parseInt(organizationId), managerId: manager.id, role: 'SALES' },
+                    select: { id: true }
+                })).map(r => r.id);
+
+                if (salesRepIds.length === 0) {
+                    return {
+                        managerId: manager.id,
+                        managerName: manager.name,
+                        totalTasks: 0, overdueCount: 0, pendingCount: 0, completedCount: 0
+                    };
+                }
+
+                const tasks = await prisma.task.findMany({
+                    where: {
+                        organizationId: parseInt(organizationId),
+                        assignedToId: { in: salesRepIds }
+                    },
+                    select: { status: true, dueDate: true }
+                });
+
+                return {
+                    managerId: manager.id,
+                    managerName: manager.name,
+                    ...computeCounts(tasks)
+                };
+            }));
+
+            return res.json({ success: true, role: 'ADMIN', data: { role, payload: result } });
+        }
+
+        // ── MANAGER: Rep-grouped tasks with full task objects ────────────────
+        if (role === 'MANAGER') {
+            const reps = await prisma.user.findMany({
+                where: { organizationId: parseInt(organizationId), managerId: parseInt(userId) },
+                select: { id: true, name: true }
+            });
+
+            const result = await Promise.all(reps.map(async (rep) => {
+                const repTasks = await prisma.task.findMany({
+                    where: {
+                        organizationId: parseInt(organizationId),
+                        assignedToId: rep.id
+                    },
+                    include: {
+                        lead: true,
+                        assignedTo: { select: { name: true } },
+                        createdBy: { select: { name: true } }
+                    }
+                });
+
+                const legacyRepTasks = sortTasksByUrgency(repTasks.map(mapTaskToLegacy), startOfToday, endOfToday);
+
+                return {
+                    repId: rep.id,
+                    repName: rep.name,
+                    ...computeCounts(legacyRepTasks),
+                    tasks: legacyRepTasks
+                };
+            }));
+
+            return res.json({ success: true, role: 'MANAGER', data: { role, payload: result } });
+        }
+
+        // ── SALES (+ fallback): Flat urgency-sorted task list ────────────────
         const tasks = await prisma.task.findMany({
             where: {
-                organizationId: parseInt(req.user.organizationId),
+                organizationId: parseInt(organizationId),
                 OR: [
-                    { assignedToId: { in: accessibleIds } },
-                    { createdById: parseInt(req.user.id) }
+                    { assignedToId: parseInt(userId) },
+                    { createdById: parseInt(userId) }
                 ]
             },
-
             include: {
                 lead: true,
                 assignedTo: { select: { name: true } },
@@ -46,8 +179,8 @@ async function getAllTasks(req, res) {
             }
         });
 
-        const legacyTasks = tasks.map(mapTaskToLegacy);
-        res.json({ success: true, data: legacyTasks });
+        const legacyTasks = sortTasksByUrgency(tasks.map(mapTaskToLegacy), startOfToday, endOfToday);
+        res.json({ success: true, role: 'SALES', data: { role, payload: { tasks: legacyTasks } } });
     } catch (error) {
         console.error('Error fetching tasks:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch tasks' });
@@ -59,7 +192,6 @@ async function getAllTasks(req, res) {
  */
 async function createTask(req, res) {
     try {
-        // Strictly parse IDs from JWT (often strings) to Integers (Prisma/DB requirement)
         const role = req.user.role;
         const userId = parseInt(req.user.id);
         const organizationId = parseInt(req.user.organizationId);
@@ -71,12 +203,11 @@ async function createTask(req, res) {
             priority, 
             leadId, 
             assignedToId,
-            assignmentType = 'USER' // Options: SELF, USER, TEAM
+            assignmentType = 'USER'
         } = req.body;
 
         const parsedLeadId = leadId ? parseInt(leadId) : null;
         
-        // Only validate lead if one is specified
         if (parsedLeadId) {
             const lead = await prisma.lead.findFirst({
                 where: { id: parsedLeadId, organizationId }
@@ -86,7 +217,6 @@ async function createTask(req, res) {
 
         let targetUserIds = [];
 
-        // ── 1. TARGET DISCOVERY & DELEGATION RULES ──
         const accessibleIds = await getAccessibleUserIds(req.user);
 
         if (assignmentType === 'TEAM') {
@@ -94,7 +224,6 @@ async function createTask(req, res) {
                 return res.status(403).json({ success: false, message: 'Sales representatives cannot perform team assignments.' });
             }
             
-            // Fetch and sort sales reps ASC
             const salesReps = await prisma.user.findMany({
                 where: {
                     organizationId,
@@ -110,22 +239,18 @@ async function createTask(req, res) {
             }
             targetUserIds = salesReps.map(r => r.id);
         } else {
-            // SINGLE ASSIGNMENT (SELF or USER)
-            // Use derived Integer organizationId for hierarchy checks
             const parsedAssignedToId = parseInt(assignedToId) || userId;
             
             if (!accessibleIds.includes(parsedAssignedToId)) {
                 return res.status(403).json({ success: false, message: 'Unauthorized assignment: Target user is outside your authorized hierarchy.' });
             }
 
-            // ROLE LOCK: Sales can only assign to self
             if (role === 'SALES' && parsedAssignedToId !== userId) {
                 return res.status(403).json({ success: false, message: 'Sales representatives can only assign tasks to themselves.' });
             }
             targetUserIds = [parsedAssignedToId];
         }
 
-        // ── 2. BULK CREATION WITH DUPLICATE GUARD ──
         const normalizedTitle = title.trim().toLowerCase();
         const startOfDay = new Date(new Date(dueDate).setHours(0, 0, 0, 0));
         const endOfDay = new Date(new Date(dueDate).setHours(23, 59, 59, 999));
@@ -134,11 +259,12 @@ async function createTask(req, res) {
         let skippedCount = 0;
         let lastCreatedTask = null;
 
-        // Future improvement: Replace loop with createMany if skippedCount tracking isn't needed per-user
         for (const targetId of targetUserIds) {
             const existingTask = await prisma.task.findFirst({
                 where: {
+                    organizationId,
                     assignedToId: targetId,
+                    status: { not: 'COMPLETED' },
                     title: { equals: normalizedTitle, mode: 'insensitive' },
                     dueDate: { gte: startOfDay, lte: endOfDay }
                 }
@@ -327,7 +453,7 @@ async function getTaskSummary(req, res) {
         const baseWhere = {
             organizationId: parseInt(organizationId),
             assignedToId: parseInt(userId),
-            status: 'PENDING'
+            status: { not: 'COMPLETED' }
         };
 
         const [today, overdue, upcoming] = await Promise.all([
