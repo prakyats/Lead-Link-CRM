@@ -1,6 +1,6 @@
 const prisma = require('../utils/prisma');
-const { calculateRisk } = require('../utils/riskCalculator');
 const { getAccessibleUserIds } = require('../utils/hierarchy');
+const { validateUserContext, validateId } = require('../utils/validation');
 
 
 /**
@@ -34,10 +34,12 @@ function mapTaskToLegacy(task) {
  */
 async function getKPIs(req, res) {
     try {
-        const { organizationId } = req.user;
+        const { orgId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
         let where = {
-            organizationId: parseInt(organizationId),
+            organizationId: orgId,
             assignedToId: { in: accessibleIds }
         };
 
@@ -174,18 +176,28 @@ async function getKPIs(req, res) {
  */
 async function getRecentLeads(req, res) {
     try {
-        const { organizationId } = req.user;
+        const { orgId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const leads = await prisma.lead.findMany({
             where: {
-                organizationId: parseInt(organizationId),
+                organizationId: orgId,
                 assignedToId: { in: accessibleIds }
             },
-
             orderBy: { createdAt: 'desc' },
             take: 5,
-            include: { assignedTo: { select: { name: true } } }
+            select: {
+                id: true,
+                company: true,
+                contactName: true,
+                value: true,
+                stage: true,
+                priority: true,
+                createdAt: true,
+                assignedTo: { select: { name: true } }
+            }
         });
 
         res.json({ success: true, data: leads.map(mapLeadToLegacy) });
@@ -200,17 +212,23 @@ async function getRecentLeads(req, res) {
  */
 async function getUpcomingTasks(req, res) {
     try {
-        const { organizationId } = req.user;
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
         let where = {
             status: { not: 'COMPLETED' },
-            organizationId: parseInt(organizationId),
+            organizationId: orgId,
             assignedToId: { in: accessibleIds }
         };
 
 
         const tasks = await prisma.task.findMany({
-            where,
+            where: {
+                organizationId: orgId,
+                status: { not: 'COMPLETED' },
+                assignedToId: { in: accessibleIds }
+            },
             orderBy: { dueDate: 'asc' },
             take: 5,
             include: {
@@ -232,9 +250,8 @@ async function getUpcomingTasks(req, res) {
  */
 async function getDashboardSummary(req, res) {
     try {
-        if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-        const organizationId = parseInt(req.user.organizationId);
-        const userId = parseInt(req.user.id);
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
 
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
@@ -261,21 +278,21 @@ async function getDashboardSummary(req, res) {
             interactionWeekGroups
         ] = await Promise.all([
             prisma.user.findMany({
-                where: { organizationId, id: { in: accessibleIds } },
+                where: { organizationId: orgId, id: { in: accessibleIds } },
                 select: { id: true, name: true }
             }),
-            prisma.user.count({ where: { organizationId, managerId: userId } }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: todayStart } } }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: 'COMPLETED', completedAt: { gte: todayStart } } }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' } } }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: todayStart } } }),
-            prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED' } }),
-            prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED' } }),
-            prisma.lead.count({ where: { organizationId, assignedToId: { in: accessibleIds }, stage: { notIn: ['CONVERTED', 'LOST'] } } }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds } } }),
+            prisma.user.count({ where: { organizationId: orgId, managerId: userId } }),
+            prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: todayStart } } }),
+            prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, status: 'COMPLETED', completedAt: { gte: todayStart } } }),
+            prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' } } }),
+            prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: todayStart } } }),
+            prisma.lead.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED' } }),
+            prisma.lead.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED' } }),
+            prisma.lead.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, stage: { notIn: ['CONVERTED', 'LOST'] } } }),
+            prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds } } }),
             prisma.lead.count({
                 where: {
-                    organizationId,
+                    organizationId: orgId,
                     assignedToId: { in: accessibleIds },
                     stage: { notIn: ['CONVERTED', 'LOST'] },
                     lastInteraction: { lt: idleThreshold }
@@ -283,22 +300,22 @@ async function getDashboardSummary(req, res) {
             }),
             prisma.task.groupBy({
                 by: ['assignedToId', 'status'],
-                where: { organizationId, assignedToId: { in: accessibleIds } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds } },
                 _count: true
             }),
             prisma.task.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: todayStart } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: todayStart } },
                 _count: true
             }),
             prisma.interaction.groupBy({
                 by: ['performedById'],
-                where: { organizationId, performedById: { in: accessibleIds }, createdAt: { gte: todayStart } },
+                where: { organizationId: orgId, performedById: { in: accessibleIds }, createdAt: { gte: todayStart } },
                 _count: true
             }),
             prisma.interaction.groupBy({
                 by: ['performedById'],
-                where: { organizationId, performedById: { in: accessibleIds }, createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } },
+                where: { organizationId: orgId, performedById: { in: accessibleIds }, createdAt: { gte: new Date(new Date().setDate(new Date().getDate() - 7)) } },
                 _count: true
             })
         ]);
@@ -368,8 +385,9 @@ async function getDashboardSummary(req, res) {
  */
 async function getReportsData(req, res) {
     try {
-        if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
-        const organizationId = parseInt(req.user.organizationId);
+        const { orgId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const { filter } = req.query; // today, week, month
@@ -394,47 +412,47 @@ async function getReportsData(req, res) {
             userTotalLeadsGroups
         ] = await Promise.all([
             prisma.user.findMany({
-                where: { organizationId, id: { in: accessibleIds } },
+                where: { organizationId: orgId, id: { in: accessibleIds } },
                 select: { id: true, name: true }
             }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } } }),
-            prisma.task.count({ where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate }, status: 'COMPLETED' } }),
+            prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } } }),
+            prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate }, status: 'COMPLETED' } }),
             prisma.lead.groupBy({
                 by: ['stage'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } },
                 _count: true
             }),
             prisma.lead.aggregate({
                 _sum: { value: true },
-                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', createdAt: { gte: startDate } }
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', createdAt: { gte: startDate } }
             }),
             prisma.lead.aggregate({
                 _sum: { value: true },
-                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED', createdAt: { gte: startDate } }
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, stage: 'INTERESTED', createdAt: { gte: startDate } }
             }),
             prisma.task.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate }, status: 'COMPLETED' },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate }, status: 'COMPLETED' },
                 _count: true
             }),
             prisma.task.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: now } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: now } },
                 _count: true
             }),
             prisma.interaction.groupBy({
                 by: ['performedById'],
-                where: { organizationId, performedById: { in: accessibleIds }, createdAt: { gte: startDate } },
+                where: { organizationId: orgId, performedById: { in: accessibleIds }, createdAt: { gte: startDate } },
                 _count: true
             }),
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, convertedAt: { gte: startDate } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, convertedAt: { gte: startDate } },
                 _count: true
             }),
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: startDate } },
                 _count: true
             })
         ]);
@@ -495,7 +513,9 @@ async function getReportsData(req, res) {
  */
 async function getTeamPerformance(req, res) {
     try {
-        const organizationId = parseInt(req.user.organizationId);
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const now = new Date();
@@ -504,7 +524,7 @@ async function getTeamPerformance(req, res) {
 
         const users = await prisma.user.findMany({
             where: { 
-                organizationId, 
+                organizationId: orgId, 
                 id: { in: accessibleIds },
                 role: 'SALES'
             },
@@ -525,52 +545,52 @@ async function getTeamPerformance(req, res) {
         ] = await Promise.all([
             prisma.task.groupBy({
                 by: ['assignedToId', 'status'],
-                where: { organizationId, assignedToId: { in: accessibleIds } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds } },
                 _count: true
             }),
             prisma.task.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: now } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, status: { not: 'COMPLETED' }, dueDate: { lt: now } },
                 _count: true
             }),
             prisma.interaction.groupBy({
                 by: ['performedById'],
-                where: { organizationId, performedById: { in: accessibleIds } },
+                where: { organizationId: orgId, performedById: { in: accessibleIds } },
                 _count: true
             }),
             // Current 30 days
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', convertedAt: { gte: thirtyDaysAgo } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', convertedAt: { gte: thirtyDaysAgo } },
                 _count: true
             }),
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: thirtyDaysAgo } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: thirtyDaysAgo } },
                 _count: true
             }),
             // Baseline (30-60 days ago)
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', convertedAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, stage: 'CONVERTED', convertedAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
                 _count: true
             }),
             prisma.lead.groupBy({
                 by: ['assignedToId'],
-                where: { organizationId, assignedToId: { in: accessibleIds }, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
                 _count: true
             }),
             // Last Activity
             prisma.interaction.groupBy({
                 by: ['performedById'],
-                where: { organizationId, performedById: { in: accessibleIds } },
+                where: { organizationId: orgId, performedById: { in: accessibleIds } },
                 _max: { createdAt: true }
             }),
             // Last Task Completion Recency (New Metric Source)
             prisma.task.groupBy({
                 by: ['assignedToId'],
                 where: { 
-                    organizationId, 
+                    organizationId: orgId, 
                     assignedToId: { in: accessibleIds },
                     status: 'COMPLETED' 
                 },
@@ -579,7 +599,7 @@ async function getTeamPerformance(req, res) {
             // Stage Distribution for Stuck Logic
             prisma.lead.groupBy({
                 by: ['assignedToId', 'stage'],
-                where: { organizationId, assignedToId: { in: accessibleIds } },
+                where: { organizationId: orgId, assignedToId: { in: accessibleIds } },
                 _count: true
             })
         ]);
@@ -768,12 +788,14 @@ async function getTeamPerformance(req, res) {
  */
 async function getTeamActivity(req, res) {
     try {
-        const organizationId = parseInt(req.user.organizationId);
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         const activities = await prisma.interaction.findMany({
             where: {
-                organizationId,
+                organizationId: orgId,
                 performedById: { in: accessibleIds }
             },
             include: {

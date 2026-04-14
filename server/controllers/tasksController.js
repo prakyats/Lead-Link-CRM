@@ -1,5 +1,6 @@
 const prisma = require('../utils/prisma');
 const { getAccessibleUserIds } = require('../utils/hierarchy');
+const { validateUserContext, validateId } = require('../utils/validation');
 
 /**
  * LOCKED STATUS DEFINITIONS (Shared Logic)
@@ -69,7 +70,9 @@ function sortTasksByUrgency(tasks, startOfToday, endOfToday) {
  */
 async function getAllTasks(req, res) {
     try {
-        const { role, id: userId, organizationId } = req.user;
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        const { role } = req.user;
         const accessibleIds = (await getAccessibleUserIds(req.user)).map(id => parseInt(id));
 
         // UTILITY: Compute counts from a list of tasks using consistent logic
@@ -94,13 +97,13 @@ async function getAllTasks(req, res) {
         // ── ADMIN: Manager-level aggregated summary ──────────────────────────
         if (role === 'ADMIN') {
             const managers = await prisma.user.findMany({
-                where: { organizationId: parseInt(organizationId), role: 'MANAGER' },
+                where: { organizationId: orgId, role: 'MANAGER' },
                 select: { id: true, name: true }
             });
 
             const result = await Promise.all(managers.map(async (manager) => {
                 const salesRepIds = (await prisma.user.findMany({
-                    where: { organizationId: parseInt(organizationId), managerId: manager.id, role: 'SALES' },
+                    where: { organizationId: orgId, managerId: manager.id, role: 'SALES' },
                     select: { id: true }
                 })).map(r => r.id);
 
@@ -114,7 +117,7 @@ async function getAllTasks(req, res) {
 
                 const tasks = await prisma.task.findMany({
                     where: {
-                        organizationId: parseInt(organizationId),
+                        organizationId: orgId,
                         assignedToId: { in: salesRepIds }
                     },
                     select: { status: true, dueDate: true }
@@ -133,14 +136,14 @@ async function getAllTasks(req, res) {
         // ── MANAGER: Rep-grouped tasks with full task objects ────────────────
         if (role === 'MANAGER') {
             const reps = await prisma.user.findMany({
-                where: { organizationId: parseInt(organizationId), managerId: parseInt(userId) },
+                where: { organizationId: orgId, managerId: userId },
                 select: { id: true, name: true }
             });
 
             const result = await Promise.all(reps.map(async (rep) => {
                 const repTasks = await prisma.task.findMany({
                     where: {
-                        organizationId: parseInt(organizationId),
+                        organizationId: orgId,
                         assignedToId: rep.id
                     },
                     include: {
@@ -166,10 +169,10 @@ async function getAllTasks(req, res) {
         // ── SALES (+ fallback): Flat urgency-sorted task list ────────────────
         const tasks = await prisma.task.findMany({
             where: {
-                organizationId: parseInt(organizationId),
+                organizationId: orgId,
                 OR: [
-                    { assignedToId: parseInt(userId) },
-                    { createdById: parseInt(userId) }
+                    { assignedToId: userId },
+                    { createdById: userId }
                 ]
             },
             include: {
@@ -192,9 +195,9 @@ async function getAllTasks(req, res) {
  */
 async function createTask(req, res) {
     try {
-        const role = req.user.role;
-        const userId = parseInt(req.user.id);
-        const organizationId = parseInt(req.user.organizationId);
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        const { role } = req.user;
 
         const { 
             title, 
@@ -210,7 +213,7 @@ async function createTask(req, res) {
         
         if (parsedLeadId) {
             const lead = await prisma.lead.findFirst({
-                where: { id: parsedLeadId, organizationId }
+                where: { id: parsedLeadId, organizationId: orgId }
             });
             if (!lead) return res.status(400).json({ success: false, message: 'Invalid lead for this organization' });
         }
@@ -226,7 +229,7 @@ async function createTask(req, res) {
             
             const salesReps = await prisma.user.findMany({
                 where: {
-                    organizationId,
+                    organizationId: orgId,
                     id: { in: accessibleIds },
                     role: 'SALES'
                 },
@@ -262,7 +265,7 @@ async function createTask(req, res) {
         for (const targetId of targetUserIds) {
             const existingTask = await prisma.task.findFirst({
                 where: {
-                    organizationId,
+                    organizationId: orgId,
                     assignedToId: targetId,
                     status: { not: 'COMPLETED' },
                     title: { equals: normalizedTitle, mode: 'insensitive' },
@@ -277,7 +280,7 @@ async function createTask(req, res) {
 
             const newTask = await prisma.task.create({
                 data: {
-                    organizationId,
+                    organizationId: orgId,
                     title: title.trim(),
                     description: description ? description.trim() : null,
                     dueDate: dueDate ? new Date(dueDate) : null,
@@ -328,10 +331,12 @@ async function createTask(req, res) {
 async function updateTask(req, res) {
     try {
         const { id } = req.params;
-        const { role, id: userId, organizationId } = req.user;
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        const { role } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: parseInt(organizationId) } });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: orgId } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const accessibleIds = await getAccessibleUserIds(req.user);
@@ -351,13 +356,13 @@ async function updateTask(req, res) {
         if (status !== undefined) updateData.status = status.toUpperCase();
 
         const updateRes = await prisma.task.updateMany({
-            where: { id: parseInt(id), organizationId },
+            where: { id: parseInt(id), organizationId: orgId },
             data: updateData
         });
         if (updateRes.count === 0) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const updatedTask = await prisma.task.findFirst({
-            where: { id: parseInt(id), organizationId },
+            where: { id: parseInt(id), organizationId: orgId },
             include: { assignedTo: { select: { name: true } } }
         });
 
@@ -371,10 +376,12 @@ async function updateTask(req, res) {
 async function toggleComplete(req, res) {
     try {
         const { id } = req.params;
-        const { role, id: userId, organizationId } = req.user;
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        const { role } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: parseInt(organizationId) } });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: orgId } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const accessibleIds = await getAccessibleUserIds(req.user);
@@ -392,7 +399,7 @@ async function toggleComplete(req, res) {
         });
 
         const updatedTask = await prisma.task.findFirst({
-            where: { id: parseInt(id), organizationId },
+            where: { id: parseInt(id), organizationId: orgId },
             include: { assignedTo: { select: { name: true } } }
         });
 
@@ -409,10 +416,12 @@ async function toggleComplete(req, res) {
 async function markTaskComplete(req, res) {
     try {
         const { id } = req.params;
-        const { role, id: userId, organizationId } = req.user;
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        const { role } = req.user;
         if (role === 'ADMIN') return res.status(403).json({ error: 'ADMIN is read-only' });
 
-        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: parseInt(organizationId) } });
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: orgId } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const accessibleIds = await getAccessibleUserIds(req.user);
@@ -441,7 +450,8 @@ async function markTaskComplete(req, res) {
  */
 async function getTaskSummary(req, res) {
     try {
-        const { id: userId, organizationId } = req.user;
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
         
         const now = new Date();
         const startOfToday = new Date(now);
@@ -451,8 +461,8 @@ async function getTaskSummary(req, res) {
         endOfToday.setHours(23, 59, 59, 999);
 
         const baseWhere = {
-            organizationId: parseInt(organizationId),
-            assignedToId: parseInt(userId),
+            organizationId: orgId,
+            assignedToId: userId,
             status: { not: 'COMPLETED' }
         };
 
@@ -507,8 +517,10 @@ async function getTaskSummary(req, res) {
 async function deleteTask(req, res) {
     try {
         const { id } = req.params;
-        const { role } = req.user;
-        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: parseInt(req.user.organizationId) } });
+        const { orgId, userId, isValid } = validateUserContext(req.user);
+        if (!isValid) return res.status(412).json({ success: false, message: 'Invalid session context' });
+        
+        const existingTask = await prisma.task.findFirst({ where: { id: parseInt(id), organizationId: orgId } });
         if (!existingTask) return res.status(404).json({ success: false, message: 'Task not found' });
 
         const accessibleIds = await getAccessibleUserIds(req.user);
