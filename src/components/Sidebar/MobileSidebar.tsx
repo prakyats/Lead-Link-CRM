@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SidebarContent } from './SidebarContent';
+import { useModalEffect } from '../../hooks/useModalEffect';
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -8,28 +8,10 @@ interface MobileSidebarProps {
 }
 
 export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
-  // Lock body scroll when drawer is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  // Handle ESC key to close
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
+  const { modalRef } = useModalEffect({
+    isOpen,
+    onClose
+  });
 
   return (
     <AnimatePresence>
@@ -48,6 +30,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
           {/* Drawer (z-50) */}
           <motion.div
+            ref={modalRef}
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
