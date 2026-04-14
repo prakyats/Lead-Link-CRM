@@ -1,4 +1,5 @@
 import api from '../utils/api';
+import { normalizeResponse } from './utils/normalizeResponse';
 
 
 export interface InteractionType {
@@ -33,27 +34,27 @@ export interface LeadType {
 
 export const getLeads = async (): Promise<LeadType[]> => {
     const response = await api.get('/leads');
-    return response.data;
+    return normalizeResponse(response.data);
 };
 
 export const getLeadById = async (id: number): Promise<LeadType> => {
     const response = await api.get(`/leads/${id}`);
-    return response.data;
+    return normalizeResponse(response.data);
 };
 
 export const createLead = async (lead: Partial<LeadType>): Promise<LeadType> => {
     const response = await api.post('/leads', lead);
-    return response.data;
+    return normalizeResponse(response.data);
 };
 
 export const updateLead = async ({ id, lead }: { id: number; lead: Partial<LeadType> }): Promise<LeadType> => {
     const response = await api.put(`/leads/${id}`, lead);
-    return response.data;
+    return normalizeResponse(response.data);
 };
 
 export const updateLeadStage = async ({ id, stage }: { id: number; stage: LeadType['stage'] }): Promise<LeadType> => {
     const response = await api.put(`/leads/${id}/stage`, { stage });
-    return response.data;
+    return normalizeResponse(response.data);
 };
 
 export const deleteLead = async (id: number): Promise<void> => {
@@ -62,7 +63,7 @@ export const deleteLead = async (id: number): Promise<void> => {
 
 export const assignLead = async ({ id, assignedToId }: { id: number; assignedToId: number }): Promise<LeadType> => {
     const response = await api.put(`/leads/${id}/assign`, { assignedToId });
-    return response.data;
+    return normalizeResponse(response.data);
 };
 
 export const addInteraction = async ({ leadId, interaction }: { leadId: number; interaction: any }): Promise<void> => {
