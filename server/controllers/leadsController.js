@@ -26,6 +26,7 @@ function mapLeadToLegacy(lead) {
         priority: lead.priority, // Return raw HIGH
         stage: lead.stage, // Return raw NEW
         assignedTo: lead.assignedTo ? lead.assignedTo.name : 'Unassigned',
+        managerName: lead.assignedTo?.manager?.name || null
     };
 
     // Map Interactions if they exist
@@ -65,7 +66,12 @@ async function getAllLeads(req, res) {
             },
 
             include: {
-                assignedTo: { select: { name: true } },
+                assignedTo: { 
+                    select: { 
+                        name: true,
+                        manager: { select: { id: true, name: true } }
+                    } 
+                },
                 interactions: {
                     include: { performedBy: { select: { name: true } } }
                 }

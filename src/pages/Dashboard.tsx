@@ -224,35 +224,42 @@ const DashboardContent = () => {
                     <p className="text-xs font-semibold uppercase tracking-wider opacity-40">Live Status</p>
                   </div>
                   <div className="p-8 space-y-4">
-                    {managerSummary.teamPerformance.map((item: any) => (
-                      <div key={item.id} className="p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/10 border border-border/40 hover:bg-muted/20 hover:border-primary/20 transition-all group">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 shadow-inner group-hover:rotate-12 transition-transform">
-                            {item.name.charAt(0)}
+                    {managerSummary.teamPerformance.map((item: any) => {
+                      const isManagerItem = !!item.managerName;
+                      const displayName = isManagerItem ? item.managerName : item.name;
+                      const displayId = isManagerItem ? item.managerId : item.id;
+                      const secondaryLabel = isManagerItem ? `${item.repsCount} Team Members` : `${item.interactionsWeek} Tasks this week`;
+
+                      return (
+                        <div key={displayId} className="p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/10 border border-border/40 hover:bg-muted/20 hover:border-primary/20 transition-all group">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 shadow-inner group-hover:rotate-12 transition-transform">
+                              {displayName.charAt(0)}
+                            </div>
+                            <div>
+                               <p className="font-bold text-foreground">{displayName}</p>
+                               <p className="text-xs font-semibold uppercase tracking-wider opacity-40">{secondaryLabel}</p>
+                            </div>
                           </div>
-                          <div>
-                             <p className="font-bold text-foreground">{item.name}</p>
-                             <p className="text-xs font-semibold uppercase tracking-wider opacity-40">{item.interactionsWeek} Tasks this week</p>
+                          <div className="flex items-center gap-8 pr-4">
+                            <div className="text-center">
+                               <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Queue</p>
+                               <p className="font-bold text-foreground">{item.pending || item.pendingCount || 0}</p>
+                            </div>
+                            <div className="text-center">
+                               <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Closed</p>
+                               <p className="font-bold text-primary">{item.completed || (item.totalTasks - item.pendingCount) || 0}</p>
+                            </div>
+                            <div className="text-center min-w-[70px]">
+                               <p className="text-[10px] font-bold text-red-500/40 uppercase mb-1">Critical</p>
+                               <p className={`font-bold ${(item.overdue || item.overdueCount) > 0 ? 'text-red-500' : 'opacity-20'}`}>
+                                 {item.overdue || item.overdueCount || 0}
+                               </p>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-8 pr-4">
-                          <div className="text-center">
-                             <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Queue</p>
-                             <p className="font-bold text-foreground">{item.pending}</p>
-                          </div>
-                          <div className="text-center">
-                             <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Closed</p>
-                             <p className="font-bold text-primary">{item.completed}</p>
-                          </div>
-                          <div className="text-center min-w-[70px]">
-                             <p className="text-[10px] font-bold text-red-500/40 uppercase mb-1">Critical</p>
-                             <p className={`font-bold ${item.overdue > 0 ? 'text-red-500' : 'opacity-20'}`}>
-                               {item.overdue}
-                             </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
