@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck, Calendar, Activity, ChevronRight, Globe, Shield } from 'lucide-react';
+import { Plus, Users, Search, Filter, MoreHorizontal, Mail, Phone, Building2, User, X, IndianRupee, UserCheck, Calendar, Activity, ChevronRight, Globe, Shield, Target } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { getLeads, createLead as createLeadApi, assignLead as assignLeadApi, LeadType as Lead } from '../api/leads';
 import { getSalesUsers } from '../api/users';
@@ -430,7 +430,7 @@ function LeadsInnerContent() {
                                                                             </div>
                                                                             <div>
                                                                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2.5 mb-2.5">
-                                                                                    <User size={12} className="text-muted-foreground/40" />
+                                                                                    <Target size={12} className="text-primary/60" />
                                                                                     Point of Contact
                                                                                 </p>
                                                                                 <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">{lead.contact}</p>
@@ -438,10 +438,10 @@ function LeadsInnerContent() {
                                                                             {user?.role === 'ADMIN' && lead.managerName && (
                                                                                 <div>
                                                                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 flex items-center gap-2.5 mb-2.5">
-                                                                                        <Users size={12} className="text-muted-foreground/40" />
+                                                                                        <Shield size={12} className="text-purple-400/60" />
                                                                                         Managerial Oversight
                                                                                     </p>
-                                                                                    <p className="text-sm font-bold text-blue-400 uppercase tracking-widest leading-none">{lead.managerName}</p>
+                                                                                    <p className="text-sm font-bold text-purple-400 uppercase tracking-widest leading-none">{lead.managerName}</p>
                                                                                 </div>
                                                                             )}
                                                                         </div>

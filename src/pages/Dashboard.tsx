@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Link } from 'react-router';
-import { Users, UserCheck, Clock, AlertTriangle, ArrowRight, Shield, BarChart3, Users2, TrendingUp, CheckCircle2, Calendar, Target, Activity, UserPlus, Plus, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, UserCheck, Clock, AlertTriangle, ArrowRight, Shield, ShieldCheck, BarChart3, Users2, TrendingUp, CheckCircle2, Calendar, Target, Activity, UserPlus, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 
 import { useQueryClient, useMutation, useQuery, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { getDashboardKpis, getRecentLeads, getDashboardSummary } from '../api/dashboard';
@@ -154,8 +154,8 @@ const DashboardContent = () => {
           </div>
           <div className="flex items-center gap-3 animate-in slide-in-from-right duration-700">
             {user?.role === 'ADMIN' && (
-              <div className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-primary/10 text-primary border border-primary/20 flex items-center gap-2">
-                <Shield className="w-4 h-4" />
+              <div className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-status-success/10 text-status-success border border-status-success/20 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4" />
                 Admin View
               </div>
             )}

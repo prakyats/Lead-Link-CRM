@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from '../components/Sidebar';
 import { 
@@ -36,7 +36,14 @@ export default function Team() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [formLoading, setFormLoading] = useState(false);
+    const [activeFilter, setActiveFilter] = useState<'ALL' | 'SALES' | 'MANAGER'>('ALL');
     
+    const isManager = user?.role === 'MANAGER';
+
+    const salesCount = useMemo(() => {
+        return users.filter(u => u.role === 'SALES').length;
+    }, [users]);
+
     const [availableManagers, setAvailableManagers] = useState<{id: number, name: string}[]>([]);
 
     const handleOpenModal = useCallback(() => setShowCreateModal(true), []);
@@ -95,10 +102,26 @@ export default function Team() {
         }
     }, [fetchUsers, queryClient]);
 
-    const filteredUsers = users.filter(u => 
-        u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        u.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredUsers = useMemo(() => {
+        let result = users;
+
+        if (isManager) {
+            // Managers only see Sales Representatives
+            result = result.filter(u => u.role === 'SALES');
+        } else {
+            // Admins can toggle between segments
+            if (activeFilter === 'SALES') {
+                result = result.filter(u => u.role === 'SALES');
+            } else if (activeFilter === 'MANAGER') {
+                result = result.filter(u => u.role === 'MANAGER');
+            }
+        }
+
+        return result.filter(u => 
+            u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            u.email.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [users, activeFilter, searchQuery, isManager]);
 
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
@@ -106,9 +129,10 @@ export default function Team() {
 
     const roleStyles: Record<string, { bg: string; color: string; icon: any; border: string }> = {
         ADMIN: { bg: 'bg-status-success/10', color: 'text-status-success', icon: ShieldCheck, border: 'border-status-success/20' },
-        MANAGER: { bg: 'bg-purple-500/10', color: 'text-purple-400', icon: Target, border: 'border-purple-500/20' },
-        SALES: { bg: 'bg-primary/10', color: 'text-primary', icon: BarChart3, border: 'border-primary/20' },
+        MANAGER: { bg: 'bg-purple-500/10', color: 'text-purple-400', icon: Shield, border: 'border-purple-500/20' },
+        SALES: { bg: 'bg-primary/10', color: 'text-primary', icon: Target, border: 'border-primary/20' },
     };
+
 
     return (
         <div className="crm-page-container">
@@ -125,8 +149,8 @@ export default function Team() {
                         
                         <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
                             <div className="animate-in slide-in-from-left duration-700">
-                                <div className="flex items-center gap-3 text-primary mb-3 font-semibold text-xs uppercase tracking-wider">
-                                    <Activity size={14} className="animate-pulse" />
+                                <div className="flex items-center gap-3 text-status-success mb-3 font-semibold text-xs uppercase tracking-wider">
+                                    <ShieldCheck size={14} className="animate-pulse" />
                                     Operational Command Hub
                                 </div>
                                 <h1 className="crm-page-title">Team <span className="text-primary">Registry</span></h1>
@@ -154,35 +178,65 @@ export default function Team() {
                                     className="h-14 px-8 bg-primary text-black rounded-2xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20"
                                 >
                                     <UserPlus size={16} strokeWidth={3} />
-                                    {user?.role === 'MANAGER' ? 'Add Sales User' : 'Add User'}
+                                    {isManager ? 'Add Sales Rep' : 'Add User'}
                                 </button>
                             </div>
                         </header>
 
-                        {/* ── Metric Telemetry ── */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {[
-                                { label: 'Active Personnel', value: users.length, icon: Users, color: 'var(--primary)', shadow: 'shadow-primary/10' },
-                                { label: 'Operations Unit', value: users.filter(u => u.role === 'SALES').length, icon: Target, color: '#60A5FA', shadow: 'shadow-blue-500/10' },
-                                { label: 'Command Base', value: users.filter(u => u.role !== 'SALES').length, icon: Shield, color: '#C084FC', shadow: 'shadow-purple-500/10' },
-                            ].map((stat, i) => (
-                                <motion.div 
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    key={i} 
-                                    className={`crm-card group hover:bg-card/60 transition-all duration-500 border-white/5 bg-card/40 backdrop-blur-xl flex items-center gap-6 ${stat.shadow}`}
-                                >
-                                    <div className="w-16 h-16 rounded-[1.25rem] flex items-center justify-center transition-transform group-hover:scale-110 shadow-inner" style={{ background: `${stat.color}10`, border: `1px solid ${stat.color}20` }}>
-                                        <stat.icon size={28} style={{ color: stat.color }} strokeWidth={1.5} />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40 mb-1">{stat.label}</p>
-                                        <p className="text-4xl font-semibold text-foreground tracking-tighter tabular-nums">{stat.value.toString().padStart(2, '0')}</p>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
+                        {user?.role === 'ADMIN' && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                {[
+                                    { id: 'ALL', label: 'All Team Members', value: users.length, icon: Users, color: 'var(--primary)', shadow: 'shadow-primary/10' },
+                                    { id: 'SALES', label: 'Sales Team', value: users.filter(u => u.role === 'SALES').length, icon: Target, color: '#60A5FA', shadow: 'shadow-blue-500/10' },
+                                    { id: 'MANAGER', label: 'Managers', value: users.filter(u => u.role !== 'SALES').length, icon: Shield, color: '#C084FC', shadow: 'shadow-purple-500/10' },
+                                ].map((stat, i) => {
+                                    const isActive = activeFilter === stat.id;
+                                    
+                                    return (
+                                        <motion.div 
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.1 }}
+                                            key={i} 
+                                            onClick={() => setActiveFilter(stat.id as any)}
+                                            className={`crm-card relative group cursor-pointer overflow-hidden transition-all duration-300 ease-out border-white/5 backdrop-blur-xl flex items-center gap-6 ${stat.shadow} ${
+                                                isActive 
+                                                    ? 'ring-2 ring-primary/80 bg-primary/10 scale-[1.02] shadow-[0_0_30px_rgba(34,197,94,0.2)]' 
+                                                    : 'bg-card/40 opacity-70 hover:opacity-100 hover:bg-card/60 hover:scale-[1.02]'
+                                            } active:scale-95`}
+                                        >
+                                            {/* Top Accent Bar */}
+                                            <div className={`absolute top-0 left-0 h-[3px] w-full transition-all duration-500 ${
+                                                isActive ? 'bg-primary opacity-100' : 'bg-transparent opacity-0'
+                                            }`} />
+
+                                            {/* Active Glow Pulse */}
+                                            {isActive && (
+                                                <div className="absolute inset-0 bg-primary/5 animate-[pulse_3s_ease-in-out_infinite]" />
+                                            )}
+
+                                            <div className={`w-16 h-16 rounded-[1.25rem] relative z-10 flex items-center justify-center transition-all duration-500 shadow-inner ${
+                                                isActive ? 'scale-110' : 'group-hover:scale-110'
+                                            }`} style={{ background: `${stat.color}15`, border: `1px solid ${isActive ? stat.color : stat.color + '20'}` }}>
+                                                <stat.icon size={28} style={{ color: isActive ? '#fff' : stat.color }} strokeWidth={isActive ? 2.5 : 1.5} className="transition-all" />
+                                            </div>
+                                            <div className="relative z-10">
+                                                <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-1.5 transition-colors ${
+                                                    isActive ? 'text-primary' : 'text-muted-foreground/40'
+                                                }`}>
+                                                    {stat.label}
+                                                </p>
+                                                <p className={`text-4xl font-bold tracking-tighter tabular-nums transition-colors ${
+                                                    isActive ? 'text-white' : 'text-foreground/80'
+                                                }`}>
+                                                    {stat.value.toString().padStart(2, '0')}
+                                                </p>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         {/* ── Personnel Directory ── */}
                         <motion.div 
@@ -192,7 +246,20 @@ export default function Team() {
                             className="crm-card !p-0 overflow-hidden bg-card/20 backdrop-blur-3xl border-white/5"
                         >
                             <div className="p-8 border-b border-border/40 flex items-center justify-between">
-                                <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">Team Directory</h2>
+                                <div className="space-y-1">
+                                    <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">Team Directory</h2>
+                                    {isManager ? (
+                                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                                            Managing <span className="text-primary">{salesCount}</span> Sales Representatives
+                                        </p>
+                                    ) : (
+                                        activeFilter !== 'ALL' && (
+                                            <p className="text-[10px] text-primary font-bold uppercase tracking-widest animate-in fade-in slide-in-from-left-2 transition-all">
+                                                Showing {activeFilter === 'SALES' ? 'Sales Team' : 'Managers'}
+                                            </p>
+                                        )
+                                    )}
+                                </div>
                                 <div className="hidden sm:flex items-center gap-3">
                                     <div className="px-3 py-1.5 rounded-xl bg-primary/5 border border-primary/10 text-primary text-[8px] font-semibold uppercase tracking-widest">
                                         Live Registry
@@ -285,7 +352,11 @@ export default function Team() {
                                 {!loading && filteredUsers.length === 0 && (
                                     <div className="py-32 text-center space-y-6">
                                         <Users size={64} className="mx-auto text-muted-foreground/10" />
-                                        <p className="text-xs font-semibold text-muted-foreground/30 uppercase tracking-wider">No personnel signatures identified in directory</p>
+                                        <p className="text-xs font-semibold text-muted-foreground/30 uppercase tracking-wider">
+                                            {activeFilter !== 'ALL' 
+                                                ? `No ${activeFilter === 'SALES' ? 'sales team members' : 'managers'} identified in this category`
+                                                : 'No personnel signatures identified in directory'}
+                                        </p>
                                     </div>
                                 )}
                             </div>
