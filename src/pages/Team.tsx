@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import { validateUserForm } from '../utils/validation';
 import { useSearchParams } from 'react-router';
+import { useModalEffect } from '../hooks/useModalEffect';
 
 interface SystemUser {
     id: number;
@@ -21,6 +22,8 @@ interface SystemUser {
     createdAt: string;
     manager?: { name: string };
 }
+
+import { getUsers, getSalesUsers } from '@/api/users';
 
 export default function Team() {
     const { user } = useAuth();
@@ -40,15 +43,21 @@ export default function Team() {
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [availableManagers, setAvailableManagers] = useState<{id: number, name: string}[]>([]);
 
+    const { modalRef } = useModalEffect({
+        isOpen: showCreateModal,
+        onClose: () => setShowCreateModal(false),
+        disableClose: true // Form persistence safety
+    });
+
     const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get('/users');
-            setUsers(response.data);
+            const normalizedUsers = await getUsers();
+            setUsers(normalizedUsers);
             
             if (user?.role === 'ADMIN') {
-                const managersResponse = await api.get('/users/sales');
-                setAvailableManagers(managersResponse.data.filter((u: any) => u.role === 'MANAGER'));
+                const normalizedSalesUsers = await getSalesUsers();
+                setAvailableManagers(normalizedSalesUsers.filter((u: any) => u.role === 'MANAGER'));
             }
         } catch (error: any) {
             toast.error('Registry Sync Failed', {
@@ -128,8 +137,8 @@ export default function Team() {
     return (
         <div className="crm-page-container">
             <Sidebar />
-            
-            <main className="crm-main-content">
+            <>
+                <main className="crm-main-content">
                 {/* ── Background Effects ── */}
                 <div className="ll-hero-grid opacity-[0.02] dark:opacity-[0.05]" />
                 <div className="ll-orb w-[600px] h-[600px] -top-64 -right-32 bg-primary/5 blur-[120px]" />
@@ -307,152 +316,157 @@ export default function Team() {
                         </motion.div>
                     </div>
                 </div>
-                
-                {/* ── Provisioning Modal ── */}
-                <AnimatePresence>
-                    {showCreateModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-hidden">
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute inset-0 backdrop-blur-xl bg-black/40 dark:bg-black/80"
-                                onClick={() => setShowCreateModal(false)}
-                            />
-                            <motion.div 
-                                initial={{ opacity: 0, scale: 0.95, y: 40 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: 40 }}
-                                className="w-full max-w-2xl bg-card/90 backdrop-blur-2xl border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_32px_120px_-20px_rgba(0,0,0,0.5)]"
-                            >
-                                <div className="p-12">
-                                    <div className="flex items-center justify-between mb-12">
-                                        <div className="flex items-center gap-5">
-                                            <div className="w-16 h-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                                                <UserPlus size={32} />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-3xl font-semibold tracking-tight text-foreground uppercase" style={{ fontFamily: 'var(--ll-font-display)' }}>Add Entry</h3>
-                                                <p className="text-xs font-semibold text-primary uppercase tracking-wider mt-1">Assigning operations frontline protocol</p>
-                                            </div>
+            </main>
+
+            {/* ── Provisioning Modal ── */}
+            <AnimatePresence>
+                {showCreateModal && (
+                    <div className="ll-modal-overlay">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0"
+                            // Background click disabled via hook for provisioning form
+                        />
+                        <motion.div 
+                            ref={modalRef}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="provisioning-title"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="ll-modal-container modal-md"
+                        >
+                            <div className="ll-modal-header">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-16 h-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                                        <UserPlus size={32} />
+                                    </div>
+                                    <div>
+                                        <h3 id="provisioning-title" className="text-3xl font-semibold tracking-tight text-foreground uppercase" style={{ fontFamily: 'var(--ll-font-display)' }}>Add Entry</h3>
+                                        <p className="text-xs font-semibold text-primary uppercase tracking-wider mt-1">Assigning operations frontline protocol</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all group border border-white/5"
+                                >
+                                    <X size={20} className="group-hover:rotate-90 transition-transform" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleCreateUser} className="flex flex-col h-full min-h-0 overflow-hidden">
+                                <div className="ll-modal-body space-y-10">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                        <div className="space-y-3">
+                                            <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Full Name</label>
+                                            <input 
+                                                className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.name ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
+                                                value={formData.name}
+                                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                placeholder="E.G. SATOSHI NAKAMOTO"
+                                            />
                                         </div>
-                                        <button 
-                                            onClick={() => setShowCreateModal(false)}
-                                            className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all group border border-white/5"
-                                        >
-                                            <X size={20} className="group-hover:rotate-90 transition-transform" />
-                                        </button>
+                                        <div className="space-y-3">
+                                            <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Email Signature</label>
+                                            <input 
+                                                className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.email ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
+                                                type="email"
+                                                value={formData.email}
+                                                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                                placeholder="user@company.com"
+                                            />
+                                        </div>
                                     </div>
 
-                                    <form onSubmit={handleCreateUser} className="space-y-10">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                            <div className="space-y-3">
-                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Full Name</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                        <div className="space-y-3">
+                                            <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Access Token</label>
+                                            <div className="relative">
                                                 <input 
-                                                    className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.name ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
-                                                    value={formData.name}
-                                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                                    placeholder="E.G. SATOSHI NAKAMOTO"
+                                                    className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.password ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
+                                                    type={showPassword ? "text" : "password"}
+                                                    value={formData.password}
+                                                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                                    placeholder="••••••••"
                                                 />
-                                            </div>
-                                            <div className="space-y-3">
-                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Email Signature</label>
-                                                <input 
-                                                    className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.email ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
-                                                    type="email"
-                                                    value={formData.email}
-                                                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                                    placeholder="user@company.com"
-                                                />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute right-6 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-primary transition-colors"
+                                                >
+                                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                                </button>
                                             </div>
                                         </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                            <div className="space-y-3">
-                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Access Token</label>
-                                                <div className="relative">
-                                                    <input 
-                                                        className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.password ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
-                                                        type={showPassword ? "text" : "password"}
-                                                        value={formData.password}
-                                                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                                        placeholder="••••••••"
-                                                    />
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() => setShowPassword(!showPassword)}
-                                                        className="absolute right-6 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-primary transition-colors"
-                                                    >
-                                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="space-y-3">
-                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Assigned Unit</label>
-                                                <div className="relative">
-                                                    <select 
-                                                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none disabled:opacity-50"
-                                                        value={formData.role}
-                                                        disabled={user?.role === 'MANAGER'}
-                                                        onChange={(e) => setFormData({...formData, role: e.target.value})}
-                                                    >
-                                                        <option value="SALES">SALES OPERATIONS</option>
-                                                        {user?.role === 'ADMIN' && <option value="MANAGER">COMMAND LEAD (MANAGER)</option>}
-                                                        {user?.role === 'ADMIN' && <option value="ADMIN">ROOT ACCESS (ADMIN)</option>}
-                                                    </select>
-                                                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
-                                                </div>
+                                        
+                                        <div className="space-y-3">
+                                            <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Assigned Unit</label>
+                                            <div className="relative">
+                                                <select 
+                                                    className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none disabled:opacity-50"
+                                                    value={formData.role}
+                                                    disabled={user?.role === 'MANAGER'}
+                                                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                                                >
+                                                    <option value="SALES">SALES OPERATIONS</option>
+                                                    {user?.role === 'ADMIN' && <option value="MANAGER">COMMAND LEAD (MANAGER)</option>}
+                                                    {user?.role === 'ADMIN' && <option value="ADMIN">ROOT ACCESS (ADMIN)</option>}
+                                                </select>
+                                                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
                                             </div>
                                         </div>
+                                    </div>
 
-                                        {user?.role === 'ADMIN' && formData.role === 'SALES' && (
-                                            <div className="space-y-3 animate-in slide-in-from-top-4">
-                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Reporting Command Center</label>
-                                                <div className="relative">
-                                                    <select 
-                                                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none"
-                                                        value={formData.managerId}
-                                                        onChange={(e) => setFormData({...formData, managerId: e.target.value})}
-                                                    >
-                                                        <option value="">Team Member</option>
-                                                        {availableManagers.map(m => (
-                                                            <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
-                                                        ))}
-                                                    </select>
-                                                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
-                                                </div>
+                                    {user?.role === 'ADMIN' && formData.role === 'SALES' && (
+                                        <div className="space-y-3 animate-in slide-in-from-top-4">
+                                            <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Reporting Command Center</label>
+                                            <div className="relative">
+                                                <select 
+                                                    className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none"
+                                                    value={formData.managerId}
+                                                    onChange={(e) => setFormData({...formData, managerId: e.target.value})}
+                                                >
+                                                    <option value="">Team Member</option>
+                                                    {availableManagers.map(m => (
+                                                        <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
                                             </div>
-                                        )}
-
-                                        <div className="flex items-center gap-6 pt-6">
-                                            <button 
-                                                type="button"
-                                                onClick={() => setShowCreateModal(false)}
-                                                className="flex-1 h-16 rounded-2xl text-xs font-semibold uppercase tracking-wider border border-white/5 text-muted-foreground/40 hover:bg-muted/5 transition-all"
-                                            >
-                                                Abort
-                                            </button>
-                                            <button 
-                                                type="submit"
-                                                disabled={formLoading}
-                                                className="flex-[2] h-16 bg-primary text-black rounded-2xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-2xl shadow-primary/30"
-                                            >
-                                                {formLoading ? (
-                                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                                ) : (
-                                                    <Zap size={16} fill="currentColor" />
-                                                )}
-                                                INITIALIZE PERSONNEL
-                                            </button>
                                         </div>
-                                    </form>
+                                    )}
                                 </div>
-                            </motion.div>
-                        </div>
-                    )}
-                </AnimatePresence>
-            </main>
+
+                                <div className="ll-modal-footer flex items-center gap-6">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowCreateModal(false)}
+                                        className="crm-btn-secondary flex-1 !py-4 !text-xs font-semibold tracking-wider"
+                                    >
+                                        Abort
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        disabled={formLoading}
+                                        className="crm-btn-primary flex-[2] !py-4 !text-xs font-semibold tracking-wider flex items-center justify-center gap-4"
+                                    >
+                                        {formLoading ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <Zap size={16} fill="currentColor" />
+                                        )}
+                                        INITIALIZE
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+            </>
         </div>
     );
 }

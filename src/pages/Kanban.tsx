@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Link, useNavigate } from 'react-router';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus, Share2, Target, Zap } from 'lucide-react';
+import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus, Share2, Target, Zap, X } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
 import { getLeads, updateLeadStage as updateLeadStageApi } from '../api/leads';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -219,6 +219,8 @@ function KanbanInnerContent() {
     }
   });
 
+  const [selectedMobileLead, setSelectedMobileLead] = useState<Lead | null>(null);
+
   const handleDrop = async (leadId: number, newStage: Lead['stage']) => {
     if (user?.role !== 'SALES') return;
     try {
@@ -244,7 +246,17 @@ function KanbanInnerContent() {
     { title: 'Lost', stage: 'LOST' as const, color: 'red' },
   ];
 
+  const colorVariants: Record<string, string> = {
+    teal: '#00D4AA',
+    amber: '#FBBF24',
+    purple: '#C084FC',
+    green: '#4ADE80',
+    blue: '#60A5FA',
+    red: '#F87171',
+  };
+
   return (
+    <>
     <main className="crm-main-content select-none">
         {/* ── Background Effects ── */}
         <div className="ll-hero-grid opacity-[0.02] dark:opacity-[0.04]" />
@@ -314,7 +326,13 @@ function KanbanInnerContent() {
           </div>
         ) : isMobile ? (
           <div className="flex-1 relative z-10">
-            <MobileKanban leads={leads} columns={columns} onUpdateStage={async (id, stage) => { await stageMutation.mutateAsync({ id, stage }); }} canDrag={canDrag} />
+            <MobileKanban 
+              leads={leads} 
+              columns={columns} 
+              onUpdateStage={async (id, stage) => { await stageMutation.mutateAsync({ id, stage }); }} 
+              canDrag={canDrag}
+              setSelectedLead={setSelectedMobileLead}
+            />
           </div>
         ) : (
           <div className="flex-1 overflow-x-auto overflow-y-hidden px-10 pb-10 flex gap-8 custom-scrollbar relative z-10">
@@ -333,6 +351,75 @@ function KanbanInnerContent() {
           </div>
         )}
       </main>
+
+      {/* Relocated Mobile Modal */}
+      <AnimatePresence>
+        {selectedMobileLead && (
+          <div className="ll-modal-overlay">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0"
+              onClick={() => setSelectedMobileLead(null)}
+            />
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="status-modal-title"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="ll-modal-container modal-sm h-auto max-h-[80vh]"
+            >
+              <div className="ll-modal-header !pb-4">
+                <div>
+                  <h3 id="status-modal-title" className="text-lg font-bold text-foreground font-outfit uppercase tracking-tight">{selectedMobileLead.company}</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary mt-1">Update Pipeline Stage</p>
+                </div>
+                <button onClick={() => setSelectedMobileLead(null)} className="w-10 h-10 flex items-center justify-center bg-muted/20 hover:bg-muted/40 rounded-xl text-foreground transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="ll-modal-body !pt-2 pb-8">
+                <div className="space-y-3">
+                  {columns.map(col => {
+                    const isActive = selectedMobileLead.stage === col.stage;
+                    const cColor = colorVariants[col.color] || colorVariants.teal;
+                    return (
+                      <button
+                        key={col.stage}
+                        onClick={async () => {
+                          await stageMutation.mutateAsync({ id: selectedMobileLead.id, stage: col.stage });
+                          setSelectedMobileLead(null);
+                        }}
+                        disabled={isActive}
+                        className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98] min-h-[56px] ${
+                          isActive 
+                            ? 'bg-primary/5 border-primary/20 opacity-50 cursor-not-allowed' 
+                            : 'bg-card border-border hover:border-primary/40'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: cColor }} />
+                          <span className={`font-bold text-sm tracking-widest uppercase ${isActive ? 'text-primary' : 'text-foreground'}`}>{col.title}</span>
+                        </div>
+                        {isActive && (
+                          <div className="px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20">
+                            <span className="text-[8px] font-bold text-primary uppercase tracking-widest">Active</span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      </>
   );
 }
 
