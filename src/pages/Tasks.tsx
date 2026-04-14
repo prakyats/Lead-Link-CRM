@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Sidebar } from '../components/Sidebar';
-import { Calendar, Clock, User, CheckCircle2, AlertCircle, Plus, Zap, Target, Activity, ChevronDown, ChevronRight, Shield, Users, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle2, AlertCircle, Plus, Zap, Target, Activity, ChevronDown, ChevronRight, Shield, Users, TrendingUp, Check, X, Circle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InteractiveCard } from '../components/ui/InteractiveCard';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -69,14 +69,15 @@ function TaskRow({ task, onToggle, canControl }: { task: TaskType; onToggle: (id
         >
           {task.status === 'COMPLETED' ? (
             <div className="w-8 h-8 rounded-xl flex items-center justify-center text-primary-foreground bg-status-success shadow-[0_4px_16px_-4px_rgba(34,197,94,0.4)]">
-              <CheckCircle2 size={16} />
+              <Check size={16} />
+            </div>
+          ) : taskOverdue ? (
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all border-status-danger/40 bg-status-danger/10 text-status-danger">
+              <X size={16} className="text-red-500 opacity-90 drop-shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
             </div>
           ) : (
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all ${
-              taskOverdue ? 'border-status-danger/40 bg-status-danger/10 text-status-danger' : 
-              'border-border/60 text-transparent hover:border-primary/40 hover:text-primary/40'
-            }`}>
-              <CheckCircle2 size={16} />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center border-2 transition-all border-border/60 text-transparent hover:border-primary/40 hover:text-primary/40">
+              <Circle size={16} />
             </div>
           )}
         </button>
