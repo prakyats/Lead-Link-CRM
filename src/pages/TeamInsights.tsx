@@ -14,6 +14,7 @@ import {
   getDashboardSummary
 } from '../api/dashboard';
 import { motion, AnimatePresence } from 'framer-motion';
+import { InteractiveCard } from '../components/ui/InteractiveCard';
 import { GlobalLoader } from '../components/GlobalLoader';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
@@ -243,13 +244,14 @@ const RepsMatrix = ({ reps, isFlat = false, isAdmin = false }: { reps: any[], is
 
 const ManagerCard = ({ manager, isExpanded, onToggle }: any) => {
   return (
-    <div className="crm-card !p-0 overflow-hidden mb-4 border-border/40 hover:border-primary/20 transition-all">
-      <div 
-        onClick={onToggle}
-        className="p-6 flex flex-col lg:flex-row items-center justify-between cursor-pointer group hover:bg-primary/[0.01]"
-      >
+    <InteractiveCard 
+      isActive={isExpanded}
+      onClick={onToggle}
+      className={`crm-card !p-0 overflow-hidden mb-4 border-border/40 transition-all ${isExpanded ? 'bg-primary/5' : ''}`}
+    >
+      <div className="p-6 flex flex-col lg:flex-row items-center justify-between group">
         <div className="flex items-center gap-5">
-           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isExpanded ? 'bg-primary text-white rotate-0' : 'bg-primary/10 text-primary rotate-3 group-hover:rotate-0'}`}>
+           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isExpanded ? 'bg-primary text-white rotate-0 shadow-[0_0_15px_rgba(var(--primary),0.3)]' : 'bg-primary/10 text-primary rotate-3 group-hover:rotate-0'}`}>
               <Users2 className="w-6 h-6" />
            </div>
            <div>
@@ -292,7 +294,7 @@ const ManagerCard = ({ manager, isExpanded, onToggle }: any) => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </InteractiveCard>
   );
 };
 
