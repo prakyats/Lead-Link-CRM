@@ -246,6 +246,7 @@ const ManagerCard = ({ manager, isExpanded, onToggle }: any) => {
   return (
     <InteractiveCard 
       isActive={isExpanded}
+      isStatic={true}
       onClick={onToggle}
       className={`crm-card !p-0 overflow-hidden mb-4 border-border/40 transition-all ${isExpanded ? 'bg-primary/5' : ''}`}
     >
