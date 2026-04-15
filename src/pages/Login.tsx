@@ -33,6 +33,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [errorMessage, setErrorMessage] = useState("");
 
     const validateForm = () => {
         const errors = validateLoginForm({
@@ -60,6 +61,13 @@ export default function Login() {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setFieldErrors({});
+        setErrorMessage("");
+
+        if (!organizationSlug || !email || !password) {
+            setErrorMessage("All fields are required");
+            toast.error("Validation Error", { description: "Please enter your workspace, email and password." });
+            return;
+        }
 
         if (!validateForm()) {
             toast.error('Please fix the errors in the form');
@@ -81,20 +89,29 @@ export default function Login() {
                 navigate('/dashboard');
             }, 1500);
         } catch (err: any) {
-            const errorMsg = err.response?.data?.error || err.message || 'Verification failed';
+            const errorCode = err.response?.data?.error;
+            const fallbackMsg = err.response?.data?.message || err.message || 'Verification failed';
             
-            if (errorMsg === 'Workspace not found') {
-                setFieldErrors({ organization: 'This workspace ID does not exist' });
-                toast.error('Workspace Not Found', { description: 'Please check your Workspace ID (e.g., demo).' });
-            } else if (errorMsg === 'Account not found') {
-                setFieldErrors({ email: 'User account not found' });
-                toast.error('Login Failed', { description: 'This email is not registered in our records for this workspace.' });
-            } else if (errorMsg === 'Incorrect password') {
-                setFieldErrors({ password: 'Password does not match our records' });
-                toast.error('Authentication Error', { description: 'Incorrect password. Please try again.' });
-            } else {
-                toast.error('Security Check Failed', { description: errorMsg });
-                setFieldErrors({ global: errorMsg });
+            switch (errorCode) {
+                case 'ORG_NOT_FOUND':
+                    setErrorMessage("Workspace not found");
+                    setFieldErrors({ organization: 'This workspace ID does not exist' });
+                    toast.error('Workspace Not Found', { description: 'Please check your Workspace ID (e.g., demo).' });
+                    break;
+                case 'USER_NOT_FOUND':
+                    setErrorMessage("Email not registered");
+                    setFieldErrors({ email: 'User account not found' });
+                    toast.error('Login Failed', { description: 'This email is not registered in our records for this workspace.' });
+                    break;
+                case 'INVALID_PASSWORD':
+                    setErrorMessage("Incorrect password");
+                    setFieldErrors({ password: 'Password does not match our records' });
+                    toast.error('Authentication Error', { description: 'Incorrect password. Please try again.' });
+                    break;
+                default:
+                    setErrorMessage(fallbackMsg);
+                    toast.error('Security Check Failed', { description: fallbackMsg });
+                    setFieldErrors({ global: fallbackMsg });
             }
         } finally {
             setLoading(false);
@@ -162,7 +179,11 @@ export default function Login() {
                                         <Building2 className={`absolute left-3 top-1/2 -translate-y-1/2 w-4.5 h-4.5 transition-colors ${fieldErrors.organization ? 'text-red-400' : 'text-slate-500'}`} />
                                         <input
                                             value={organizationSlug}
-                                            onChange={(e) => setOrganizationSlug(e.target.value)}
+                                            onChange={(e) => {
+                                                setOrganizationSlug(e.target.value);
+                                                setErrorMessage("");
+                                                if (fieldErrors.organization) setFieldErrors(prev => ({ ...prev, organization: "" }));
+                                            }}
                                             onBlur={() => handleBlur('organization')}
                                             className={inputClasses('organization')}
                                             placeholder="demo"
@@ -194,7 +215,11 @@ export default function Login() {
                                         <input
                                             type="email"
                                             value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
+                                            onChange={(e) => {
+                                                setEmail(e.target.value);
+                                                setErrorMessage("");
+                                                if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: "" }));
+                                            }}
                                             onBlur={() => handleBlur('email')}
                                             className={inputClasses('email')}
                                             placeholder="admin@leadlink.com"
@@ -225,7 +250,11 @@ export default function Login() {
                                         <input
                                             type={showPassword ? "text" : "password"}
                                             value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
+                                            onChange={(e) => {
+                                                setPassword(e.target.value);
+                                                setErrorMessage("");
+                                                if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: "" }));
+                                            }}
                                             onBlur={() => handleBlur('password')}
                                             className={inputClasses('password')}
                                             placeholder="••••••••"
@@ -253,6 +282,19 @@ export default function Login() {
                                         )}
                                     </AnimatePresence>
                                 </motion.div>
+
+                                <AnimatePresence>
+                                    {errorMessage && !Object.keys(fieldErrors).length && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -10 }}
+                                            className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4 text-center"
+                                        >
+                                            <p className="text-red-400 text-sm font-medium">{errorMessage}</p>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
                                 <motion.div variants={itemVariants} className="pt-2">
                                     <button

@@ -20,7 +20,7 @@ async function login(req, res) {
         });
 
         if (!org) {
-            return res.status(401).json({ success: false, message: 'Workspace not found' });
+            return res.status(404).json({ success: false, error: 'ORG_NOT_FOUND', message: 'Workspace not found' });
         }
 
         // Find user by org + email (multi-tenant)
@@ -34,13 +34,13 @@ async function login(req, res) {
         });
 
         if (!user) {
-            return res.status(401).json({ success: false, message: 'Account not found' });
+            return res.status(404).json({ success: false, error: 'USER_NOT_FOUND', message: 'Account not found' });
         }
 
         // Check password using bcrypt
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ success: false, message: 'Incorrect password' });
+            return res.status(401).json({ success: false, error: 'INVALID_PASSWORD', message: 'Incorrect password' });
         }
 
         // Generate JWT token

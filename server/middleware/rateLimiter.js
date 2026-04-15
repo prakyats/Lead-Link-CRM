@@ -30,7 +30,7 @@ const apiLimiter = rateLimit({
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: 7, // Limit each IP to 7 requests per windowMs
   skipSuccessfulRequests: true, // Only failed attempts count towards the limit
   standardHeaders: true,
   legacyHeaders: false,
