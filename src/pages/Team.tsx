@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from '../components/Sidebar';
-import { InteractiveCard } from '../components/ui/InteractiveCard';
 import { 
     Users, UserPlus, Mail, ShieldCheck, Target, 
     BarChart3, Search, Eye, EyeOff, Loader2, X, Plus,
@@ -13,18 +12,15 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import { validateUserForm } from '../utils/validation';
 import { useSearchParams } from 'react-router';
-import { ProvisioningModal } from '../components/ProvisioningModal';
 
 interface SystemUser {
     id: number;
     name: string;
     email: string;
     role: string;
-    createdAt?: string;
+    createdAt: string;
     manager?: { name: string };
 }
-
-import { getUsers, getSalesUsers } from '@/api/users';
 
 export default function Team() {
     const { user } = useAuth();
@@ -35,30 +31,25 @@ export default function Team() {
     const [users, setUsers] = useState<SystemUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState<'all' | 'sales' | 'nonSales'>('all');
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [formLoading, setFormLoading] = useState(false);
-    const [activeFilter, setActiveFilter] = useState<'ALL' | 'SALES' | 'MANAGER'>('ALL');
     
-    const isManager = user?.role === 'MANAGER';
-
-    const salesCount = useMemo(() => {
-        return users.filter(u => u.role === 'SALES').length;
-    }, [users]);
-
+    // Form State
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'SALES', managerId: '' });
+    const [formLoading, setFormLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [availableManagers, setAvailableManagers] = useState<{id: number, name: string}[]>([]);
-
-    const handleOpenModal = useCallback(() => setShowCreateModal(true), []);
-    const handleCloseModal = useCallback(() => setShowCreateModal(false), []);
 
     const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
-            const normalizedUsers = await getUsers();
-            setUsers(normalizedUsers);
+            const response = await api.get('/users');
+            setUsers(response.data);
             
             if (user?.role === 'ADMIN') {
-                const normalizedSalesUsers = await getSalesUsers();
-                setAvailableManagers(normalizedSalesUsers.filter((u: any) => u.role === 'MANAGER'));
+                const managersResponse = await api.get('/users/sales');
+                setAvailableManagers(managersResponse.data.filter((u: any) => u.role === 'MANAGER'));
             }
         } catch (error: any) {
             toast.error('Registry Sync Failed', {
@@ -80,49 +71,59 @@ export default function Team() {
         }
     }, [searchParams]);
 
-    const handleSubmit = useCallback(async (data: any) => {
+    const handleCreateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        const errors = validateUserForm({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+        });
+        
+        if (Object.keys(errors).length > 0) {
+            setFieldErrors(errors);
+            return;
+        }
+
         setFormLoading(true);
         try {
             await api.post('/users', {
-                ...data,
-                managerId: data.managerId ? parseInt(data.managerId) : undefined
+                ...formData,
+                managerId: formData.managerId ? parseInt(formData.managerId) : undefined
             });
             
             toast.success('Personnel Provisioned', {
-                description: `${data.name} has been authorized for operations.`
+                description: `${formData.name} has been authorized for operations.`
             });
             
+            
+            setShowCreateModal(false);
+            setFormData({ name: '', email: '', password: '', role: 'SALES', managerId: '' });
             fetchUsers();
+            
+            // Invalidate dashboard summary to hide the "Build Your Team" overlay
             queryClient.invalidateQueries({ queryKey: ['dashboard', 'summary'] });
         } catch (error: any) {
             const msg = error.response?.data?.error || 'Provisioning failed';
             toast.error('Authorization Restricted', { description: msg });
-            throw error;
         } finally {
             setFormLoading(false);
         }
-    }, [fetchUsers, queryClient]);
+    };
 
-    const filteredUsers = useMemo(() => {
-        let result = users;
-
-        if (isManager) {
-            // Managers only see Sales Representatives
-            result = result.filter(u => u.role === 'SALES');
-        } else {
-            // Admins can toggle between segments
-            if (activeFilter === 'SALES') {
-                result = result.filter(u => u.role === 'SALES');
-            } else if (activeFilter === 'MANAGER') {
-                result = result.filter(u => u.role === 'MANAGER');
-            }
-        }
-
-        return result.filter(u => 
-            u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-            u.email.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [users, activeFilter, searchQuery, isManager]);
+    const filteredUsers = users
+        .filter(u => {
+            const q = searchQuery.toLowerCase();
+            return (
+                u.name.toLowerCase().includes(q) ||
+                u.email.toLowerCase().includes(q)
+            );
+        })
+        .filter(u => {
+            if (activeFilter === 'sales') return u.role?.toUpperCase() === 'SALES';
+            if (activeFilter === 'nonSales') return u.role?.toUpperCase() !== 'SALES';
+            return true;
+        });
 
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
@@ -130,16 +131,15 @@ export default function Team() {
 
     const roleStyles: Record<string, { bg: string; color: string; icon: any; border: string }> = {
         ADMIN: { bg: 'bg-status-success/10', color: 'text-status-success', icon: ShieldCheck, border: 'border-status-success/20' },
-        MANAGER: { bg: 'bg-purple-500/10', color: 'text-purple-400', icon: Shield, border: 'border-purple-500/20' },
-        SALES: { bg: 'bg-primary/10', color: 'text-primary', icon: Target, border: 'border-primary/20' },
+        MANAGER: { bg: 'bg-purple-500/10', color: 'text-purple-400', icon: Target, border: 'border-purple-500/20' },
+        SALES: { bg: 'bg-primary/10', color: 'text-primary', icon: BarChart3, border: 'border-primary/20' },
     };
-
 
     return (
         <div className="crm-page-container">
             <Sidebar />
-            <>
-                <main className="crm-main-content">
+            
+            <main className="crm-main-content">
                 {/* ── Background Effects ── */}
                 <div className="ll-hero-grid opacity-[0.02] dark:opacity-[0.05]" />
                 <div className="ll-orb w-[600px] h-[600px] -top-64 -right-32 bg-primary/5 blur-[120px]" />
@@ -150,8 +150,8 @@ export default function Team() {
                         
                         <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-10">
                             <div className="animate-in slide-in-from-left duration-700">
-                                <div className="flex items-center gap-3 text-status-success mb-3 font-semibold text-xs uppercase tracking-wider">
-                                    <ShieldCheck size={14} className="animate-pulse" />
+                                <div className="flex items-center gap-3 text-primary mb-3 font-semibold text-xs uppercase tracking-wider">
+                                    <Activity size={14} className="animate-pulse" />
                                     Operational Command Hub
                                 </div>
                                 <h1 className="crm-page-title">Team <span className="text-primary">Registry</span></h1>
@@ -175,58 +175,47 @@ export default function Team() {
                                 </div>
                                 
                                 <button 
-                                    onClick={handleOpenModal}
+                                    onClick={() => setShowCreateModal(true)}
                                     className="h-14 px-8 bg-primary text-black rounded-2xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-primary/20"
                                 >
                                     <UserPlus size={16} strokeWidth={3} />
-                                    {isManager ? 'Add Sales Rep' : 'Add User'}
+                                    {user?.role === 'MANAGER' ? 'Add Sales User' : 'Add User'}
                                 </button>
                             </div>
                         </header>
 
+                        {/* ── Metric Telemetry ── */}
                         {user?.role === 'ADMIN' && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 {[
-                                    { id: 'ALL', label: 'All Team Members', value: users.length, icon: Users, color: 'var(--primary)', shadow: 'shadow-primary/10' },
-                                    { id: 'SALES', label: 'Sales Team', value: users.filter(u => u.role === 'SALES').length, icon: Target, color: '#60A5FA', shadow: 'shadow-blue-500/10' },
-                                    { id: 'MANAGER', label: 'Managers', value: users.filter(u => u.role !== 'SALES').length, icon: Shield, color: '#C084FC', shadow: 'shadow-purple-500/10' },
+                                    { id: 'all' as const, label: 'Active Personnel', value: users.length, icon: Users, color: 'var(--primary)', shadow: 'shadow-primary/10' },
+                                    { id: 'sales' as const, label: 'Operations Unit', value: users.filter(u => u.role === 'SALES').length, icon: Target, color: '#60A5FA', shadow: 'shadow-blue-500/10' },
+                                    { id: 'nonSales' as const, label: 'Command Base', value: users.filter(u => u.role !== 'SALES').length, icon: Shield, color: '#C084FC', shadow: 'shadow-purple-500/10' },
                                 ].map((stat, i) => {
                                     const isActive = activeFilter === stat.id;
-                                    
                                     return (
-                                        <motion.div
+                                        <motion.button
+                                            type="button"
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: i * 0.1 }}
-                                            key={i}
-                                            className="h-full"
+                                            key={stat.id}
+                                            onClick={() => setActiveFilter(stat.id)}
+                                            className={`crm-card text-left group hover:bg-card/60 transition-all duration-500 border-white/5 bg-card/40 backdrop-blur-xl flex items-center gap-6 ${stat.shadow} ${
+                                                isActive ? 'ring-2 ring-primary/30 border-primary/30' : ''
+                                            }`}
                                         >
-                                            <InteractiveCard
-                                                isActive={isActive}
-                                                onClick={() => setActiveFilter(stat.id as any)}
-                                                className={`crm-card h-full !p-6 flex items-center gap-12 border-white/5 backdrop-blur-xl ${stat.shadow} ${
-                                                    isActive ? 'bg-primary/10' : 'bg-card/40'
-                                                }`}
-                                            >
-                                                <div className={`w-12 h-12 rounded-[1.25rem] relative z-10 flex items-center justify-center transition-all duration-500 shadow-inner ${
-                                                    isActive ? 'scale-110' : 'group-hover:scale-110'
-                                                }`} style={{ background: `${stat.color}15`, border: `1px solid ${isActive ? stat.color : stat.color + '20'}` }}>
-                                                    <stat.icon size={22} style={{ color: isActive ? '#fff' : stat.color }} strokeWidth={isActive ? 2.5 : 1.5} className="transition-all" />
-                                                </div>
-                                                <div className="relative z-10">
-                                                    <p className={`text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 transition-colors ${
-                                                        isActive ? 'text-primary' : 'text-muted-foreground/40'
-                                                    }`}>
-                                                        {stat.label}
-                                                    </p>
-                                                    <p className={`text-4xl font-bold tracking-tighter tabular-nums transition-colors ${
-                                                        isActive ? 'text-white' : 'text-foreground/80'
-                                                    }`}>
-                                                        {stat.value.toString().padStart(2, '0')}
-                                                    </p>
-                                                </div>
-                                            </InteractiveCard>
-                                        </motion.div>
+                                            <div className="w-16 h-16 rounded-[1.25rem] flex items-center justify-center transition-transform group-hover:scale-110 shadow-inner" style={{ background: `${stat.color}10`, border: `1px solid ${stat.color}20` }}>
+                                                <stat.icon size={28} style={{ color: stat.color }} strokeWidth={1.5} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/40 mb-1">{stat.label}</p>
+                                                <p className="text-4xl font-semibold text-foreground tracking-tighter tabular-nums">{stat.value.toString().padStart(2, '0')}</p>
+                                                <p className={`text-[9px] font-bold uppercase tracking-widest mt-2 ${isActive ? 'text-primary/80' : 'text-muted-foreground/30'}`}>
+                                                    {isActive ? 'Filter Active' : 'Click to Filter'}
+                                                </p>
+                                            </div>
+                                        </motion.button>
                                     );
                                 })}
                             </div>
@@ -240,20 +229,7 @@ export default function Team() {
                             className="crm-card !p-0 overflow-hidden bg-card/20 backdrop-blur-3xl border-white/5"
                         >
                             <div className="p-8 border-b border-border/40 flex items-center justify-between">
-                                <div className="space-y-1">
-                                    <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">Team Directory</h2>
-                                    {isManager ? (
-                                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                                            Managing <span className="text-primary">{salesCount}</span> Sales Representatives
-                                        </p>
-                                    ) : (
-                                        activeFilter !== 'ALL' && (
-                                            <p className="text-[10px] text-primary font-bold uppercase tracking-widest animate-in fade-in slide-in-from-left-2 transition-all">
-                                                Showing {activeFilter === 'SALES' ? 'Sales Team' : 'Managers'}
-                                            </p>
-                                        )
-                                    )}
-                                </div>
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">Team Directory</h2>
                                 <div className="hidden sm:flex items-center gap-3">
                                     <div className="px-3 py-1.5 rounded-xl bg-primary/5 border border-primary/10 text-primary text-[8px] font-semibold uppercase tracking-widest">
                                         Live Registry
@@ -320,7 +296,7 @@ export default function Team() {
                                                     <td className="px-10 py-8">
                                                         <div className="flex flex-col">
                                                             <span className="text-xs font-semibold text-foreground/60 tabular-nums">
-                                                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).toUpperCase() : 'SYSTEM SYNC'}
+                                                                {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).toUpperCase()}
                                                             </span>
                                                             <span className="text-[9px] font-semibold text-muted-foreground/20 uppercase tracking-widest mt-1">Cycle Logged</span>
                                                         </div>
@@ -346,28 +322,159 @@ export default function Team() {
                                 {!loading && filteredUsers.length === 0 && (
                                     <div className="py-32 text-center space-y-6">
                                         <Users size={64} className="mx-auto text-muted-foreground/10" />
-                                        <p className="text-xs font-semibold text-muted-foreground/30 uppercase tracking-wider">
-                                            {activeFilter !== 'ALL' 
-                                                ? `No ${activeFilter === 'SALES' ? 'sales team members' : 'managers'} identified in this category`
-                                                : 'No personnel signatures identified in directory'}
-                                        </p>
+                                        <p className="text-xs font-semibold text-muted-foreground/30 uppercase tracking-wider">No personnel signatures identified in directory</p>
                                     </div>
                                 )}
                             </div>
                         </motion.div>
                     </div>
                 </div>
-            </main>
+                
+                {/* ── Provisioning Modal ── */}
+                <AnimatePresence>
+                    {showCreateModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-hidden">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 backdrop-blur-xl bg-black/40 dark:bg-black/80"
+                                onClick={() => setShowCreateModal(false)}
+                            />
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.95, y: 40 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 40 }}
+                                className="w-full max-w-2xl bg-card/90 backdrop-blur-2xl border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_32px_120px_-20px_rgba(0,0,0,0.5)]"
+                            >
+                                <div className="p-12">
+                                    <div className="flex items-center justify-between mb-12">
+                                        <div className="flex items-center gap-5">
+                                            <div className="w-16 h-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                                                <UserPlus size={32} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-3xl font-semibold tracking-tight text-foreground uppercase" style={{ fontFamily: 'var(--ll-font-display)' }}>Add Entry</h3>
+                                                <p className="text-xs font-semibold text-primary uppercase tracking-wider mt-1">Assigning operations frontline protocol</p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => setShowCreateModal(false)}
+                                            className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-all group border border-white/5"
+                                        >
+                                            <X size={20} className="group-hover:rotate-90 transition-transform" />
+                                        </button>
+                                    </div>
 
-            <ProvisioningModal
-                isOpen={showCreateModal}
-                onClose={handleCloseModal}
-                onSubmit={handleSubmit}
-                isPending={formLoading}
-                availableManagers={availableManagers}
-                currentUserRole={user?.role}
-            />
-            </>
+                                    <form onSubmit={handleCreateUser} className="space-y-10">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Full Name</label>
+                                                <input 
+                                                    className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.name ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
+                                                    value={formData.name}
+                                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                                    placeholder="E.G. SATOSHI NAKAMOTO"
+                                                />
+                                            </div>
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Email Signature</label>
+                                                <input 
+                                                    className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.email ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
+                                                    type="email"
+                                                    value={formData.email}
+                                                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                                    placeholder="user@company.com"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Access Token</label>
+                                                <div className="relative">
+                                                    <input 
+                                                        className={`crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-sm font-bold ${fieldErrors.password ? '!border-status-danger/40 ring-2 ring-status-danger/10' : ''}`}
+                                                        type={showPassword ? "text" : "password"}
+                                                        value={formData.password}
+                                                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                                        placeholder="••••••••"
+                                                    />
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="absolute right-6 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-primary transition-colors"
+                                                    >
+                                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="space-y-3">
+                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Assigned Unit</label>
+                                                <div className="relative">
+                                                    <select 
+                                                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none disabled:opacity-50"
+                                                        value={formData.role}
+                                                        disabled={user?.role === 'MANAGER'}
+                                                        onChange={(e) => setFormData({...formData, role: e.target.value})}
+                                                    >
+                                                        <option value="SALES">SALES OPERATIONS</option>
+                                                        {user?.role === 'ADMIN' && <option value="MANAGER">COMMAND LEAD (MANAGER)</option>}
+                                                        {user?.role === 'ADMIN' && <option value="ADMIN">ROOT ACCESS (ADMIN)</option>}
+                                                    </select>
+                                                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {user?.role === 'ADMIN' && formData.role === 'SALES' && (
+                                            <div className="space-y-3 animate-in slide-in-from-top-4">
+                                                <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Reporting Command Center</label>
+                                                <div className="relative">
+                                                    <select 
+                                                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none"
+                                                        value={formData.managerId}
+                                                        onChange={(e) => setFormData({...formData, managerId: e.target.value})}
+                                                    >
+                                                        <option value="">Team Member</option>
+                                                        {availableManagers.map(m => (
+                                                            <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
+                                                        ))}
+                                                    </select>
+                                                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-6 pt-6">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setShowCreateModal(false)}
+                                                className="flex-1 h-16 rounded-2xl text-xs font-semibold uppercase tracking-wider border border-white/5 text-muted-foreground/40 hover:bg-muted/5 transition-all"
+                                            >
+                                                Abort
+                                            </button>
+                                            <button 
+                                                type="submit"
+                                                disabled={formLoading}
+                                                className="flex-[2] h-16 bg-primary text-black rounded-2xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-2xl shadow-primary/30"
+                                            >
+                                                {formLoading ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <Zap size={16} fill="currentColor" />
+                                                )}
+                                                INITIALIZE PERSONNEL
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+            </main>
         </div>
     );
 }

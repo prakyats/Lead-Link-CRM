@@ -53,8 +53,10 @@ export const updateLead = async ({ id, lead }: { id: number; lead: Partial<LeadT
     return normalizeResponse(response.data);
 };
 
-export const updateLeadStage = async ({ id, stage }: { id: number; stage: LeadType['stage'] }): Promise<LeadType> => {
-    const response = await api.put(`/leads/${id}/stage`, { stage });
+export const updateLeadStage = async (
+    { id, stage, notes, summary }: { id: number; stage: LeadType['stage']; notes?: string; summary?: string }
+): Promise<LeadType> => {
+    const response = await api.put(`/leads/${id}/stage`, { stage, notes, summary });
     return normalizeResponse(response.data);
 };
 
@@ -69,4 +71,17 @@ export const assignLead = async ({ id, assignedToId }: { id: number; assignedToI
 
 export const addInteraction = async ({ leadId, interaction }: { leadId: number; interaction: any }): Promise<void> => {
     await api.post('/interactions', { ...interaction, leadId });
+};
+
+export const exportLeadsExcel = async ({ q }: { q?: string } = {}): Promise<{ blob: Blob; filename?: string }> => {
+    const response = await api.get('/leads/export', {
+        params: q ? { q } : undefined,
+        responseType: 'blob'
+    });
+
+    const disposition = response.headers?.['content-disposition'] as string | undefined;
+    const match = disposition?.match(/filename="([^"]+)"/i);
+    const filename = match?.[1];
+
+    return { blob: response.data as Blob, filename };
 };

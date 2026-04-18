@@ -8,7 +8,8 @@ const {
     updateLead,
     updateLeadStage,
     deleteLead,
-    assignLead
+    assignLead,
+    exportLeads
 } = require('../controllers/leadsController');
 
 const validate = require('../middleware/validate');
@@ -51,6 +52,9 @@ router.use(authMiddleware);
  *       201:
  *         description: Lead created
  */
+// GET /api/leads/export - Export leads as Excel
+router.get('/export', exportLeads);
+
 // GET /api/leads - Get all leads
 router.get('/', getAllLeads);
 

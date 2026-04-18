@@ -72,7 +72,7 @@ export default function CustomerDetail() {
 
   useEffect(() => {
     if (leadData?.company) {
-      document.title = `${leadData.company.toUpperCase()} // PROFILE`;
+      document.title = `${String(leadData.company).toUpperCase()} // PROFILE`;
     }
   }, [leadData]);
 
@@ -154,7 +154,9 @@ export default function CustomerDetail() {
                       {leadData?.company?.charAt(0) || '?'}
                     </div>
                     <div>
-                      <h2 className="text-xl font-semibold tracking-tight text-foreground">{leadData?.contact.toUpperCase()}</h2>
+                      <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                        {String((leadData as any)?.contact || 'Unknown').toUpperCase()}
+                      </h2>
                       <p className="text-xs font-semibold uppercase tracking-wider mt-1 text-primary">{leadData.company}</p>
                     </div>
                   </div>
@@ -311,7 +313,10 @@ export default function CustomerDetail() {
                               <div className="flex flex-wrap gap-4">
                                 {interaction.outcome && (
                                   <span className="px-4 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider bg-muted/10 border border-border/40 text-muted-foreground/60">
-                                    RESOLUTION: <span className="text-foreground/80 ml-1">{interaction.outcome.toUpperCase()}</span>
+                                    RESOLUTION:{' '}
+                                    <span className="text-foreground/80 ml-1">
+                                      {interaction?.outcome ? String(interaction.outcome).toUpperCase() : '—'}
+                                    </span>
                                   </span>
                                 )}
                                 {interaction.followUpDate && (

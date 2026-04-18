@@ -18,6 +18,14 @@ export default function PdfPreview() {
   const handleDownload = () => {
     if (!leadData) return;
 
+    const safeStr = (v: any) => (v === null || v === undefined ? '' : String(v));
+    const safeStageLabel = (stage: any) => {
+      const s = safeStr(stage).trim();
+      if (!s) return '—';
+      return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    };
+    const safeCurrency = (v: any) => (Number(v) || 0).toLocaleString('en-IN');
+
     const doc = new jsPDF();
 
     // Header
@@ -46,27 +54,27 @@ export default function PdfPreview() {
 
     doc.text('Company:', 20, 58);
     doc.setTextColor(26, 35, 50);
-    doc.text(leadData.company, 60, 58);
+    doc.text(safeStr(leadData.company), 60, 58);
 
     doc.setTextColor(100, 116, 139);
     doc.text('Contact:', 20, 68);
     doc.setTextColor(26, 35, 50);
-    doc.text(leadData.contact, 60, 68);
+    doc.text(safeStr(leadData.contact), 60, 68);
 
     doc.setTextColor(100, 116, 139);
     doc.text('Email:', 20, 78);
     doc.setTextColor(26, 35, 50);
-    doc.text(leadData.email, 60, 78);
+    doc.text(safeStr(leadData.email), 60, 78);
 
     doc.setTextColor(100, 116, 139);
     doc.text('Lead Score:', 20, 88);
     doc.setTextColor(26, 35, 50);
-    doc.text(`${leadData.leadScore}/100`, 60, 88);
+    doc.text(`${Number((leadData as any).leadScore) || 0}/100`, 60, 88);
 
     doc.setTextColor(100, 116, 139);
     doc.text('Risk Status:', 20, 98);
     doc.setTextColor(26, 35, 50);
-    doc.text(leadData.risk ? leadData.risk.toUpperCase() : 'LOW', 60, 98);
+    doc.text((leadData as any).risk ? safeStr((leadData as any).risk).toUpperCase() : 'LOW', 60, 98);
 
     // Deal Information Section
     doc.setFontSize(16);
@@ -81,18 +89,18 @@ export default function PdfPreview() {
     doc.text('Deal Value:', 20, 128);
     doc.setTextColor(0, 212, 170); // Teal
     doc.setFontSize(14);
-    doc.text(`₹${leadData.value.toLocaleString('en-IN')}`, 60, 128);
+    doc.text(`₹${safeCurrency((leadData as any).value)}`, 60, 128);
 
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
     doc.text('Current Stage:', 20, 138);
     doc.setTextColor(26, 35, 50);
-    doc.text(leadData.stage.charAt(0).toUpperCase() + leadData.stage.slice(1), 60, 138);
+    doc.text(safeStageLabel((leadData as any).stage), 60, 138);
 
     doc.setTextColor(100, 116, 139);
     doc.text('Priority:', 20, 148);
     doc.setTextColor(26, 35, 50);
-    doc.text(leadData.priority, 60, 148);
+    doc.text(safeStr((leadData as any).priority), 60, 148);
 
     // Interactions Section
     doc.setFontSize(16);
@@ -110,12 +118,14 @@ export default function PdfPreview() {
 
         doc.setTextColor(26, 35, 50);
         doc.setFontSize(10);
-        doc.text(interaction.type.toUpperCase(), 20, yPos);
+        doc.text(safeStr(interaction?.type).toUpperCase(), 20, yPos);
 
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
-        doc.text(interaction.notes.substring(0, 70) + '...', 20, yPos + 5);
-        doc.text(new Date(interaction.timestamp).toLocaleDateString(), 20, yPos + 10);
+        const notes = safeStr(interaction?.notes);
+        doc.text((notes.length > 70 ? notes.substring(0, 70) + '…' : notes) || '—', 20, yPos + 5);
+        const when = interaction?.date || interaction?.createdAt;
+        doc.text(when ? new Date(when).toLocaleDateString() : '—', 20, yPos + 10);
 
         yPos += 20;
       });
@@ -131,7 +141,8 @@ export default function PdfPreview() {
     doc.text('© 2026 Lead Link CRM', 105, 285, { align: 'center' });
 
     // Save the PDF
-    doc.save(`${leadData.company.replace(/ /g, '_')}_Summary.pdf`);
+    const filenameBase = safeStr((leadData as any).company).trim().replace(/\s+/g, '_') || 'lead';
+    doc.save(`${filenameBase}_Summary.pdf`);
   };
 
   if (loading) {
@@ -252,7 +263,7 @@ export default function PdfPreview() {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <p className="text-sm mb-1" style={{ color: '#64748B' }}>Deal Value</p>
-                    <p className="text-2xl font-bold" style={{ color: '#00D4AA' }}>₹{leadData.value.toLocaleString('en-IN')}</p>
+                    <p className="text-2xl font-bold" style={{ color: '#00D4AA' }}>₹{(Number((leadData as any).value) || 0).toLocaleString('en-IN')}</p>
                   </div>
                   <div>
                     <p className="text-sm mb-1" style={{ color: '#64748B' }}>Priority</p>
@@ -289,8 +300,10 @@ export default function PdfPreview() {
                         </div>
                         <div>
                           <p className="font-semibold capitalize" style={{ color: '#0F172A' }}>{interaction.type}</p>
-                          <p className="text-sm mt-1" style={{ color: '#475569' }}>{interaction.notes}</p>
-                          <p className="text-xs mt-1" style={{ color: '#64748B' }}>{new Date(interaction.timestamp).toLocaleDateString()}</p>
+                          <p className="text-sm mt-1" style={{ color: '#475569' }}>{interaction.notes || '—'}</p>
+                          <p className="text-xs mt-1" style={{ color: '#64748B' }}>
+                            {interaction?.date || interaction?.createdAt ? new Date(interaction.date || interaction.createdAt).toLocaleDateString() : '—'}
+                          </p>
                         </div>
                       </div>
                     ))

@@ -1,26 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Link } from 'react-router';
-import { Users, UserCheck, Clock, AlertTriangle, ArrowRight, Shield, ShieldCheck, BarChart3, Users2, TrendingUp, CheckCircle2, Calendar, Target, Activity, UserPlus, Plus, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, UserCheck, Clock, AlertTriangle, ArrowRight, Shield, BarChart3, Users2, TrendingUp, CheckCircle2, Calendar, Target, Activity, UserPlus, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 
 import { useQueryClient, useMutation, useQuery, QueryErrorResetBoundary } from '@tanstack/react-query';
-import { getDashboardKpis, getRecentLeads, getDashboardSummary } from '../api/dashboard';
+import { getDashboardKpis, getRecentLeads, getDashboardSummary, getTeamPipeline } from '../api/dashboard';
 import { getTaskSummary, markTaskComplete } from '../api/tasks';
 import { getLeads, LeadType } from '../api/leads';
+import { getUsers } from '../api/users';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { DashboardSkeleton } from '@/components/ui/skeleton';
-
-const COLOR_MAP: Record<string, { iconBg: string; iconColor: string }> = {
-  teal: { iconBg: 'var(--crm-teal-glow)', iconColor: 'var(--crm-teal)' },
-  green: { iconBg: 'rgba(34,197,94,0.12)', iconColor: '#4ADE80' },
-  amber: { iconBg: 'var(--crm-amber-glow)', iconColor: 'var(--crm-amber)' },
-  red: { iconBg: 'rgba(239,68,68,0.12)', iconColor: '#F87171' },
-  blue: { iconBg: 'rgba(96,165,250,0.12)', iconColor: '#60A5FA' },
-  purple: { iconBg: 'rgba(192,132,252,0.12)', iconColor: '#C084FC' },
-};
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 
 const DashboardContent = () => {
   const { user } = useAuth();
@@ -29,6 +22,7 @@ const DashboardContent = () => {
   const [activeTaskTab, setActiveTaskTab] = useState<'today' | 'overdue' | 'upcoming'>('today');
   
   const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
+  const isAdmin = user?.role === 'ADMIN';
 
   const { data: managerSummary, isLoading: managerLoading } = useQuery({
     queryKey: ['dashboard', 'summary'],
@@ -40,6 +34,24 @@ const DashboardContent = () => {
     queryKey: ['dashboard', 'recentLeads'],
     queryFn: getRecentLeads,
     enabled: !!user
+  });
+
+  const { data: teamPipeline } = useQuery({
+    queryKey: ['dashboard', 'teamPipeline'],
+    queryFn: getTeamPipeline,
+    enabled: !!user
+  });
+
+  const { data: orgUsers = [] } = useQuery({
+    queryKey: ['dashboard', 'orgUsers'],
+    queryFn: getUsers,
+    enabled: !!user && isAdmin
+  });
+
+  const { data: orgLeads = [] } = useQuery({
+    queryKey: ['dashboard', 'orgLeads'],
+    queryFn: getLeads,
+    enabled: !!user && isAdmin
   });
 
   const { data: kpis, isLoading: kpiLoading } = useQuery({
@@ -55,6 +67,47 @@ const DashboardContent = () => {
   });
 
   const loading = (isManagerOrAdmin ? managerLoading : (kpiLoading || taskLoading)) || recentLoading;
+
+  const pipelineBars = useMemo(() => {
+    const dist = teamPipeline?.distribution;
+    if (!dist) return [];
+    const order: Array<{ key: string; label: string; color: string }> = [
+      { key: 'NEW', label: 'New', color: '#60A5FA' },
+      { key: 'CONTACTED', label: 'Contacted', color: '#FBBF24' },
+      { key: 'INTERESTED', label: 'Interested', color: '#C084FC' },
+      { key: 'CONVERTED', label: 'Converted', color: 'var(--primary)' },
+      { key: 'LOST', label: 'Lost', color: '#F87171' },
+    ];
+    return order.map(o => ({
+      stage: o.label,
+      value: dist[o.key] || 0,
+      color: o.color
+    }));
+  }, [teamPipeline]);
+
+  const conversionSnapshot = useMemo(() => {
+    if (!pipelineBars.length) return null;
+    const total = pipelineBars.reduce((acc, d) => acc + d.value, 0);
+    const converted = pipelineBars.find(d => d.stage === 'Converted')?.value || 0;
+    const lost = pipelineBars.find(d => d.stage === 'Lost')?.value || 0;
+    const active = Math.max(total - converted - lost, 0);
+    const rate = total > 0 ? (converted / total) * 100 : 0;
+    return { total, converted, active, lost, rate };
+  }, [pipelineBars]);
+
+  const adminMetrics = useMemo(() => {
+    if (!isAdmin) return null;
+    const managers = (orgUsers as any[]).filter(u => u.role === 'MANAGER').length;
+    const sales = (orgUsers as any[]).filter(u => u.role === 'SALES').length;
+    const total = (orgLeads as any[]).length;
+    const converted = (orgLeads as any[]).filter(l => l.stage === 'CONVERTED').length;
+    const conversionRate = total > 0 ? (converted / total) * 100 : 0;
+    const pipelineValue = (orgLeads as any[])
+      .filter(l => l.stage !== 'CONVERTED' && l.stage !== 'LOST')
+      .reduce((acc, l) => acc + (Number(l.value) || 0), 0);
+
+    return { managers, sales, conversionRate, pipelineValue };
+  }, [isAdmin, orgLeads, orgUsers]);
 
   const salesKPIs = useMemo(() => {
     if (!kpis) return [];
@@ -98,24 +151,14 @@ const DashboardContent = () => {
     ];
   }, [kpis]);
 
-  const managerKPIRibbon = useMemo(() => {
-    if (!managerSummary) return [];
-    return [
-      { title: 'Activity', value: managerSummary.taskHealth.total, icon: Activity, color: 'blue', label: 'Tasks Created' },
-      { title: 'Completed', value: managerSummary.taskHealth.completed, icon: CheckCircle2, color: 'green', label: 'Tasks Completed' },
-      { title: 'Pending', value: managerSummary.taskHealth.pending, icon: Clock, color: 'amber', label: 'Pending Tasks' },
-      { title: 'Overdue', value: managerSummary.taskHealth.overdue, icon: AlertTriangle, color: 'red', label: 'Overdue Tasks' },
-    ];
-  }, [managerSummary]);
-
-  const keyMetricCards = useMemo(() => {
-    if (!managerSummary) return [];
-    return [
-      { label: 'Efficiency', value: `${Math.round(managerSummary.keyMetrics.taskCompletionRate)}%`, icon: CheckCircle2, color: 'var(--crm-teal)' },
-      { label: 'Pipeline', value: managerSummary.keyMetrics.activeLeads, icon: Target, color: '#60A5FA' },
-      { label: 'Conversion', value: `${Math.round(managerSummary.keyMetrics.conversionRate)}%`, icon: TrendingUp, color: '#C084FC' },
-    ];
-  }, [managerSummary]);
+  const colorMap: Record<string, { iconBg: string; iconColor: string }> = {
+    teal: { iconBg: 'var(--crm-teal-glow)', iconColor: 'var(--crm-teal)' },
+    green: { iconBg: 'rgba(34,197,94,0.12)', iconColor: '#4ADE80' },
+    amber: { iconBg: 'var(--crm-amber-glow)', iconColor: 'var(--crm-amber)' },
+    red: { iconBg: 'rgba(239,68,68,0.12)', iconColor: '#F87171' },
+    blue: { iconBg: 'rgba(96,165,250,0.12)', iconColor: '#60A5FA' },
+    purple: { iconBg: 'rgba(192,132,252,0.12)', iconColor: '#C084FC' },
+  };
 
   const completeTaskMutation = useMutation({
     mutationFn: markTaskComplete,
@@ -154,8 +197,8 @@ const DashboardContent = () => {
           </div>
           <div className="flex items-center gap-3 animate-in slide-in-from-right duration-700">
             {user?.role === 'ADMIN' && (
-              <div className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-status-success/10 text-status-success border border-status-success/20 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4" />
+              <div className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-primary/10 text-primary border border-primary/20 flex items-center gap-2">
+                <Shield className="w-4 h-4" />
                 Admin View
               </div>
             )}
@@ -188,15 +231,25 @@ const DashboardContent = () => {
           <div className="space-y-8 animate-in fade-in duration-700">
             {/* KPI Ribbon */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {managerKPIRibbon.map((item, i) => {
-                const colors = COLOR_MAP[item.color] || COLOR_MAP.teal;
+              {(isAdmin ? [
+                { title: 'Managers', value: adminMetrics?.managers ?? 0, icon: Shield, color: 'purple', label: 'Total Managers' },
+                { title: 'Sales Reps', value: adminMetrics?.sales ?? 0, icon: Users2, color: 'blue', label: 'Total Sales Reps' },
+                { title: 'Conversion', value: `${(adminMetrics?.conversionRate ?? 0).toFixed(1)}%`, icon: TrendingUp, color: 'green', label: 'Org-wide Conversion Rate' },
+                { title: 'Pipeline Value', value: `₹${Math.round(adminMetrics?.pipelineValue ?? 0).toLocaleString('en-IN')}`, icon: Target, color: 'teal', label: 'Total Pipeline Value' },
+              ] : [
+                { title: 'Activity', value: managerSummary.taskHealth.total, icon: Activity, color: 'blue', label: 'Tasks Created' },
+                { title: 'Completed', value: managerSummary.taskHealth.completed, icon: CheckCircle2, color: 'green', label: 'Tasks Completed' },
+                { title: 'Pending', value: managerSummary.taskHealth.pending, icon: Clock, color: 'amber', label: 'Pending Tasks' },
+                { title: 'Overdue', value: managerSummary.taskHealth.overdue, icon: AlertTriangle, color: 'red', label: 'Overdue Tasks' },
+              ]).map((item: any, i: number) => {
+                const colors = colorMap[item.color] || colorMap.teal;
                 return (
                   <div key={item.title} className={`crm-card group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
                     <div className="flex justify-between items-center mb-4">
                        <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: colors.iconBg }}>
                          <item.icon className="w-5 h-5" style={{ color: colors.iconColor }} />
                        </div>
-                       {item.title === 'Overdue' && item.value > 0 && (
+                       {item.title === 'Overdue' && typeof item.value === 'number' && item.value > 0 && (
                           <span className="flex h-3 w-3 rounded-full bg-red-500 shadow-lg shadow-red-500/40 relative">
                             <span className="absolute inset-0 rounded-full animate-ping bg-red-500 opacity-75"></span>
                           </span>
@@ -224,47 +277,44 @@ const DashboardContent = () => {
                     <p className="text-xs font-semibold uppercase tracking-wider opacity-40">Live Status</p>
                   </div>
                   <div className="p-8 space-y-4">
-                    {managerSummary.teamPerformance.map((item: any) => {
-                      const isManagerItem = !!item.managerName;
-                      const displayName = isManagerItem ? item.managerName : item.name;
-                      const displayId = isManagerItem ? item.managerId : item.id;
-                      const secondaryLabel = isManagerItem ? `${item.repsCount} Team Members` : `${item.interactionsWeek} Tasks this week`;
-
-                      return (
-                        <div key={displayId} className="p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/10 border border-border/40 hover:bg-muted/20 hover:border-primary/20 transition-all group">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 shadow-inner group-hover:rotate-12 transition-transform">
-                              {displayName.charAt(0)}
-                            </div>
-                            <div>
-                               <p className="font-bold text-foreground">{displayName}</p>
-                               <p className="text-xs font-semibold uppercase tracking-wider opacity-40">{secondaryLabel}</p>
-                            </div>
+                    {managerSummary.teamPerformance.map((item: any) => (
+                      <div key={item.id} className="p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/10 border border-border/40 hover:bg-muted/20 hover:border-primary/20 transition-all group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 shadow-inner group-hover:rotate-12 transition-transform">
+                            {(item?.name?.trim?.()?.[0] ?? '?').toUpperCase()}
                           </div>
-                          <div className="flex items-center gap-8 pr-4">
-                            <div className="text-center">
-                               <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Queue</p>
-                               <p className="font-bold text-foreground">{item.pending || item.pendingCount || 0}</p>
-                            </div>
-                            <div className="text-center">
-                               <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Closed</p>
-                               <p className="font-bold text-primary">{item.completed || (item.totalTasks - item.pendingCount) || 0}</p>
-                            </div>
-                            <div className="text-center min-w-[70px]">
-                               <p className="text-[10px] font-bold text-red-500/40 uppercase mb-1">Critical</p>
-                               <p className={`font-bold ${(item.overdue || item.overdueCount) > 0 ? 'text-red-500' : 'opacity-20'}`}>
-                                 {item.overdue || item.overdueCount || 0}
-                               </p>
-                            </div>
+                          <div>
+                             <p className="font-bold text-foreground">{item?.name || 'Unknown'}</p>
+                             <p className="text-xs font-semibold uppercase tracking-wider opacity-40">{item.interactionsWeek} Tasks this week</p>
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="flex items-center gap-8 pr-4">
+                          <div className="text-center">
+                             <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Queue</p>
+                             <p className="font-bold text-foreground">{item.pending}</p>
+                          </div>
+                          <div className="text-center">
+                             <p className="text-[10px] font-bold opacity-30 uppercase mb-1">Closed</p>
+                             <p className="font-bold text-primary">{item.completed}</p>
+                          </div>
+                          <div className="text-center min-w-[70px]">
+                             <p className="text-[10px] font-bold text-red-500/40 uppercase mb-1">Critical</p>
+                             <p className={`font-bold ${item.overdue > 0 ? 'text-red-500' : 'opacity-20'}`}>
+                               {item.overdue}
+                             </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                   {keyMetricCards.map(metric => (
+                <div className={isAdmin ? "grid grid-cols-1 sm:grid-cols-3 gap-6" : "grid grid-cols-1 sm:grid-cols-2 gap-6"}>
+                   {[
+                     { label: 'Efficiency', value: `${Math.round(managerSummary.keyMetrics.taskCompletionRate)}%`, icon: CheckCircle2, color: 'var(--crm-teal)' },
+                     ...(isAdmin ? [{ label: 'Pipeline', value: managerSummary.keyMetrics.activeLeads, icon: Target, color: '#60A5FA' }] : []),
+                     { label: 'Conversion', value: `${Math.round(managerSummary.keyMetrics.conversionRate)}%`, icon: TrendingUp, color: '#C084FC' },
+                   ].map((metric: any) => (
                       <div key={metric.label} className="crm-card flex items-center gap-4 active:scale-95 cursor-pointer">
                          <div className="p-3 rounded-xl bg-muted/50 border border-border/40">
                             <metric.icon className="w-5 h-5" style={{ color: metric.color }} />
@@ -276,6 +326,127 @@ const DashboardContent = () => {
                       </div>
                    ))}
                 </div>
+
+                {/* Extra Graphs */}
+                {!isAdmin && pipelineBars.length > 0 && conversionSnapshot && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="crm-card !p-0 overflow-hidden">
+                      <div className="p-7 border-b border-border/40 flex items-center justify-between">
+                        <div>
+                          <p className="crm-page-subtitle">Pipeline Distribution</p>
+                          <p className="text-lg font-bold text-foreground mt-1" style={{ fontFamily: 'var(--ll-font-display)' }}>
+                            Stage Volume
+                          </p>
+                        </div>
+                        {teamPipeline?.biggestDropOff && (
+                          <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-widest">
+                            Drop-off: {teamPipeline.biggestDropOff.stage} ({teamPipeline.biggestDropOff.percentage}%)
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-7 h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={pipelineBars} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
+                            <XAxis dataKey="stage" tick={{ fontSize: 10, fontWeight: 800 }} />
+                            <YAxis tick={{ fontSize: 10, fontWeight: 800 }} />
+                            <Tooltip
+                              contentStyle={{
+                                background: 'rgba(15, 23, 42, 0.92)',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                borderRadius: '14px',
+                                color: '#F1F5F9',
+                                padding: '10px 12px'
+                              }}
+                              labelStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
+                              itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
+                            />
+                            <Bar dataKey="value" radius={[10, 10, 0, 0]}>
+                              {pipelineBars.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="crm-card !p-0 overflow-hidden">
+                      <div className="p-7 border-b border-border/40 flex items-center justify-between">
+                        <div>
+                          <p className="crm-page-subtitle">Conversion Rate</p>
+                          <p className="text-lg font-bold text-foreground mt-1" style={{ fontFamily: 'var(--ll-font-display)' }}>
+                            Overall Snapshot
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-primary tabular-nums">
+                            {conversionSnapshot.rate.toFixed(1)}%
+                          </div>
+                          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                            Converted / Total
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-7 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+                        <div className="h-[220px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={[
+                                  { name: 'Converted', value: conversionSnapshot.converted, color: 'var(--primary)' },
+                                  { name: 'Active', value: conversionSnapshot.active, color: '#60A5FA' },
+                                  { name: 'Lost', value: conversionSnapshot.lost, color: '#F87171' },
+                                ]}
+                                dataKey="value"
+                                nameKey="name"
+                                innerRadius={58}
+                                outerRadius={86}
+                                paddingAngle={3}
+                              >
+                                {[
+                                  { color: 'var(--primary)' },
+                                  { color: '#60A5FA' },
+                                  { color: '#F87171' },
+                                ].map((c, i) => (
+                                  <Cell key={i} fill={c.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                contentStyle={{
+                                  background: 'rgba(15, 23, 42, 0.92)',
+                                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                                  borderRadius: '14px',
+                                  color: '#F1F5F9',
+                                  padding: '10px 12px'
+                                }}
+                                labelStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
+                                itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        <div className="space-y-4">
+                          {[
+                            { label: 'Converted', value: conversionSnapshot.converted, color: 'var(--primary)' },
+                            { label: 'Active', value: conversionSnapshot.active, color: '#60A5FA' },
+                            { label: 'Lost', value: conversionSnapshot.lost, color: '#F87171' },
+                            { label: 'Total', value: conversionSnapshot.total, color: 'rgba(148,163,184,0.7)' },
+                          ].map((m) => (
+                            <div key={m.label} className="flex items-center justify-between rounded-2xl border border-border/40 bg-muted/10 px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ background: m.color as any }} />
+                                <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">{m.label}</div>
+                              </div>
+                              <div className="text-sm font-bold tabular-nums text-foreground">{m.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Operations Side Console */}
@@ -329,7 +500,7 @@ const DashboardContent = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {salesKPIs.map((card, i) => {
                 const Icon = card.icon;
-                const colors = COLOR_MAP[card.color] || COLOR_MAP.teal;
+                const colors = colorMap[card.color] || colorMap.teal;
                 return (
                   <div key={card.title} className={`crm-card crm-card-hover group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
                     <div className="flex justify-between items-start mb-6">
@@ -337,7 +508,19 @@ const DashboardContent = () => {
                         <Icon className="w-6 h-6" style={{ color: colors.iconColor }} />
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {/* Metrics removed for cleaner UI */}
+                        {card.trend !== 0 && (
+                          <div className={`flex items-center gap-0.5 px-2 py-1 rounded-lg text-[10px] font-bold border ${
+                            ((card.isInverse ? card.trend < 0 : card.trend > 0))
+                              ? 'bg-status-success/5 border-status-success/20 text-status-success' 
+                              : 'bg-status-danger/5 border-status-danger/20 text-status-danger'
+                          }`}>
+                            {card.trend > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                            {Math.abs(card.trend)}%
+                          </div>
+                        )}
+                        <div className="p-2 rounded-lg bg-muted/50 border border-border/40">
+                          <Icon className="w-4 h-4 opacity-40 shrink-0" />
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -350,9 +533,142 @@ const DashboardContent = () => {
               })}
             </div>
 
+            {/* Extra Graphs — sales rep */}
+            {pipelineBars.length > 0 && conversionSnapshot && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="crm-card !p-0 overflow-hidden">
+                  <div className="p-7 border-b border-border/40 flex items-center justify-between">
+                    <div>
+                      <p className="crm-page-subtitle">Pipeline Distribution</p>
+                      <p className="text-lg font-bold text-foreground mt-1" style={{ fontFamily: 'var(--ll-font-display)' }}>
+                        My Stage Volume
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-7 h-[260px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={pipelineBars} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
+                        <XAxis dataKey="stage" tick={{ fontSize: 10, fontWeight: 800 }} />
+                        <YAxis tick={{ fontSize: 10, fontWeight: 800 }} />
+                        <Tooltip
+                          contentStyle={{
+                            background: 'rgba(15, 23, 42, 0.92)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            borderRadius: '14px',
+                            color: '#F1F5F9',
+                            padding: '10px 12px'
+                          }}
+                          labelStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
+                          itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
+                        />
+                        <Bar dataKey="value" radius={[10, 10, 0, 0]}>
+                          {pipelineBars.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="crm-card !p-0 overflow-hidden">
+                  <div className="p-7 border-b border-border/40 flex items-center justify-between">
+                    <div>
+                      <p className="crm-page-subtitle">Conversion Rate</p>
+                      <p className="text-lg font-bold text-foreground mt-1" style={{ fontFamily: 'var(--ll-font-display)' }}>
+                        Snapshot
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-primary tabular-nums">
+                        {conversionSnapshot.rate.toFixed(1)}%
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                        Converted / Total
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-7 grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+                    <div className="h-[220px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Converted', value: conversionSnapshot.converted, color: 'var(--primary)' },
+                              { name: 'Active', value: conversionSnapshot.active, color: '#60A5FA' },
+                              { name: 'Lost', value: conversionSnapshot.lost, color: '#F87171' },
+                            ]}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={58}
+                            outerRadius={86}
+                            paddingAngle={3}
+                          >
+                            {[
+                              { color: 'var(--primary)' },
+                              { color: '#60A5FA' },
+                              { color: '#F87171' },
+                            ].map((c, i) => (
+                              <Cell key={i} fill={c.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              background: 'rgba(15, 23, 42, 0.92)',
+                              border: '1px solid rgba(255, 255, 255, 0.12)',
+                              borderRadius: '14px',
+                              color: '#F1F5F9',
+                              padding: '10px 12px'
+                            }}
+                            labelStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
+                            itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="space-y-3">
+                      {[
+                        { label: 'Converted', value: conversionSnapshot.converted, color: 'var(--primary)' },
+                        { label: 'Active', value: conversionSnapshot.active, color: '#60A5FA' },
+                        { label: 'Lost', value: conversionSnapshot.lost, color: '#F87171' },
+                      ].map((m) => (
+                        <div key={m.label} className="flex items-center justify-between rounded-2xl border border-border/40 bg-muted/10 px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ background: m.color as any }} />
+                            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">{m.label}</div>
+                          </div>
+                          <div className="text-sm font-bold tabular-nums text-foreground">{m.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Tactical Tasks Console */}
-              <div className="lg:col-span-2 space-y-8">
+              {/* Action Console (swapped left) */}
+              <div className="space-y-8">
+                {hasPermission(user?.role as Role, 'canCreateLeads') && (
+                  <div className="crm-card">
+                    <h2 className="text-lg font-bold mb-6 text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Quick Actions</h2>
+                    <div className="space-y-3">
+                      <Link to="/leads?open=add" className="crm-btn-primary w-full">
+                        Add New Lead
+                      </Link>
+                      <Link
+                        to="/tasks"
+                        className="w-full h-11 flex items-center justify-center rounded-xl transition-all font-bold uppercase tracking-wider text-[10px] border border-border/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        View All Tasks
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tactical Tasks Console */}
                 <div className="crm-card !p-0 overflow-hidden">
                   <div className="p-8 pb-4">
                     <div className="flex items-center gap-3 mb-6">
@@ -418,26 +734,7 @@ const DashboardContent = () => {
                 </div>
               </div>
 
-              {/* Action Console */}
-              <div className="space-y-8">
-                {hasPermission(user?.role as Role, 'canCreateLeads') && (
-                  <div className="crm-card">
-                    <h2 className="text-lg font-bold mb-6 text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Quick Actions</h2>
-                    <div className="space-y-3">
-                      <Link to="/leads?open=add" className="crm-btn-primary w-full">
-                        Add New Lead
-                      </Link>
-                      <Link
-                        to="/tasks"
-                        className="w-full h-11 flex items-center justify-center rounded-xl transition-all font-bold uppercase tracking-wider text-[10px] border border-border/40 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        View All Tasks
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                {/* Recent Active Pipeline */}
+              <div className="lg:col-span-2 space-y-8">
                 <div className="crm-card !p-0 overflow-hidden">
                   <div className="p-8 border-b border-border/40 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
@@ -447,20 +744,20 @@ const DashboardContent = () => {
                       <h2 className="text-lg font-bold text-foreground truncate" style={{ fontFamily: 'var(--ll-font-display)' }}>Recent Leads</h2>
                     </div>
                     <Link to="/kanban" className="px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider border border-border/40 hover:bg-muted hover:border-primary/20 transition-all flex items-center gap-2 shrink-0">
-                      <ArrowRight className="w-4 h-4" />
+                      Full Pipeline <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                   <div className="p-8">
                     <div className="space-y-4">
                       {recentLeads.length > 0 ? recentLeads.map((lead: LeadType) => (
-                        <Link key={lead.id} to={`/leads/${lead.id}`} className="flex flex-col p-5 rounded-2xl transition-all group gap-4 bg-muted/10 border border-border/40 hover:bg-primary/5 hover:border-primary/20">
-                          <div className="flex items-center gap-4 min-w-0">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-base transition-transform group-hover:scale-105 bg-primary/10 text-primary border border-primary/20 shadow-inner shrink-0 leading-none">
-                              {lead.company.charAt(0)}
+                        <Link key={lead.id} to={`/leads/${lead.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl transition-all group gap-4 bg-muted/10 border border-border/40 hover:bg-primary/5 hover:border-primary/20">
+                          <div className="flex items-center gap-5 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-primary/10 text-primary border border-primary/20 shadow-inner shrink-0 leading-none">
+                              {(lead?.company?.trim?.()?.[0] ?? '?').toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-base tracking-tight truncate text-foreground leading-none">{lead.company}</p>
-                              <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <p className="font-bold text-lg tracking-tight truncate text-foreground leading-none">{lead.company || '—'}</p>
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
                                 <span className={`crm-badge text-[8px] shrink-0 ${lead.stage === 'NEW' ? 'badge-stage-new' :
                                   lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
                                     lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
@@ -469,20 +766,25 @@ const DashboardContent = () => {
                                   }`}>
                                   {lead.stage}
                                 </span>
-                                <span className={`crm-badge text-[8px] shrink-0 ${lead.priority === 'HIGH' ? 'badge-priority-high' :
-                                  lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
-                                    'badge-priority-low'
-                                  }`}>
-                                  {lead.priority}
+                                <span className="text-[10px] font-bold opacity-30 tracking-wider">
+                                  ₹{(Number(lead.value) || 0).toLocaleString('en-IN')}
                                 </span>
                               </div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-4 self-start sm:self-center">
+                            <span className={`crm-badge text-[8px] shrink-0 ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                              lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
+                                'badge-priority-low'
+                              }`}>
+                              {lead.priority}
+                            </span>
+                          </div>
                         </Link>
                       )) : (
-                        <div className="py-12 text-center opacity-30 grayscale">
-                          <Activity className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                          <p className="text-[10px] font-semibold uppercase tracking-wider">No Recent Leads</p>
+                        <div className="py-16 text-center opacity-30 grayscale">
+                          <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                          <p className="text-xs font-semibold uppercase tracking-wider">No Recent Leads</p>
                         </div>
                       )}
                     </div>
