@@ -8,23 +8,22 @@ const { validateUserContext, validateId } = require('../utils/validation');
  */
 function mapLeadToLegacy(lead) {
     if (!lead) return null;
-    const mapEnum = (val) => val ? val.charAt(0).toUpperCase() + val.slice(1).toLowerCase() : val;
     return {
         ...lead,
         contact: lead.contactName,
-        priority: mapEnum(lead.priority),
-        stage: lead.stage.toLowerCase(),
+        // Keep enums in DB format (uppercase) to match frontend expectations.
+        priority: lead.priority,
+        stage: lead.stage,
         assignedTo: lead.assignedTo ? lead.assignedTo.name : 'Unassigned',
     };
 }
 
 function mapTaskToLegacy(task) {
     if (!task) return null;
-    const mapEnum = (val) => val ? val.charAt(0).toUpperCase() + val.slice(1).toLowerCase() : val;
     return {
         ...task,
-        status: task.status.toLowerCase(),
-        priority: mapEnum(task.priority),
+        status: task.status,
+        priority: task.priority,
         assignedTo: task.assignedTo ? task.assignedTo.name : 'Unassigned',
     };
 }

@@ -1,9 +1,11 @@
 // Backend server for CRM Web Application
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
+const { startCriticalLeadFollowUpCron } = require('./jobs/criticalLeadFollowUpCron');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -12,6 +14,7 @@ const tasksRoutes = require('./routes/tasks');
 const dashboardRoutes = require('./routes/dashboard');
 const usersRoutes = require('./routes/users');
 const interactionsRoutes = require('./routes/interactions');
+const adminRoutes = require('./routes/admin');
 const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
@@ -66,6 +69,7 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/interactions', interactionsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Swagger Documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -98,4 +102,7 @@ app.listen(PORT, () => {
   console.log(`✅ CRM Backend Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 Allowed Origin: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+
+  // Background jobs (cron)
+  startCriticalLeadFollowUpCron();
 });

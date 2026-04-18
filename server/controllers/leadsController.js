@@ -1,6 +1,7 @@
 const prisma = require('../utils/prisma');
 const { addRiskToLead } = require('../utils/riskCalculator');
 const { getAccessibleUserIds } = require('../utils/hierarchy');
+const ExcelJS = require('exceljs');
 
 
 
@@ -233,7 +234,7 @@ async function updateLead(req, res) {
 async function updateLeadStage(req, res) {
     try {
         const { id } = req.params;
-        const { stage } = req.body;
+        const { stage, notes, summary } = req.body;
         const { role, id: userId, organizationId } = req.user;
         if (role !== 'SALES') {
             return res.status(403).json({
@@ -250,13 +251,31 @@ async function updateLeadStage(req, res) {
             return res.status(403).json({ success: false, message: 'Access denied: Lead ownership is outside your team scope' });
         }
 
-        await prisma.lead.updateMany({
-            where: { id: parseInt(id), organizationId },
-            data: {
-                stage: stage.toUpperCase(),
-                lastInteraction: new Date(),
-                convertedAt: stage.toUpperCase() === 'CONVERTED' ? new Date() : null
-            }
+        const normalizedStage = stage.toUpperCase();
+        const stageBefore = existingLead.stage;
+        const stageAfter = normalizedStage;
+
+        await prisma.$transaction(async (tx) => {
+            await tx.lead.update({
+                where: { id: parseInt(id) },
+                data: {
+                    stage: stageAfter,
+                    lastInteraction: new Date(),
+                    convertedAt: stageAfter === 'CONVERTED' ? new Date() : null
+                }
+            });
+
+            await tx.interaction.create({
+                data: {
+                    organizationId,
+                    leadId: parseInt(id),
+                    performedById: userId,
+                    type: 'OTHER',
+                    date: new Date(),
+                    summary: summary || `Pipeline stage updated: ${stageBefore} → ${stageAfter}`,
+                    notes: notes || null
+                }
+            });
         });
 
         const updatedLead = await prisma.lead.findFirst({
@@ -343,6 +362,98 @@ async function assignLead(req, res) {
     }
 }
 
+/**
+ * Export accessible leads as Excel (.xlsx)
+ * Optional query: q (search by company/contact/email)
+ */
+async function exportLeads(req, res) {
+    try {
+        const { organizationId } = req.user;
+        const accessibleIds = await getAccessibleUserIds(req.user);
+        const qRaw = (req.query.q || '').toString().trim();
+
+        const searchFilter = qRaw
+            ? {
+                OR: [
+                    { company: { contains: qRaw, mode: 'insensitive' } },
+                    { contactName: { contains: qRaw, mode: 'insensitive' } },
+                    { email: { contains: qRaw, mode: 'insensitive' } }
+                ]
+            }
+            : {};
+
+        const leads = await prisma.lead.findMany({
+            where: {
+                organizationId,
+                assignedToId: { in: accessibleIds },
+                ...searchFilter
+            },
+            include: { assignedTo: { select: { id: true, name: true, email: true } } },
+            orderBy: [{ stage: 'asc' }, { priority: 'desc' }, { createdAt: 'desc' }]
+        });
+
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'LeadLinkCRM';
+        workbook.created = new Date();
+
+        const sheet = workbook.addWorksheet('Leads');
+        sheet.columns = [
+            { header: 'Lead ID', key: 'id', width: 10 },
+            { header: 'Company', key: 'company', width: 28 },
+            { header: 'Contact', key: 'contactName', width: 20 },
+            { header: 'Email', key: 'email', width: 26 },
+            { header: 'Phone', key: 'phone', width: 16 },
+            { header: 'Value', key: 'value', width: 12 },
+            { header: 'Priority', key: 'priority', width: 10 },
+            { header: 'Stage', key: 'stage', width: 12 },
+            { header: 'Lead Score', key: 'leadScore', width: 11 },
+            { header: 'Risk', key: 'risk', width: 8 },
+            { header: 'Assigned To', key: 'assignedTo', width: 18 },
+            { header: 'Last Interaction', key: 'lastInteraction', width: 22 },
+            { header: 'Created At', key: 'createdAt', width: 22 }
+        ];
+
+        // Header styling
+        sheet.getRow(1).font = { bold: true };
+        sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+        for (const lead of leads) {
+            const withRisk = addRiskToLead(lead);
+            sheet.addRow({
+                id: lead.id,
+                company: lead.company,
+                contactName: lead.contactName,
+                email: lead.email,
+                phone: lead.phone || '',
+                value: lead.value,
+                priority: lead.priority,
+                stage: lead.stage,
+                leadScore: lead.leadScore,
+                risk: withRisk.risk,
+                assignedTo: lead.assignedTo?.name || '',
+                lastInteraction: lead.lastInteraction ? new Date(lead.lastInteraction) : '',
+                createdAt: lead.createdAt ? new Date(lead.createdAt) : ''
+            });
+        }
+
+        // Date formatting
+        sheet.getColumn('lastInteraction').numFmt = 'yyyy-mm-dd hh:mm';
+        sheet.getColumn('createdAt').numFmt = 'yyyy-mm-dd hh:mm';
+
+        const safeQ = qRaw ? `_${qRaw.replace(/[^\w-]+/g, '_').slice(0, 32)}` : '';
+        const filename = `leads_export${safeQ}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.send(Buffer.from(buffer));
+    } catch (error) {
+        console.error('Error exporting leads:', error);
+        res.status(500).json({ success: false, message: 'Failed to export leads' });
+    }
+}
+
 module.exports = {
     getAllLeads,
     getLeadById,
@@ -350,5 +461,6 @@ module.exports = {
     updateLead,
     updateLeadStage,
     deleteLead,
-    assignLead
+    assignLead,
+    exportLeads
 };

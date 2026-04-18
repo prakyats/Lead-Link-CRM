@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { Link, useNavigate } from 'react-router';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus, Share2, Target, Zap, X } from 'lucide-react';
+import { Clock, AlertCircle, MoreHorizontal, Building2, User2, Plus, Share2, Target, Zap, X, Search, Download } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient, QueryErrorResetBoundary } from '@tanstack/react-query';
-import { getLeads, updateLeadStage as updateLeadStageApi } from '../api/leads';
+import { exportLeadsExcel, getLeads, updateLeadStage as updateLeadStageApi } from '../api/leads';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useAuth } from '../contexts/AuthContext';
 import { formatRelativeTime, formatDate } from '../utils/dateHelpers';
@@ -14,6 +14,15 @@ import { MobileKanban } from '../components/Kanban/MobileKanban';
 import { KanbanSkeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Lead {
   id: number;
@@ -53,7 +62,7 @@ function LeadCard({ lead, canDrag }: LeadCardProps) {
       <div className="flex items-start justify-between mb-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm bg-primary/10 text-primary border border-primary/20 shadow-inner">
-            {lead.company.charAt(0)}
+            {(lead?.company?.trim?.()?.[0] ?? '?').toUpperCase()}
           </div>
           <div>
             <h3 className="text-sm font-semibold leading-tight text-foreground text-foreground transition-colors group-hover:text-primary">{lead.company}</h3>
@@ -188,12 +197,30 @@ function KanbanInnerContent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [stageDialogOpen, setStageDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [stageDraft, setStageDraft] = useState<{
+    leadId: number;
+    company: string;
+    fromStage: Lead['stage'];
+    toStage: Lead['stage'];
+  } | null>(null);
+  const [stageNotes, setStageNotes] = useState('');
   
   const { data: leads = [], isLoading: loading } = useQuery({
     queryKey: ['leads'],
     queryFn: getLeads,
     enabled: !!user?.id
   });
+
+  const filteredLeads = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return leads as any[];
+    return (leads as any[]).filter((l) => {
+      const hay = `${l.company || ''} ${l.contact || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [leads, searchQuery]);
 
   const canDrag = user?.role === 'SALES';
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -220,13 +247,41 @@ function KanbanInnerContent() {
   });
 
   const [selectedMobileLead, setSelectedMobileLead] = useState<Lead | null>(null);
+  const leadById = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const l of leads as any[]) map.set(l.id, l);
+    return map;
+  }, [leads]);
 
-  const handleDrop = async (leadId: number, newStage: Lead['stage']) => {
+  const openStageDraft = (leadId: number, newStage: Lead['stage']) => {
+    const lead = leadById.get(leadId);
+    const fromStage = (lead?.stage || 'NEW') as Lead['stage'];
+    const company = lead?.company || `Lead #${leadId}`;
+    const toStage = newStage;
+
+    setStageDraft({ leadId, company, fromStage, toStage });
+    setStageNotes(`Moved from ${fromStage} to ${toStage}.`);
+    setStageDialogOpen(true);
+  };
+
+  const closeStageDraft = () => {
+    setStageDialogOpen(false);
+    setStageDraft(null);
+    setStageNotes('');
+  };
+
+  const saveStageDraft = async () => {
+    if (!stageDraft) return;
     if (user?.role !== 'SALES') return;
+
+    const { leadId, fromStage, toStage } = stageDraft;
+    const summary = `Pipeline stage updated: ${fromStage} → ${toStage}`;
+
     try {
-      await stageMutation.mutateAsync({ id: leadId, stage: newStage });
-      toast.success(`Stage: ${newStage}`, {
-        description: 'Stage updated. View lead?',
+      await stageMutation.mutateAsync({ id: leadId, stage: toStage, notes: stageNotes, summary });
+      closeStageDraft();
+      toast.success(`Stage: ${toStage}`, {
+        description: 'Stage updated and logged. View lead?',
         action: {
           label: 'VIEW',
           onClick: () => navigate(`/leads/${leadId}`)
@@ -236,6 +291,30 @@ function KanbanInnerContent() {
     } catch (error) {
       console.error('Error updating lead stage:', error);
     }
+  };
+
+  const handleExport = async () => {
+    try {
+      const q = searchQuery.trim() || undefined;
+      const { blob, filename } = await exportLeadsExcel({ q });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'leads_export.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Export downloaded', { description: 'Excel file generated from your current leads list.' });
+    } catch (e) {
+      console.error('Export failed', e);
+      toast.error('Export failed', { description: 'Unable to download Excel export.' });
+    }
+  };
+
+  const handleDrop = async (leadId: number, newStage: Lead['stage']) => {
+    if (user?.role !== 'SALES') return;
+    openStageDraft(leadId, newStage);
   };
 
   const columns = [
@@ -271,6 +350,19 @@ function KanbanInnerContent() {
               <p className="text-sm font-medium text-muted-foreground mt-2">Drag and drop leads to update their pipeline stage</p>
             </div>
             <div className="flex items-center gap-6 animate-in slide-in-from-right duration-700">
+              <div className="relative w-[360px]">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search leads (company / contact)…"
+                  className="crm-input pl-11"
+                />
+              </div>
+              <button className="crm-btn-secondary !px-5 !py-3 flex items-center gap-3" onClick={handleExport}>
+                <Download size={14} />
+                <span className="text-sm font-semibold">Export Excel</span>
+              </button>
               {!canDrag && (
                 <div className="px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-2">
                   <Clock className="w-4 h-4" />
@@ -318,6 +410,21 @@ function KanbanInnerContent() {
               ACTIVE
             </div>
           </div>
+
+          <div className="mt-4 flex gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search leads…"
+                className="crm-input pl-11"
+              />
+            </div>
+            <button className="crm-btn-secondary !px-4 !py-3 flex items-center gap-2" onClick={handleExport}>
+              <Download size={14} />
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -326,10 +433,10 @@ function KanbanInnerContent() {
           </div>
         ) : isMobile ? (
           <div className="flex-1 relative z-10">
-            <MobileKanban 
-              leads={leads} 
-              columns={columns} 
-              onUpdateStage={async (id, stage) => { await stageMutation.mutateAsync({ id, stage }); }} 
+            <MobileKanban
+              leads={filteredLeads}
+              columns={columns}
+              onUpdateStage={async () => { /* handled via modal + draft */ }}
               canDrag={canDrag}
               setSelectedLead={setSelectedMobileLead}
             />
@@ -341,8 +448,8 @@ function KanbanInnerContent() {
                 key={column.stage}
                 title={column.title}
                 stage={column.stage}
-                leads={leads.filter((lead: any) => lead.stage === column.stage)}
-                count={leads.filter((lead: any) => lead.stage === column.stage).length}
+                leads={filteredLeads.filter((lead: any) => lead.stage === column.stage)}
+                count={filteredLeads.filter((lead: any) => lead.stage === column.stage).length}
                 color={column.color}
                 onDrop={handleDrop}
                 canDrag={canDrag}
@@ -350,6 +457,49 @@ function KanbanInnerContent() {
             ))}
           </div>
         )}
+
+        <Dialog open={stageDialogOpen} onOpenChange={(open) => { if (!open) closeStageDraft(); }}>
+          <DialogContent className="sm:max-w-xl rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Review stage change</DialogTitle>
+              <DialogDescription>
+                Edit the note below before saving. This will be logged in the background.
+              </DialogDescription>
+            </DialogHeader>
+
+            {stageDraft && (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border bg-muted/20 p-4">
+                  <div className="text-sm font-semibold text-foreground">{stageDraft.company}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {stageDraft.fromStage} → <span className="font-semibold text-foreground">{stageDraft.toStage}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Note (editable)
+                  </div>
+                  <Textarea
+                    value={stageNotes}
+                    onChange={(e) => setStageNotes(e.target.value)}
+                    placeholder="Add context for this stage change (what changed, next step, blockers, etc.)"
+                    className="min-h-28"
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <button className="crm-btn-secondary" onClick={closeStageDraft} disabled={stageMutation.isPending}>
+                Cancel
+              </button>
+              <button className="crm-btn-primary" onClick={saveStageDraft} disabled={stageMutation.isPending || !stageDraft}>
+                {stageMutation.isPending ? 'Saving…' : 'Save & Log'}
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
 
       {/* Relocated Mobile Modal */}
@@ -391,8 +541,8 @@ function KanbanInnerContent() {
                       <button
                         key={col.stage}
                         onClick={async () => {
-                          await stageMutation.mutateAsync({ id: selectedMobileLead.id, stage: col.stage });
                           setSelectedMobileLead(null);
+                          openStageDraft(selectedMobileLead.id, col.stage);
                         }}
                         disabled={isActive}
                         className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98] min-h-[56px] ${

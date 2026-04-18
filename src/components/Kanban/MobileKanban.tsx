@@ -24,7 +24,7 @@ interface Column {
 interface MobileKanbanProps {
   leads: Lead[];
   columns: Column[];
-  onUpdateStage: (leadId: number, newStage: Lead['stage']) => Promise<void>;
+  onUpdateStage: (args: { leadId: number; newStage: Lead['stage']; notes?: string; summary?: string }) => Promise<void>;
   canDrag: boolean;
   setSelectedLead: (lead: Lead | null) => void;
 }

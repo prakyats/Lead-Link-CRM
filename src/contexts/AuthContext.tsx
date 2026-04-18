@@ -47,7 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = useCallback(async (organizationSlug: string, email: string, password: string) => {
         try {
             const response = await api.post('/auth/login', { organizationSlug, email, password });
-            const { token, user: userData } = response.data;
+            const payload = response.data?.data ?? response.data;
+            const token = payload?.token;
+            const userData = payload?.user;
+
+            if (!token || !userData) {
+                throw new Error('Invalid login response');
+            }
 
             // Store token and user data
             localStorage.setItem('authToken', token);
@@ -55,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             setUser(userData);
         } catch (error: any) {
-            const message = error.response?.data?.error || 'Login failed';
+            const message = error.response?.data?.message || error.response?.data?.error || 'Login failed';
             throw new Error(message);
         }
     }, []);

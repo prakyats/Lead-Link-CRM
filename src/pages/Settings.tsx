@@ -109,7 +109,7 @@ export default function Settings() {
                                     <div className="relative group">
                                         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                                         <div className="relative w-28 h-28 rounded-[2rem] bg-primary flex items-center justify-center text-black text-4xl font-semibold shadow-[0_20px_50px_-10px_rgba(0,212,170,0.4)] transition-transform group-hover:scale-105">
-                                            {user?.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                                            {(user?.name?.split(' ')?.map(n => n?.[0]).join('').toUpperCase().substring(0, 2)) || 'LL'}
                                         </div>
                                     </div>
                                     

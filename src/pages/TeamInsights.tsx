@@ -81,8 +81,8 @@ const EfficiencyMatrixRow = ({ rep, isFirst }: { rep: any; isFirst: boolean }) =
       <td className="px-8 py-6">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold shadow-inner ${getAvatarColor(rep.name)}`}>
-              {rep.name.charAt(0)}
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold shadow-inner ${getAvatarColor(String(rep.name || '?'))}`}>
+              {(String(rep.name || '?').trim()[0] || '?').toUpperCase()}
             </div>
             {rep.priorityRank <= 3 && (
               <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 border-2 border-[#0B0F1A] flex items-center justify-center">
@@ -170,7 +170,7 @@ const RepsMatrix = ({ reps, isFlat = false, isAdmin = false }: { reps: any[], is
                   <td className="px-8 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                        {(rep.repName || rep.name).charAt(0)}
+                        {(String(rep.repName || rep.name || '?').trim()[0] || '?').toUpperCase()}
                       </div>
                       <span className="text-sm font-bold text-foreground">{rep.repName || rep.name}</span>
                     </div>

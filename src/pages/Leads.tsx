@@ -316,7 +316,7 @@ function LeadsInnerContent() {
 
                                                         <div className="flex-1 px-4 py-3 flex items-center gap-3 overflow-hidden">
                                                             <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] bg-primary/10 text-primary border border-primary/20 shrink-0">
-                                                                {lead.company.charAt(0)}
+                                                                {(lead?.company?.trim?.()?.[0] ?? '?').toUpperCase()}
                                                             </div>
                                                             <span className="font-bold text-sm text-foreground truncate block">
                                                                 {lead.company}
@@ -359,7 +359,7 @@ function LeadsInnerContent() {
                                                             <div className="w-[150px] px-4 py-3 whitespace-nowrap">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/20 flex items-center justify-center text-[9px] font-black text-purple-400 shrink-0">
-                                                                        {(lead.assignedTo || '?').charAt(0)}
+                                                                        {((lead?.assignedTo || '?').trim?.()?.[0] ?? '?').toUpperCase()}
                                                                     </div>
                                                                     <span className="text-[11px] font-bold text-muted-foreground truncate">
                                                                         {lead.assignedTo || 'NONE'}
@@ -474,7 +474,7 @@ function LeadsInnerContent() {
                                         <div className="flex items-center justify-between mb-6">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 rounded-full flex items-center justify-center font-semibold text-xl bg-primary/10 text-primary">
-                                                    {lead.company.charAt(0)}
+                                                    {(lead?.company?.trim?.()?.[0] ?? '?').toUpperCase()}
                                                 </div>
                                                 <div>
                                                     <h3 className="font-semibold text-lg text-foreground">{lead.company}</h3>
@@ -525,7 +525,7 @@ function LeadsInnerContent() {
                                                 <div className="space-y-2">
                                                     <div className="flex items-center gap-2.5">
                                                         <div className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-[10px] font-black text-purple-400">
-                                                            {(lead.assignedTo || '?').charAt(0)}
+                                                            {((lead?.assignedTo || '?').trim?.()?.[0] ?? '?').toUpperCase()}
                                                         </div>
                                                         <p className="text-xs font-bold text-muted-foreground">
                                                             Agent: <span className="text-foreground">{lead.assignedTo || 'UNASSIGNED'}</span>
