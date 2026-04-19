@@ -27,7 +27,7 @@ export const PERMISSIONS: Record<Role, Permissions> = {
         canShowTeamOversight: true,
         canAssignLeads: false,
         canAddInteractions: false,
-        canManagePipeline: true,
+        canManagePipeline: false,
         canViewTeamInsights: true,
     },
     [ROLES.MANAGER]: {

@@ -44,7 +44,7 @@ const KPICard = ({ title, value, icon: Icon, color, subtitle, delay = 0 }: any) 
       initial="initial"
       animate="animate"
       transition={{ ...fadeInUp.transition, delay }}
-      className="crm-card !p-5 crm-card-hover group"
+      className="crm-card ll-moving-edge !p-5 crm-card-hover group"
     >
       <div className="flex justify-between items-start mb-4">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-inner" style={{ background: colors.iconBg }}>
@@ -172,7 +172,12 @@ const RepsMatrix = ({ reps, isFlat = false, isAdmin = false }: { reps: any[], is
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
                         {(String(rep.repName || rep.name || '?').trim()[0] || '?').toUpperCase()}
                       </div>
-                      <span className="text-sm font-bold text-foreground">{rep.repName || rep.name}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-bold text-foreground truncate">{rep.repName || rep.name}</span>
+                        {rep.repEmail ? (
+                          <span className="text-[10px] font-semibold text-muted-foreground/55 truncate mt-0.5">{rep.repEmail}</span>
+                        ) : null}
+                      </div>
                     </div>
                   </td>
                   <td className="px-8 py-4 text-center font-mono-data text-sm">{rep.pending}</td>
@@ -195,7 +200,7 @@ const RepsMatrix = ({ reps, isFlat = false, isAdmin = false }: { reps: any[], is
 
   // Manager High-Fidelity Matrix
   return (
-    <div className="crm-card !p-0 border-border/40 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500">
+    <div className="crm-card ll-moving-edge !p-0 border-border/40 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500">
       <div className="p-8 border-b border-border/40 bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
            <div className="w-12 h-12 rounded-2xl bg-teal-500/10 flex items-center justify-center text-teal-400">
@@ -248,7 +253,7 @@ const ManagerCard = ({ manager, isExpanded, onToggle }: any) => {
       isActive={isExpanded}
       isStatic={true}
       onClick={onToggle}
-      className={`crm-card !p-0 overflow-hidden mb-4 border-border/40 transition-all ${isExpanded ? 'bg-primary/5' : ''}`}
+      className={`crm-card ll-moving-edge !p-0 overflow-hidden mb-4 border-border/40 transition-all ${isExpanded ? 'bg-primary/5' : ''}`}
     >
       <div className="p-6 flex flex-col lg:flex-row items-center justify-between group">
         <div className="flex items-center gap-5">
@@ -350,6 +355,37 @@ export default function TeamInsights() {
     setExpandedManagerId(prev => prev === id ? null : id);
   };
 
+  const commandMatrixSection = (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-1 mb-2">
+        <h2 className="text-sm font-black uppercase tracking-widest opacity-40">
+          {isAdmin ? 'Command Hierarchy' : 'Personnel Efficiency Matrix'}
+        </h2>
+        <p className="text-[10px] font-bold text-primary/60">
+          {isAdmin ? 'Select a manager to audit team metrics' : 'Live performance tracking for your sales force'}
+        </p>
+      </div>
+      {isAdmin ? (
+        teamPerformance.length > 0 ? (
+          teamPerformance.map((manager: any) => (
+            <ManagerCard
+              key={String(manager.managerId)}
+              manager={manager}
+              isExpanded={expandedManagerId === String(manager.managerId)}
+              onToggle={() => toggleManager(String(manager.managerId))}
+            />
+          ))
+        ) : (
+          <div className="crm-card ll-moving-edge !p-20 text-center opacity-30 border-dashed">
+            <span className="text-xs font-semibold uppercase tracking-wider">No team data available for oversight</span>
+          </div>
+        )
+      ) : (
+        <RepsMatrix reps={teamPerformance} isFlat={true} isAdmin={false} />
+      )}
+    </div>
+  );
+
   if (dashboardLoading || pipeLoading || (!isAdmin && perfLoading)) {
     return (
       <div className="crm-page-container flex items-center justify-center">
@@ -398,40 +434,12 @@ export default function TeamInsights() {
           </div>
 
           <div className="space-y-8">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-1 mb-2">
-                 <h2 className="text-sm font-black uppercase tracking-widest opacity-40">
-                   {isAdmin ? 'Command Hierarchy' : 'Personnel Efficiency Matrix'}
-                 </h2>
-                 <p className="text-[10px] font-bold text-primary/60">
-                   {isAdmin ? 'Select a manager to audit team metrics' : 'Live performance tracking for your sales force'}
-                 </p>
-              </div>
-              
-              {isAdmin ? (
-                teamPerformance.length > 0 ? (
-                  teamPerformance.map((manager: any) => (
-                    <ManagerCard 
-                      key={String(manager.managerId)} 
-                      manager={manager}
-                      isExpanded={expandedManagerId === String(manager.managerId)}
-                      onToggle={() => toggleManager(String(manager.managerId))}
-                    />
-                  ))
-                ) : (
-                  <div className="crm-card !p-20 text-center opacity-30 border-dashed">
-                    <span className="text-xs font-semibold uppercase tracking-wider">No team data available for oversight</span>
-                  </div>
-                )
-              ) : (
-                <RepsMatrix reps={teamPerformance} isFlat={true} isAdmin={false} />
-              )}
-            </div>
+            {isAdmin ? commandMatrixSection : null}
 
-            {/* Diagnostic Row - Chart and Risks */}
+            {/* Diagnostic Row - Chart and Risks (managers: shown above matrix) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Pipeline Distribution Chart */}
-              <div className="lg:col-span-2 crm-card shadow-xl">
+              <div className="lg:col-span-2 crm-card ll-moving-edge shadow-xl">
                  <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-500/10">
@@ -492,7 +500,7 @@ export default function TeamInsights() {
               {/* Strategic Diagnosis Column */}
               <div className="space-y-8">
                 {/* Risk Panel */}
-                <div className="crm-card bg-rose-500/5 border-rose-500/10 shadow-lg">
+                <div className="crm-card ll-moving-edge bg-rose-500/5 border-rose-500/10 shadow-lg">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500">
                       <AlertCircle className="w-5 h-5" />
@@ -551,7 +559,7 @@ export default function TeamInsights() {
                 </div>
 
                 {/* Suggested Actions Module */}
-                <div className="crm-card shadow-xl border-primary/10">
+                <div className="crm-card ll-moving-edge shadow-xl border-primary/10">
                    <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                         <Target className="w-5 h-5" />
@@ -591,6 +599,8 @@ export default function TeamInsights() {
                 </div>
               </div>
             </div>
+
+            {!isAdmin ? commandMatrixSection : null}
           </div>
         </div>
       </main>

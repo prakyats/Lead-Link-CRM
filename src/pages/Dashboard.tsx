@@ -13,13 +13,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import { Role } from '../utils/roles';
 import { DashboardSkeleton } from '@/components/ui/skeleton';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 const DashboardContent = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
   const [activeTaskTab, setActiveTaskTab] = useState<'today' | 'overdue' | 'upcoming'>('today');
+  const [adminRevenuePeriod, setAdminRevenuePeriod] = useState<'week' | 'month'>('week');
   
   const isManagerOrAdmin = user?.role === 'MANAGER' || user?.role === 'ADMIN';
   const isAdmin = user?.role === 'ADMIN';
@@ -108,6 +109,95 @@ const DashboardContent = () => {
 
     return { managers, sales, conversionRate, pipelineValue };
   }, [isAdmin, orgLeads, orgUsers]);
+
+  /** Admin summary uses managerName / pendingCount; manager view uses name / pending — normalize for the ledger UI */
+  const teamPerformanceRows = useMemo(() => {
+    const list = managerSummary?.teamPerformance;
+    if (!list || !Array.isArray(list)) return [];
+    if (!isAdmin) return list;
+    return list.map((m: any) => {
+      const reps = Array.isArray(m.reps) ? m.reps : [];
+      const completedTeam = reps.reduce((acc: number, r: any) => acc + (Number(r.completed) || 0), 0);
+      return {
+        id: m.managerId,
+        name: m.managerName || 'Unknown',
+        pending: m.pendingCount ?? 0,
+        completed: completedTeam,
+        overdue: m.overdueCount ?? 0,
+        repsCount: m.repsCount ?? 0,
+        interactionsWeek: 0,
+      };
+    });
+  }, [managerSummary, isAdmin]);
+
+  /** Admin: converted revenue by week or month */
+  const adminRevenueTrend = useMemo(() => {
+    if (!isAdmin) return [];
+    const leads = orgLeads as any[];
+    const converted = leads.filter((l) => l.stage === 'CONVERTED');
+    const now = new Date();
+    const buckets: { label: string; revenue: number; deals: number }[] = [];
+
+    if (adminRevenuePeriod === 'week') {
+      for (let i = 7; i >= 0; i--) {
+        const end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        end.setDate(end.getDate() - i * 7);
+        const start = new Date(end);
+        start.setDate(start.getDate() - 6);
+        start.setHours(0, 0, 0, 0);
+        let revenue = 0;
+        let deals = 0;
+        for (const l of converted) {
+          const raw = l.convertedAt || l.createdAt;
+          if (!raw) continue;
+          const d = new Date(raw);
+          if (d >= start && d <= end) {
+            revenue += Number(l.value) || 0;
+            deals += 1;
+          }
+        }
+        buckets.push({
+          label: `${start.getMonth() + 1}/${start.getDate()}`,
+          revenue: Math.round(revenue),
+          deals,
+        });
+      }
+    } else {
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+        let revenue = 0;
+        let deals = 0;
+        for (const l of converted) {
+          const raw = l.convertedAt || l.createdAt;
+          if (!raw) continue;
+          const d = new Date(raw);
+          if (d >= monthStart && d <= monthEnd) {
+            revenue += Number(l.value) || 0;
+            deals += 1;
+          }
+        }
+        buckets.push({
+          label: monthStart.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+          revenue: Math.round(revenue),
+          deals,
+        });
+      }
+    }
+    return buckets;
+  }, [isAdmin, orgLeads, adminRevenuePeriod]);
+
+  /** Admin: per-manager snapshot for bar chart */
+  const adminManagerReportBars = useMemo(() => {
+    if (!isAdmin || !managerSummary?.teamPerformance) return [];
+    return (managerSummary.teamPerformance as any[]).map((m: any) => ({
+      name: String(m.managerName || 'Team').length > 14 ? `${String(m.managerName).slice(0, 12)}…` : String(m.managerName || 'Team'),
+      conversions: Number(m.conversions) || 0,
+      leads: Number(m.totalLeads) || 0,
+      overdue: Number(m.overdueCount) || 0,
+    }));
+  }, [isAdmin, managerSummary]);
 
   const salesKPIs = useMemo(() => {
     if (!kpis) return [];
@@ -229,14 +319,135 @@ const DashboardContent = () => {
           </div>
         ) : isManagerOrAdmin && managerSummary ? (
           <div className="space-y-8 animate-in fade-in duration-700">
-            {/* KPI Ribbon */}
+            {isAdmin && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="crm-card ll-moving-edge !p-0 overflow-hidden flex flex-col">
+                    <div className="p-6 border-b border-border/40 flex items-center justify-between shrink-0">
+                      <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                        <AlertTriangle className="w-4 h-4 text-amber-500" />
+                        System Alerts
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-500/10 text-red-500 border border-red-500/20">
+                        {managerSummary.alerts.length}
+                      </span>
+                    </div>
+                    <div className="p-6 space-y-3 flex-1 max-h-[220px] overflow-y-auto custom-scrollbar">
+                      {managerSummary.alerts.length > 0 ? managerSummary.alerts.map((alert: any, idx: number) => (
+                        <div key={idx} className={`p-3 rounded-xl border flex gap-2 text-left ${alert.priority === 'HIGH' ? 'bg-red-500/5 border-red-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
+                          <div className={`mt-1 h-1 w-1 rounded-full shrink-0 ${alert.priority === 'HIGH' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                          <p className="text-[11px] font-bold leading-snug">{alert.message}</p>
+                        </div>
+                      )) : (
+                        <div className="py-8 text-center opacity-30">
+                          <CheckCircle2 className="w-6 h-6 mx-auto mb-2 opacity-20" />
+                          <p className="text-[10px] font-semibold uppercase tracking-wider">No Active Alerts</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Link to="/team-insights" className="crm-card ll-moving-edge flex flex-col justify-center p-6 group bg-[var(--crm-teal-glow)] border-[var(--crm-teal)]/20 hover:border-[var(--crm-teal)]/40 transition-all min-h-[140px]">
+                    <p className="font-bold text-[var(--crm-teal)]">Team Insights</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider opacity-50 mt-1">Monitor team velocity and risk</p>
+                    <ArrowRight className="w-5 h-5 text-[var(--crm-teal)] mt-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                  <Link to="/reports" className="crm-card ll-moving-edge flex flex-col justify-center p-6 group bg-primary/5 border-border/40 hover:border-primary/30 transition-all min-h-[140px]">
+                    <p className="font-bold text-primary">Detailed Reports</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider opacity-40 mt-1">View comprehensive analytics</p>
+                    <ArrowRight className="w-5 h-5 text-primary mt-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                  <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
+                    <div className="p-6 border-b border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <p className="crm-page-subtitle">Revenue trend</p>
+                        <p className="text-lg font-bold text-foreground mt-1" style={{ fontFamily: 'var(--ll-font-display)' }}>
+                          Converted deal value
+                        </p>
+                      </div>
+                      <div className="flex gap-1 p-1 rounded-xl bg-muted/30 border border-border/40 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setAdminRevenuePeriod('week')}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${adminRevenuePeriod === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                        >
+                          Week
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdminRevenuePeriod('month')}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${adminRevenuePeriod === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+                        >
+                          Month
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-6 h-[280px]">
+                      {adminRevenueTrend.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={adminRevenueTrend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
+                            <XAxis dataKey="label" tick={{ fontSize: 9, fontWeight: 700 }} />
+                            <YAxis tick={{ fontSize: 9, fontWeight: 700 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                            <Tooltip
+                              contentStyle={{
+                                background: 'rgba(15, 23, 42, 0.92)',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                borderRadius: '14px',
+                                color: '#F1F5F9',
+                                padding: '10px 12px'
+                              }}
+                              formatter={(value: number) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Revenue']}
+                            />
+                            <Line type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={2} dot={{ r: 3 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-xs text-muted-foreground opacity-50">No converted revenue in this range</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
+                    <div className="p-6 border-b border-border/40">
+                      <p className="crm-page-subtitle">Team performance</p>
+                      <p className="text-lg font-bold text-foreground mt-1" style={{ fontFamily: 'var(--ll-font-display)' }}>
+                        Conversions by reporting manager
+                      </p>
+                    </div>
+                    <div className="p-6 h-[280px]">
+                      {adminManagerReportBars.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={adminManagerReportBars} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.12} horizontal={false} />
+                            <XAxis type="number" tick={{ fontSize: 10, fontWeight: 700 }} allowDecimals={false} />
+                            <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 9, fontWeight: 700 }} />
+                            <Tooltip
+                              contentStyle={{
+                                background: 'rgba(15, 23, 42, 0.92)',
+                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                borderRadius: '14px',
+                                color: '#F1F5F9',
+                                padding: '10px 12px'
+                              }}
+                            />
+                            <Bar dataKey="conversions" name="Won deals" fill="var(--primary)" radius={[0, 6, 6, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-xs text-muted-foreground opacity-50">No manager teams to chart</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Manager: KPI ribbon (horizontal). Admin: horizontal KPI row above Team Performance. */}
+            {!isAdmin && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {(isAdmin ? [
-                { title: 'Managers', value: adminMetrics?.managers ?? 0, icon: Shield, color: 'purple', label: 'Total Managers' },
-                { title: 'Sales Reps', value: adminMetrics?.sales ?? 0, icon: Users2, color: 'blue', label: 'Total Sales Reps' },
-                { title: 'Conversion', value: `${(adminMetrics?.conversionRate ?? 0).toFixed(1)}%`, icon: TrendingUp, color: 'green', label: 'Org-wide Conversion Rate' },
-                { title: 'Pipeline Value', value: `₹${Math.round(adminMetrics?.pipelineValue ?? 0).toLocaleString('en-IN')}`, icon: Target, color: 'teal', label: 'Total Pipeline Value' },
-              ] : [
+              {([
                 { title: 'Activity', value: managerSummary.taskHealth.total, icon: Activity, color: 'blue', label: 'Tasks Created' },
                 { title: 'Completed', value: managerSummary.taskHealth.completed, icon: CheckCircle2, color: 'green', label: 'Tasks Completed' },
                 { title: 'Pending', value: managerSummary.taskHealth.pending, icon: Clock, color: 'amber', label: 'Pending Tasks' },
@@ -244,7 +455,7 @@ const DashboardContent = () => {
               ]).map((item: any, i: number) => {
                 const colors = colorMap[item.color] || colorMap.teal;
                 return (
-                  <div key={item.title} className={`crm-card group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
+                  <div key={item.title} className={`crm-card ll-moving-edge group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
                     <div className="flex justify-between items-center mb-4">
                        <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: colors.iconBg }}>
                          <item.icon className="w-5 h-5" style={{ color: colors.iconColor }} />
@@ -262,11 +473,37 @@ const DashboardContent = () => {
                 );
               })}
             </div>
+            )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className={`grid gap-8 ${isAdmin ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
               {/* Team Performance Ledger */}
-              <div className="lg:col-span-2 space-y-8">
-                <div className="crm-card !p-0 overflow-hidden">
+              <div className={`space-y-8 ${isAdmin ? '' : 'lg:col-span-2'}`}>
+                {isAdmin && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {([
+                      { title: 'Managers', value: adminMetrics?.managers ?? 0, icon: Shield, color: 'purple', label: 'Total Managers' },
+                      { title: 'Sales Reps', value: adminMetrics?.sales ?? 0, icon: Users2, color: 'blue', label: 'Total Sales Reps' },
+                      { title: 'Conversion', value: `${(adminMetrics?.conversionRate ?? 0).toFixed(1)}%`, icon: TrendingUp, color: 'green', label: 'Org-wide Conversion Rate' },
+                      { title: 'Pipeline Value', value: `₹${Math.round(adminMetrics?.pipelineValue ?? 0).toLocaleString('en-IN')}`, icon: Target, color: 'teal', label: 'Total Pipeline Value' },
+                    ]).map((item: any, i: number) => {
+                      const colors = colorMap[item.color] || colorMap.teal;
+                      return (
+                        <div key={item.title} className={`crm-card ll-moving-edge group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
+                          <div className="flex justify-between items-center mb-4">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style={{ background: colors.iconBg }}>
+                              <item.icon className="w-5 h-5" style={{ color: colors.iconColor }} />
+                            </div>
+                          </div>
+                          <p className="crm-page-subtitle">{item.title}</p>
+                          <p className="text-3xl font-bold tracking-tight mt-1 text-foreground">{item.value}</p>
+                          <p className="text-xs font-semibold uppercase tracking-wider mt-2 opacity-40">{item.label}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="space-y-8 w-full min-w-0">
+                <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
                   <div className="p-8 border-b border-border/40 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10">
@@ -277,15 +514,17 @@ const DashboardContent = () => {
                     <p className="text-xs font-semibold uppercase tracking-wider opacity-40">Live Status</p>
                   </div>
                   <div className="p-8 space-y-4">
-                    {managerSummary.teamPerformance.map((item: any) => (
-                      <div key={item.id} className="p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/10 border border-border/40 hover:bg-muted/20 hover:border-primary/20 transition-all group">
+                    {teamPerformanceRows.map((item: any) => (
+                      <div key={String(item.id)} className="p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/10 border border-border/40 hover:bg-muted/20 hover:border-primary/20 transition-all group">
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 shadow-inner group-hover:rotate-12 transition-transform">
                             {(item?.name?.trim?.()?.[0] ?? '?').toUpperCase()}
                           </div>
                           <div>
                              <p className="font-bold text-foreground">{item?.name || 'Unknown'}</p>
-                             <p className="text-xs font-semibold uppercase tracking-wider opacity-40">{item.interactionsWeek} Tasks this week</p>
+                             <p className="text-xs font-semibold uppercase tracking-wider opacity-40">
+                               {isAdmin ? `${item.repsCount ?? 0} team members` : `${item.interactionsWeek} Tasks this week`}
+                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-8 pr-4">
@@ -309,13 +548,12 @@ const DashboardContent = () => {
                   </div>
                 </div>
 
-                <div className={isAdmin ? "grid grid-cols-1 sm:grid-cols-3 gap-6" : "grid grid-cols-1 sm:grid-cols-2 gap-6"}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                    {[
                      { label: 'Efficiency', value: `${Math.round(managerSummary.keyMetrics.taskCompletionRate)}%`, icon: CheckCircle2, color: 'var(--crm-teal)' },
-                     ...(isAdmin ? [{ label: 'Pipeline', value: managerSummary.keyMetrics.activeLeads, icon: Target, color: '#60A5FA' }] : []),
                      { label: 'Conversion', value: `${Math.round(managerSummary.keyMetrics.conversionRate)}%`, icon: TrendingUp, color: '#C084FC' },
                    ].map((metric: any) => (
-                      <div key={metric.label} className="crm-card flex items-center gap-4 active:scale-95 cursor-pointer">
+                      <div key={metric.label} className="crm-card ll-moving-edge flex items-center gap-4 active:scale-95 cursor-pointer">
                          <div className="p-3 rounded-xl bg-muted/50 border border-border/40">
                             <metric.icon className="w-5 h-5" style={{ color: metric.color }} />
                          </div>
@@ -326,52 +564,11 @@ const DashboardContent = () => {
                       </div>
                    ))}
                 </div>
+                </div>
 
-                {/* Extra Graphs */}
+                {/* Manager: conversion snapshot only (pipeline bar chart removed) */}
                 {!isAdmin && pipelineBars.length > 0 && conversionSnapshot && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="crm-card !p-0 overflow-hidden">
-                      <div className="p-7 border-b border-border/40 flex items-center justify-between">
-                        <div>
-                          <p className="crm-page-subtitle">Pipeline Distribution</p>
-                          <p className="text-lg font-bold text-foreground mt-1" style={{ fontFamily: 'var(--ll-font-display)' }}>
-                            Stage Volume
-                          </p>
-                        </div>
-                        {teamPipeline?.biggestDropOff && (
-                          <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-widest">
-                            Drop-off: {teamPipeline.biggestDropOff.stage} ({teamPipeline.biggestDropOff.percentage}%)
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-7 h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={pipelineBars} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
-                            <XAxis dataKey="stage" tick={{ fontSize: 10, fontWeight: 800 }} />
-                            <YAxis tick={{ fontSize: 10, fontWeight: 800 }} />
-                            <Tooltip
-                              contentStyle={{
-                                background: 'rgba(15, 23, 42, 0.92)',
-                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                borderRadius: '14px',
-                                color: '#F1F5F9',
-                                padding: '10px 12px'
-                              }}
-                              labelStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
-                              itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.12em' }}
-                            />
-                            <Bar dataKey="value" radius={[10, 10, 0, 0]}>
-                              {pipelineBars.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-
-                    <div className="crm-card !p-0 overflow-hidden">
+                  <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
                       <div className="p-7 border-b border-border/40 flex items-center justify-between">
                         <div>
                           <p className="crm-page-subtitle">Conversion Rate</p>
@@ -445,13 +642,13 @@ const DashboardContent = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
                 )}
               </div>
 
-              {/* Operations Side Console */}
+              {/* Operations Side Console — managers only (admin uses horizontal row below) */}
+              {!isAdmin && (
               <div className="space-y-8">
-                 <div className="crm-card !p-0 overflow-hidden">
+                 <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
                     <div className="p-8 border-b border-border/40 flex items-center justify-between">
                        <h3 className="font-bold text-foreground flex items-center gap-2">
                          <AlertTriangle className="w-5 h-5 text-amber-500" />
@@ -476,7 +673,7 @@ const DashboardContent = () => {
                     </div>
                  </div>
 
-                 <Link to="/team-insights" className="crm-card flex items-center justify-between group bg-[var(--crm-teal-glow)] border-[var(--crm-teal)]/20 hover:border-[var(--crm-teal)]/40 transition-all">
+                 <Link to="/team-insights" className="crm-card ll-moving-edge flex items-center justify-between group bg-[var(--crm-teal-glow)] border-[var(--crm-teal)]/20 hover:border-[var(--crm-teal)]/40 transition-all">
                     <div>
                        <p className="font-bold text-[var(--crm-teal)]">Team Insights</p>
                        <p className="text-xs font-semibold uppercase tracking-wider opacity-40">Monitor team velocity & risk</p>
@@ -484,7 +681,7 @@ const DashboardContent = () => {
                     <ArrowRight className="w-6 h-6 text-[var(--crm-teal)] group-hover:translate-x-1 transition-transform" />
                  </Link>
 
-                 <Link to="/reports" className="crm-card flex items-center justify-between group bg-primary/5 border-border/40 hover:border-primary/30 transition-all">
+                 <Link to="/reports" className="crm-card ll-moving-edge flex items-center justify-between group bg-primary/5 border-border/40 hover:border-primary/30 transition-all">
                     <div>
                        <p className="font-bold text-primary">Detailed Reports</p>
                        <p className="text-xs font-semibold uppercase tracking-wider opacity-40">View comprehensive analytics</p>
@@ -492,6 +689,7 @@ const DashboardContent = () => {
                     <ArrowRight className="w-6 h-6 text-primary group-hover:translate-x-1 transition-transform" />
                  </Link>
               </div>
+              )}
             </div>
           </div>
         ) : (
@@ -502,7 +700,7 @@ const DashboardContent = () => {
                 const Icon = card.icon;
                 const colors = colorMap[card.color] || colorMap.teal;
                 return (
-                  <div key={card.title} className={`crm-card crm-card-hover group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
+                  <div key={card.title} className={`crm-card ll-moving-edge crm-card-hover group animate-in slide-in-from-bottom duration-700 delay-${(i + 1) * 100}`}>
                     <div className="flex justify-between items-start mb-6">
                       <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-inner" style={{ background: colors.iconBg }}>
                         <Icon className="w-6 h-6" style={{ color: colors.iconColor }} />
@@ -536,7 +734,7 @@ const DashboardContent = () => {
             {/* Extra Graphs — sales rep */}
             {pipelineBars.length > 0 && conversionSnapshot && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="crm-card !p-0 overflow-hidden">
+                <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
                   <div className="p-7 border-b border-border/40 flex items-center justify-between">
                     <div>
                       <p className="crm-page-subtitle">Pipeline Distribution</p>
@@ -572,7 +770,7 @@ const DashboardContent = () => {
                   </div>
                 </div>
 
-                <div className="crm-card !p-0 overflow-hidden">
+                <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
                   <div className="p-7 border-b border-border/40 flex items-center justify-between">
                     <div>
                       <p className="crm-page-subtitle">Conversion Rate</p>
@@ -649,10 +847,68 @@ const DashboardContent = () => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Action Console (swapped left) */}
+              {/* Recent leads first (wider column); task queue + quick actions on the right */}
+              <div className="lg:col-span-2 space-y-8">
+                <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
+                  <div className="p-8 border-b border-border/40 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/10 border border-purple-500/10">
+                        <BarChart3 className="w-5 h-5 text-purple-400" />
+                      </div>
+                      <h2 className="text-lg font-bold text-foreground truncate" style={{ fontFamily: 'var(--ll-font-display)' }}>Recent Leads</h2>
+                    </div>
+                    <Link to="/kanban" className="px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider border border-border/40 hover:bg-muted hover:border-primary/20 transition-all flex items-center gap-2 shrink-0">
+                      Full Pipeline <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                  <div className="p-8">
+                    <div className="space-y-4">
+                      {recentLeads.length > 0 ? recentLeads.map((lead: LeadType) => (
+                        <Link key={lead.id} to={`/leads/${lead.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl transition-all group gap-4 bg-muted/10 border border-border/40 hover:bg-primary/5 hover:border-primary/20">
+                          <div className="flex items-center gap-5 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-primary/10 text-primary border border-primary/20 shadow-inner shrink-0 leading-none">
+                              {(lead?.company?.trim?.()?.[0] ?? '?').toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-lg tracking-tight truncate text-foreground leading-none">{lead.company || '—'}</p>
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
+                                <span className={`crm-badge text-[8px] shrink-0 ${lead.stage === 'NEW' ? 'badge-stage-new' :
+                                  lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
+                                    lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
+                                        lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
+                                          'badge-stage-lost'
+                                  }`}>
+                                  {lead.stage}
+                                </span>
+                                <span className="text-[10px] font-bold opacity-30 tracking-wider">
+                                  ₹{(Number(lead.value) || 0).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 self-start sm:self-center">
+                            <span className={`crm-badge text-[8px] shrink-0 ${lead.priority === 'HIGH' ? 'badge-priority-high' :
+                              lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
+                                'badge-priority-low'
+                              }`}>
+                              {lead.priority}
+                            </span>
+                          </div>
+                        </Link>
+                      )) : (
+                        <div className="py-16 text-center opacity-30 grayscale">
+                          <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                          <p className="text-xs font-semibold uppercase tracking-wider">No Recent Leads</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-8">
                 {hasPermission(user?.role as Role, 'canCreateLeads') && (
-                  <div className="crm-card">
+                  <div className="crm-card ll-moving-edge">
                     <h2 className="text-lg font-bold mb-6 text-foreground" style={{ fontFamily: 'var(--ll-font-display)' }}>Quick Actions</h2>
                     <div className="space-y-3">
                       <Link to="/leads?open=add" className="crm-btn-primary w-full">
@@ -668,8 +924,7 @@ const DashboardContent = () => {
                   </div>
                 )}
 
-                {/* Tactical Tasks Console */}
-                <div className="crm-card !p-0 overflow-hidden">
+                <div className="crm-card ll-moving-edge !p-0 overflow-hidden">
                   <div className="p-8 pb-4">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 border border-primary/10">
@@ -727,64 +982,6 @@ const DashboardContent = () => {
                         <div className="py-16 text-center rounded-[2rem] border border-dashed border-border/40 opacity-20">
                           <CheckCircle2 className="w-8 h-8 mx-auto mb-4" />
                           <p className="text-xs font-semibold uppercase tracking-wider">No pending tasks</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-2 space-y-8">
-                <div className="crm-card !p-0 overflow-hidden">
-                  <div className="p-8 border-b border-border/40 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-500/10 border border-purple-500/10">
-                        <BarChart3 className="w-5 h-5 text-purple-400" />
-                      </div>
-                      <h2 className="text-lg font-bold text-foreground truncate" style={{ fontFamily: 'var(--ll-font-display)' }}>Recent Leads</h2>
-                    </div>
-                    <Link to="/kanban" className="px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider border border-border/40 hover:bg-muted hover:border-primary/20 transition-all flex items-center gap-2 shrink-0">
-                      Full Pipeline <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                  <div className="p-8">
-                    <div className="space-y-4">
-                      {recentLeads.length > 0 ? recentLeads.map((lead: LeadType) => (
-                        <Link key={lead.id} to={`/leads/${lead.id}`} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl transition-all group gap-4 bg-muted/10 border border-border/40 hover:bg-primary/5 hover:border-primary/20">
-                          <div className="flex items-center gap-5 min-w-0">
-                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-transform group-hover:scale-105 bg-primary/10 text-primary border border-primary/20 shadow-inner shrink-0 leading-none">
-                              {(lead?.company?.trim?.()?.[0] ?? '?').toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-bold text-lg tracking-tight truncate text-foreground leading-none">{lead.company || '—'}</p>
-                              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2">
-                                <span className={`crm-badge text-[8px] shrink-0 ${lead.stage === 'NEW' ? 'badge-stage-new' :
-                                  lead.stage === 'CONTACTED' ? 'badge-stage-contacted' :
-                                    lead.stage === 'INTERESTED' ? 'badge-stage-qualified' :
-                                        lead.stage === 'CONVERTED' ? 'badge-stage-converted' :
-                                          'badge-stage-lost'
-                                  }`}>
-                                  {lead.stage}
-                                </span>
-                                <span className="text-[10px] font-bold opacity-30 tracking-wider">
-                                  ₹{(Number(lead.value) || 0).toLocaleString('en-IN')}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4 self-start sm:self-center">
-                            <span className={`crm-badge text-[8px] shrink-0 ${lead.priority === 'HIGH' ? 'badge-priority-high' :
-                              lead.priority === 'MEDIUM' ? 'badge-priority-medium' :
-                                'badge-priority-low'
-                              }`}>
-                              {lead.priority}
-                            </span>
-                          </div>
-                        </Link>
-                      )) : (
-                        <div className="py-16 text-center opacity-30 grayscale">
-                          <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                          <p className="text-xs font-semibold uppercase tracking-wider">No Recent Leads</p>
                         </div>
                       )}
                     </div>

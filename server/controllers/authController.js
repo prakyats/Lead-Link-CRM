@@ -2,6 +2,16 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const prisma = require('../utils/prisma');
 
+function isDatabaseUnavailable(error) {
+    const code = error && error.code;
+    const msg = (error && error.message) || '';
+    return (
+        code === 'P1001' ||
+        code === 'P1017' ||
+        msg.includes("Can't reach database server") ||
+        msg.includes('ECONNREFUSED')
+    );
+}
 
 /**
  * Login Controller
@@ -43,6 +53,16 @@ async function login(req, res) {
             return res.status(401).json({ success: false, error: 'INVALID_PASSWORD', message: 'Incorrect password' });
         }
 
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret || String(jwtSecret).length < 8) {
+            console.error('Login blocked: JWT_SECRET is missing or too short. Set it in server/.env');
+            return res.status(503).json({
+                success: false,
+                error: 'SERVER_MISCONFIG',
+                message: 'Server is not configured for sign-in (JWT). Contact your administrator.'
+            });
+        }
+
         // Generate JWT token
         const token = jwt.sign(
             {
@@ -52,7 +72,7 @@ async function login(req, res) {
                 organizationId: org.id,
                 organizationSlug: org.slug
             },
-            process.env.JWT_SECRET,
+            jwtSecret,
             { expiresIn: '24h' }
         );
 
@@ -85,6 +105,14 @@ async function login(req, res) {
 
     } catch (error) {
         console.error('Login error:', error);
+        if (isDatabaseUnavailable(error)) {
+            return res.status(503).json({
+                success: false,
+                error: 'DATABASE_UNAVAILABLE',
+                message:
+                    'Cannot reach the database. Start PostgreSQL (or Docker) and verify DATABASE_URL in server/.env matches your host and port.'
+            });
+        }
         res.status(500).json({ success: false, message: 'Login failed' });
     }
 }
@@ -151,6 +179,14 @@ async function register(req, res) {
         });
     } catch (error) {
         console.error('Registration error:', error);
+        if (isDatabaseUnavailable(error)) {
+            return res.status(503).json({
+                success: false,
+                error: 'DATABASE_UNAVAILABLE',
+                message:
+                    'Cannot reach the database. Start PostgreSQL (or Docker) and verify DATABASE_URL in server/.env matches your host and port.'
+            });
+        }
         res.status(500).json({ success: false, message: 'Registration failed' });
     }
 }

@@ -215,7 +215,7 @@ export default function Tasks() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="crm-card !p-5 group transition-all hover:border-primary/30">
+            <div className="crm-card ll-moving-edge !p-5 group transition-all hover:border-primary/30">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5 text-muted-foreground/60">Total Vectors</p>
@@ -226,7 +226,7 @@ export default function Tasks() {
                 </div>
               </div>
             </div>
-            <div className="crm-card !p-5 group transition-all hover:border-status-warning/30">
+            <div className="crm-card ll-moving-edge !p-5 group transition-all hover:border-status-warning/30">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5 text-muted-foreground/60">Pending Sync</p>
@@ -237,7 +237,7 @@ export default function Tasks() {
                 </div>
               </div>
             </div>
-            <div className="crm-card !p-5 group transition-all hover:border-status-success/30">
+            <div className="crm-card ll-moving-edge !p-5 group transition-all hover:border-status-success/30">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5 text-muted-foreground/60">Completed Tasks</p>
@@ -250,7 +250,7 @@ export default function Tasks() {
             </div>
           </div>
 
-          <div className="crm-card !p-0 overflow-hidden bg-card/60 backdrop-blur-md">
+          <div className="crm-card ll-moving-edge !p-0 overflow-hidden bg-card/60 backdrop-blur-md">
             <div className="px-8 py-5 flex items-center justify-between border-b border-border/40 bg-muted/5">
               <div className="flex p-1.5 rounded-2xl bg-muted/20 border border-border/40">
                 <button
@@ -362,7 +362,7 @@ export default function Tasks() {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     key={task.id}
-                                    className={`group relative rounded-2xl p-4 px-6 transition-all duration-500 border overflow-hidden ${
+                                    className={`group relative ll-moving-edge rounded-2xl p-4 px-6 transition-all duration-500 border overflow-hidden ${
                                       task.status === 'COMPLETED' ? 'bg-muted/5 border-border/20 opacity-60' :
                                       taskOverdue ? 'bg-status-danger/[0.06] border-status-danger/30 shadow-[0_4px_24px_-12px_rgba(239,68,68,0.2)]' :
                                       'bg-card border-border/60 hover:border-primary/40 hover:bg-card/80 hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.3)] shadow-sm'
@@ -463,7 +463,7 @@ export default function Tasks() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       key={task.id}
-                      className={`group relative rounded-2xl p-4 px-6 transition-all duration-500 border overflow-hidden ${
+                      className={`group relative ll-moving-edge rounded-2xl p-4 px-6 transition-all duration-500 border overflow-hidden ${
                         task.status === 'COMPLETED' ? 'bg-muted/5 border-border/20 opacity-60' :
                         taskOverdue ? 'bg-status-danger/[0.06] border-status-danger/30 shadow-[0_4px_24px_-12px_rgba(239,68,68,0.2)]' :
                         'bg-card border-border/60 hover:border-primary/40 hover:bg-card/80 hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.3)] shadow-sm'

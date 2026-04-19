@@ -26,9 +26,11 @@ export interface LeadType {
     leadScore: number;
     lastInteraction: string;
     createdAt: string;
+    convertedAt?: string | null;
     assignedTo?: string;
     assignedToId?: number;
     managerName?: string | null;
+    managerEmail?: string | null;
     risk?: 'high' | 'medium' | 'low';
     interactions?: InteractionType[];
 }

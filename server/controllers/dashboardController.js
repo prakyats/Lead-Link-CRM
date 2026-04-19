@@ -280,7 +280,7 @@ async function getDashboardSummary(req, res) {
         ] = await Promise.all([
             prisma.user.findMany({
                 where: { organizationId: orgId, id: { in: accessibleIds } },
-                select: { id: true, name: true, managerId: true, role: true }
+                select: { id: true, name: true, email: true, managerId: true, role: true }
             }),
             prisma.user.count({ where: { organizationId: orgId, managerId: userId } }),
             prisma.task.count({ where: { organizationId: orgId, assignedToId: { in: accessibleIds }, createdAt: { gte: todayStart } } }),
@@ -417,6 +417,7 @@ async function getDashboardSummary(req, res) {
                 const repData = {
                     repId: String(u.id),
                     repName: u.name,
+                    repEmail: u.email || null,
                     pending,
                     completed,
                     overdue,

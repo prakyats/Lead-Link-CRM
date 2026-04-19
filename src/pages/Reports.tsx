@@ -193,7 +193,7 @@ export default function Reports() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="crm-card bg-card/40 backdrop-blur-xl"
+                    className="crm-card ll-moving-edge bg-card/40 backdrop-blur-xl"
                     data-pdf="true"
                   >
                     <div className="flex items-center justify-between mb-10">
@@ -246,7 +246,7 @@ export default function Reports() {
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="crm-card relative overflow-hidden group border-primary/10"
+                    className="crm-card ll-moving-edge relative overflow-hidden group border-primary/10"
                   >
                     <div className="absolute -top-10 -right-10 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
                        <DollarSign size={200} className="text-primary" />
@@ -268,7 +268,7 @@ export default function Reports() {
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.1 }}
-                    className="crm-card relative overflow-hidden group border-purple-500/10"
+                    className="crm-card ll-moving-edge relative overflow-hidden group border-purple-500/10"
                   >
                     <div className="absolute -top-10 -right-10 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
                        <Target size={200} className="text-purple-400" />
@@ -294,7 +294,7 @@ export default function Reports() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="crm-card bg-card/40 backdrop-blur-xl"
+                    className="crm-card ll-moving-edge bg-card/40 backdrop-blur-xl"
                     data-pdf="true"
                   >
                     <div className="flex items-center justify-between mb-10">
@@ -354,7 +354,7 @@ export default function Reports() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="crm-card bg-card/40 backdrop-blur-xl"
+                    className="crm-card ll-moving-edge bg-card/40 backdrop-blur-xl"
                     data-pdf="true"
                   >
                     <div className="flex items-center justify-between mb-10">
@@ -398,7 +398,7 @@ export default function Reports() {
 
               </div>
             ) : (
-              <div className="crm-card bg-card/40 backdrop-blur-xl border border-white/10 p-10 text-center">
+              <div className="crm-card ll-moving-edge bg-card/40 backdrop-blur-xl border border-white/10 p-10 text-center">
                 <p className="text-sm font-bold text-foreground">No report data available</p>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 mt-2">
                   Try changing the filter or check your connectivity.

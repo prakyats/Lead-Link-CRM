@@ -26,7 +26,7 @@ export interface TaskCounts {
     completedCount: number;
 }
 
-/** Admin sees: one card per manager, no individual tasks */
+/** Legacy type: admin /tasks previously returned manager summaries only */
 export interface AdminManagerSummary extends TaskCounts {
     managerId: number;
     managerName: string;
@@ -49,11 +49,25 @@ export type RoleTaskResponse = {
     payload: AdminManagerSummary[] | ManagerRepGroup[] | SalesTaskData;
 };
 
+/** Unwrap role-shaped /tasks responses into a flat list for the Tasks page. */
+export function flattenTasksFromRoleResponse(raw: any): TaskType[] {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    const payload = raw.payload;
+    if (!payload) return [];
+    if (Array.isArray(payload.tasks)) return payload.tasks;
+    if (Array.isArray(payload)) {
+        return payload.flatMap((g: ManagerRepGroup) => (Array.isArray(g.tasks) ? g.tasks : []));
+    }
+    return [];
+}
+
 // ── API Functions ─────────────────────────────────────────────────────────────
 
-export const getTasks = async (): Promise<RoleTaskResponse> => {
+export const getTasks = async (): Promise<TaskType[]> => {
     const response = await api.get('/tasks');
-    return normalizeResponse(response.data);
+    const raw = normalizeResponse(response.data);
+    return flattenTasksFromRoleResponse(raw);
 };
 
 export const createTask = async (task: Partial<TaskType>): Promise<TaskType> => {
