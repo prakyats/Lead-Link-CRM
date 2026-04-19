@@ -201,7 +201,7 @@ export default function Team() {
                                             transition={{ delay: i * 0.1 }}
                                             key={stat.id}
                                             onClick={() => setActiveFilter(stat.id)}
-                                            className={`crm-card text-left group hover:bg-card/60 transition-all duration-500 border-white/5 bg-card/40 backdrop-blur-xl flex items-center gap-6 ${stat.shadow} ${
+                                            className={`crm-card ll-moving-edge text-left group hover:bg-card/60 transition-all duration-500 border-white/5 bg-card/40 backdrop-blur-xl flex items-center gap-6 ${stat.shadow} ${
                                                 isActive ? 'ring-2 ring-primary/30 border-primary/30' : ''
                                             }`}
                                         >
@@ -226,7 +226,7 @@ export default function Team() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
-                            className="crm-card !p-0 overflow-hidden bg-card/20 backdrop-blur-3xl border-white/5"
+                            className="crm-card ll-moving-edge !p-0 overflow-hidden bg-card/20 backdrop-blur-3xl border-white/5"
                         >
                             <div className="p-8 border-b border-border/40 flex items-center justify-between">
                                 <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">Team Directory</h2>

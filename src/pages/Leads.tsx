@@ -279,7 +279,8 @@ function LeadsInnerContent() {
                                         <div className="w-[130px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Priority</div>
                                         <div className="w-[160px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-right">Value</div>
                                         {canAssign && <div className="w-[150px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Agent</div>}
-                                        {user?.role === 'ADMIN' && <div className="w-[150px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Manager</div>}
+                                        {user?.role === 'ADMIN' && <div className="w-[160px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Reporting manager</div>}
+                                        {user?.role === 'ADMIN' && <div className="w-[200px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-left">Manager email</div>}
                                         {canAssign && <div className="w-[80px] px-4 py-3.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40 text-right">Action</div>}
                                     </div>
 
@@ -368,9 +369,9 @@ function LeadsInnerContent() {
                                                             </div>
                                                         )}
 
-                                                        {/* Manager */}
+                                                        {/* Reporting manager + email */}
                                                         {user?.role === 'ADMIN' && (
-                                                            <div className="w-[150px] px-4 py-3 whitespace-nowrap">
+                                                            <div className="w-[160px] px-4 py-3 whitespace-nowrap">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/20 flex items-center justify-center text-[9px] font-black text-blue-400 shrink-0">
                                                                         <Shield size={10} />
@@ -379,6 +380,13 @@ function LeadsInnerContent() {
                                                                         {lead.managerName || '—'}
                                                                     </span>
                                                                 </div>
+                                                            </div>
+                                                        )}
+                                                        {user?.role === 'ADMIN' && (
+                                                            <div className="w-[200px] px-4 py-3 whitespace-nowrap">
+                                                                <span className="text-[11px] font-medium text-muted-foreground truncate block">
+                                                                    {lead.managerEmail || '—'}
+                                                                </span>
                                                             </div>
                                                         )}
 
@@ -531,14 +539,23 @@ function LeadsInnerContent() {
                                                             Agent: <span className="text-foreground">{lead.assignedTo || 'UNASSIGNED'}</span>
                                                         </p>
                                                     </div>
-                                                    {user?.role === 'ADMIN' && lead.managerName && (
-                                                        <div className="flex items-center gap-2.5">
-                                                            <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                                                                <Shield size={10} />
-                                                            </div>
-                                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-extrabold flex items-center gap-1.5">
-                                                                Manager: <span className="text-foreground">{lead.managerName}</span>
-                                                            </p>
+                                                    {user?.role === 'ADMIN' && (lead.managerName || lead.managerEmail) && (
+                                                        <div className="space-y-1.5">
+                                                            {lead.managerName && (
+                                                                <div className="flex items-center gap-2.5">
+                                                                    <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                                                                        <Shield size={10} />
+                                                                    </div>
+                                                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-extrabold flex items-center gap-1.5">
+                                                                        Manager: <span className="text-foreground">{lead.managerName}</span>
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                            {lead.managerEmail && (
+                                                                <p className="text-[10px] font-medium text-muted-foreground/80 pl-7">
+                                                                    {lead.managerEmail}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>

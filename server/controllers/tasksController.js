@@ -94,43 +94,22 @@ async function getAllTasks(req, res) {
         const endOfToday = new Date(now);
         endOfToday.setHours(23, 59, 59, 999);
 
-        // ── ADMIN: Manager-level aggregated summary ──────────────────────────
+        // ── ADMIN: Full task registry (same shape as SALES) for the Tasks UI ──
         if (role === 'ADMIN') {
-            const managers = await prisma.user.findMany({
-                where: { organizationId: orgId, role: 'MANAGER' },
-                select: { id: true, name: true }
+            const tasks = await prisma.task.findMany({
+                where: {
+                    organizationId: orgId,
+                    assignedToId: { in: accessibleIds }
+                },
+                include: {
+                    lead: true,
+                    assignedTo: { select: { name: true } },
+                    createdBy: { select: { name: true } }
+                }
             });
 
-            const result = await Promise.all(managers.map(async (manager) => {
-                const salesRepIds = (await prisma.user.findMany({
-                    where: { organizationId: orgId, managerId: manager.id, role: 'SALES' },
-                    select: { id: true }
-                })).map(r => r.id);
-
-                if (salesRepIds.length === 0) {
-                    return {
-                        managerId: manager.id,
-                        managerName: manager.name,
-                        totalTasks: 0, overdueCount: 0, pendingCount: 0, completedCount: 0
-                    };
-                }
-
-                const tasks = await prisma.task.findMany({
-                    where: {
-                        organizationId: orgId,
-                        assignedToId: { in: salesRepIds }
-                    },
-                    select: { status: true, dueDate: true }
-                });
-
-                return {
-                    managerId: manager.id,
-                    managerName: manager.name,
-                    ...computeCounts(tasks)
-                };
-            }));
-
-            return res.json({ success: true, role: 'ADMIN', data: { role, payload: result } });
+            const legacyTasks = sortTasksByUrgency(tasks.map(mapTaskToLegacy), startOfToday, endOfToday);
+            return res.json({ success: true, role: 'ADMIN', data: { role, payload: { tasks: legacyTasks } } });
         }
 
         // ── MANAGER: Rep-grouped tasks with full task objects ────────────────

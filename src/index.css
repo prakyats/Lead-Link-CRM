@@ -59,6 +59,78 @@
   @apply hover:-translate-y-1 hover:border-crm-teal/30 hover:shadow-xl hover:shadow-crm-teal/5;
 }
 
+/*
+ * Top-only accent: a soft line sits just under the top edge, brightens briefly,
+ * then fades out in place (no travel along right / bottom / left).
+ */
+.ll-moving-edge {
+  position: relative;
+  isolation: isolate;
+}
+
+.ll-moving-edge::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  top: 2px;
+  left: 50%;
+  bottom: auto;
+  right: auto;
+  width: min(78%, 22rem);
+  height: 2px;
+  margin: 0;
+  border-radius: 999px;
+  transform: translateX(-50%) scaleX(0.35);
+  transform-origin: 50% 50%;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 212, 170, 0.2),
+    var(--crm-teal),
+    rgba(0, 212, 170, 0.2),
+    transparent
+  );
+}
+
+.ll-moving-edge:hover::before {
+  animation: ll-top-fade 2.75s ease-in-out infinite;
+}
+
+.ll-moving-edge:hover {
+  border-color: rgba(0, 212, 170, 0.32);
+}
+
+@keyframes ll-top-fade {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.2);
+  }
+  18% {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
+  }
+  42% {
+    opacity: 0.55;
+    transform: translateX(-50%) scaleX(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-moving-edge:hover::before {
+    animation: none;
+    opacity: 0.65;
+    transform: translateX(-50%) scaleX(0.85);
+    top: 2px;
+    left: 50%;
+  }
+}
+
 /* Table System */
 .crm-table-container {
   @apply rounded-[1.5rem] overflow-x-auto pb-2;

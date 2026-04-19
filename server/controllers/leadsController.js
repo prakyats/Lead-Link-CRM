@@ -27,7 +27,8 @@ function mapLeadToLegacy(lead) {
         priority: lead.priority, // Return raw HIGH
         stage: lead.stage, // Return raw NEW
         assignedTo: lead.assignedTo ? lead.assignedTo.name : 'Unassigned',
-        managerName: lead.assignedTo?.manager?.name || null
+        managerName: lead.assignedTo?.manager?.name || null,
+        managerEmail: lead.assignedTo?.manager?.email || null
     };
 
     // Map Interactions if they exist
@@ -70,7 +71,7 @@ async function getAllLeads(req, res) {
                 assignedTo: { 
                     select: { 
                         name: true,
-                        manager: { select: { id: true, name: true } }
+                        manager: { select: { id: true, name: true, email: true } }
                     } 
                 },
                 interactions: {
@@ -98,7 +99,7 @@ async function getLeadById(req, res) {
         const lead = await prisma.lead.findFirst({
             where: { id: parseInt(id), organizationId },
             include: {
-                assignedTo: { select: { name: true, id: true } },
+                assignedTo: { select: { name: true, id: true, manager: { select: { id: true, name: true, email: true } } } },
                 tasks: {
                     include: { assignedTo: { select: { name: true } } }
                 },

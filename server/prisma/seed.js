@@ -41,10 +41,10 @@ async function main() {
 
     const demoManager = await prisma.user.upsert({
         where: { organizationId_email: { organizationId: demoOrg.id, email: 'manager@crm.com' } },
-        update: { password: passwords.manager, role: 'MANAGER', name: 'Sales Manager' },
+        update: { password: passwords.manager, role: 'MANAGER', name: 'Jordan Reeves' },
         create: {
             organizationId: demoOrg.id,
-            name: 'Sales Manager',
+            name: 'Jordan Reeves',
             email: 'manager@crm.com',
             password: passwords.manager,
             role: 'MANAGER',
