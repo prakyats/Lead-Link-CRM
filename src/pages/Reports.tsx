@@ -12,6 +12,7 @@ import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { getReportsData } from '../api/reports';
+import { ReportExportView } from '../components/ReportExportView';
 
 export default function Reports() {
   const { user } = useAuth();
@@ -43,68 +44,51 @@ export default function Reports() {
     try {
       setExporting(true);
 
-      const graphNodes = Array.from(
-        document.querySelectorAll('[data-pdf="true"]')
-      ) as HTMLElement[];
-      if (graphNodes.length === 0) return;
-
-      const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 28;
-
-      for (let i = 0; i < graphNodes.length; i++) {
-        const el = graphNodes[i];
-
-        // html2canvas-pro natively supports oklab/oklch/color-mix, so we
-        // don't need to override the live DOM. The onclone hook below only
-        // touches the *cloned* document used for capture, keeping the live
-        // UI completely untouched.
-        const canvas = await html2canvas(el, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#0B1120',
-          logging: false,
-          onclone: (clonedDoc) => {
-            const style = clonedDoc.createElement('style');
-            style.setAttribute('data-pdf-safe', 'true');
-            style.textContent = `
-              [data-pdf="true"] *,
-              [data-pdf="true"] *::before,
-              [data-pdf="true"] *::after {
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-                filter: none !important;
-                animation: none !important;
-                transition: none !important;
-              }
-            `;
-            clonedDoc.head.appendChild(style);
-          },
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-
-        const maxW = pageW - margin * 2;
-        const maxH = pageH - margin * 2;
-        const ratio = canvas.width / canvas.height;
-
-        let drawW = maxW;
-        let drawH = drawW / ratio;
-        if (drawH > maxH) {
-          drawH = maxH;
-          drawW = drawH * ratio;
-        }
-
-        const x = (pageW - drawW) / 2;
-        const y = (pageH - drawH) / 2;
-
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', x, y, drawW, drawH, undefined, 'FAST');
+      const reportEl = document.getElementById('report-export-container');
+      if (!reportEl) {
+        console.error('Report export element not found');
+        return;
       }
 
+      // Generate PDF
+      const pdf = new jsPDF({ 
+        orientation: 'p', 
+        unit: 'mm', 
+        format: 'a4',
+        compress: true 
+      });
+
+      // Capture the hidden report view
+      // html2canvas-pro natively supports oklab/oklch/color-mix emitted by Tailwind 4
+      const canvas = await html2canvas(reportEl, {
+        scale: 3, // High resolution
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: 794, // A4 width at 96 DPI
+        height: 1123, // A4 height at 96 DPI
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.getElementById('report-export-container');
+          if (el) {
+            el.style.opacity = '1';
+            el.style.position = 'absolute';
+            el.style.left = '0px';
+            el.style.top = '0px';
+            el.style.transform = 'none'; // Ensure no scaling from parent
+          }
+        },
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+
       const date = new Date().toISOString().slice(0, 10);
-      pdf.save(`reports_graphs_${filter}_${date}.pdf`);
+      const orgName = user?.organizationSlug || 'LeadLink';
+      pdf.save(`LeadLink_Report_${orgName}_${date}.pdf`);
     } catch (e) {
       console.error('PDF export failed', e);
     } finally {
@@ -408,6 +392,17 @@ export default function Reports() {
           </div>
         </div>
       </main>
+
+      {/* Hidden Report View for PDF Export */}
+      <ReportExportView 
+        data={data}
+        filters={{
+          period: filter,
+          label: filter === 'week' ? 'Last 7 Periods' : filter === 'month' ? 'Current Cycle' : 'Real-time'
+        }}
+        organizationName={user?.organizationSlug?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'LeadLink Organization'}
+        generatedBy={user?.name || 'Admin'}
+      />
     </div>
   );
 }

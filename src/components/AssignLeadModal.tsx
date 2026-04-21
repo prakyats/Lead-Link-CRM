@@ -2,6 +2,13 @@ import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Users, UserCheck } from 'lucide-react';
 import { useModalEffect } from '../hooks/useModalEffect';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from './ui/select';
 
 interface AssignLeadModalProps {
     isOpen: boolean;
@@ -72,17 +79,19 @@ const AssignLeadModalComponent: React.FC<AssignLeadModalProps> = ({ isOpen, onCl
                             <label className="crm-label font-semibold text-xs tracking-wider ml-1">SELECT USER</label>
                             <div className="relative">
                                 <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
-                                <select
-                                    required
-                                    value={selectedAssignee}
-                                    onChange={(e) => setSelectedAssignee(e.target.value)}
-                                    className="crm-input !pl-12 !py-4 font-semibold tracking-widest bg-muted/20 appearance-none cursor-pointer"
+                                <Select 
+                                    value={selectedAssignee} 
+                                    onValueChange={(val) => setSelectedAssignee(val)}
                                 >
-                                    <option value="">Select team member...</option>
-                                    {salesUsers.map(u => (
-                                        <option key={u.id} value={String(u.id)}>{u.name.toUpperCase()} ({u.role})</option>
-                                    ))}
-                                </select>
+                                    <SelectTrigger className="!pl-12 !py-4 font-semibold tracking-widest bg-muted/20">
+                                        <SelectValue placeholder="SELECT TEAM MEMBER..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {salesUsers.map(u => (
+                                            <SelectItem key={u.id} value={String(u.id)}>{u.name.toUpperCase()} ({u.role})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </div>

@@ -3,6 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, UserPlus, Eye, EyeOff, ChevronDown, Loader2, Zap } from 'lucide-react';
 import { useModalEffect } from '../hooks/useModalEffect';
 import { validateUserForm } from '../utils/validation';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from './ui/select';
 
 interface ProvisioningModalProps {
     isOpen: boolean;
@@ -46,6 +53,10 @@ const ProvisioningModalComponent: React.FC<ProvisioningModalProps> = ({
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    }, []);
+
+    const handleSelectChange = useCallback((name: string, value: string) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     }, []);
 
@@ -155,40 +166,40 @@ const ProvisioningModalComponent: React.FC<ProvisioningModalProps> = ({
                             
                             <div className="space-y-3">
                                 <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Assigned Unit</label>
-                                <div className="relative">
-                                    <select 
-                                        name="role"
-                                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none disabled:opacity-50"
-                                        value={formData.role}
-                                        disabled={currentUserRole === 'MANAGER'}
-                                        onChange={handleChange}
-                                    >
-                                        <option value="SALES">SALES OPERATIONS</option>
-                                        {currentUserRole === 'ADMIN' && <option value="MANAGER">COMMAND LEAD (MANAGER)</option>}
-                                        {currentUserRole === 'ADMIN' && <option value="ADMIN">ROOT ACCESS (ADMIN)</option>}
-                                    </select>
-                                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
-                                </div>
+                                <Select 
+                                    value={formData.role} 
+                                    onValueChange={(val) => handleSelectChange('role', val)}
+                                    disabled={currentUserRole === 'MANAGER'}
+                                >
+                                    <SelectTrigger className="!h-14 !px-6">
+                                        <SelectValue placeholder="SELECT ROLE" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="SALES">SALES OPERATIONS</SelectItem>
+                                        {currentUserRole === 'ADMIN' && <SelectItem value="MANAGER">COMMAND LEAD (MANAGER)</SelectItem>}
+                                        {currentUserRole === 'ADMIN' && <SelectItem value="ADMIN">ROOT ACCESS (ADMIN)</SelectItem>}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
                         {currentUserRole === 'ADMIN' && formData.role === 'SALES' && (
                             <div className="space-y-3 animate-in slide-in-from-top-4">
                                 <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Reporting Command Center</label>
-                                <div className="relative">
-                                    <select 
-                                        name="managerId"
-                                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none"
-                                        value={formData.managerId}
-                                        onChange={handleChange}
-                                    >
-                                        <option value="">Team Member</option>
+                                <Select 
+                                    value={formData.managerId} 
+                                    onValueChange={(val) => handleSelectChange('managerId', val)}
+                                >
+                                    <SelectTrigger className="!h-14 !px-6">
+                                        <SelectValue placeholder="TEAM MEMBER" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none" className="opacity-40 italic">Team Member</SelectItem>
                                         {availableManagers.map(m => (
-                                            <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
+                                            <SelectItem key={m.id} value={m.id.toString()}>{m.name.toUpperCase()}</SelectItem>
                                         ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
-                                </div>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         )}
                     </div>

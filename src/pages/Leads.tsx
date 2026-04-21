@@ -12,6 +12,13 @@ import { Role } from '../utils/roles';
 import { formatDate } from '../utils/dateHelpers';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TableSkeleton } from '@/components/ui/skeleton';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '../components/ui/select';
 import { validateLeadForm, validateCompany, validateName, validateEmail, validatePhone, type ValidationErrors } from '../utils/validation';
 import { CreateLeadModal } from '../components/CreateLeadModal';
 import { AssignLeadModal } from '../components/AssignLeadModal';
@@ -189,46 +196,58 @@ function LeadsInnerContent() {
                             <div className="crm-card !p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 mb-8 border-primary/10 bg-primary/[0.02]">
                                 <div className="space-y-3">
                                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Stage</label>
-                                    <select 
-                                        value={filterSettings.stage}
-                                        onChange={(e) => setFilterSettings({ ...filterSettings, stage: e.target.value })}
-                                        className="crm-input text-[11px] font-bold tracking-widest bg-muted/20"
+                                    <Select 
+                                        value={filterSettings.stage} 
+                                        onValueChange={(val) => setFilterSettings({ ...filterSettings, stage: val })}
                                     >
-                                        <option value="ALL">All Stages</option>
-                                        <option value="NEW">New</option>
-                                        <option value="CONTACTED">Contacted</option>
-                                        <option value="INTERESTED">Interested</option>
-                                        <option value="CONVERTED">Converted</option>
-                                        <option value="LOST">Lost</option>
-                                    </select>
+                                        <SelectTrigger className="text-[11px] font-bold tracking-widest bg-muted/20">
+                                            <SelectValue placeholder="ALL STAGES" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">All Stages</SelectItem>
+                                            <SelectItem value="NEW">New</SelectItem>
+                                            <SelectItem value="CONTACTED">Contacted</SelectItem>
+                                            <SelectItem value="INTERESTED">Interested</SelectItem>
+                                            <SelectItem value="CONVERTED">Converted</SelectItem>
+                                            <SelectItem value="LOST">Lost</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Priority Level</label>
-                                    <select 
-                                        value={filterSettings.priority}
-                                        onChange={(e) => setFilterSettings({ ...filterSettings, priority: e.target.value })}
-                                        className="crm-input text-[11px] font-bold tracking-widest bg-muted/20"
+                                    <Select 
+                                        value={filterSettings.priority} 
+                                        onValueChange={(val) => setFilterSettings({ ...filterSettings, priority: val })}
                                     >
-                                        <option value="ALL">All Priorities</option>
-                                        <option value="HIGH">High Priority</option>
-                                        <option value="MEDIUM">Medium Priority</option>
-                                        <option value="LOW">Low Priority</option>
-                                    </select>
+                                        <SelectTrigger className="text-[11px] font-bold tracking-widest bg-muted/20">
+                                            <SelectValue placeholder="ALL PRIORITIES" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">All Priorities</SelectItem>
+                                            <SelectItem value="HIGH">High Priority</SelectItem>
+                                            <SelectItem value="MEDIUM">Medium Priority</SelectItem>
+                                            <SelectItem value="LOW">Low Priority</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">
                                         {user?.role === 'MANAGER' ? 'Representative' : 'Manager Oversight'}
                                     </label>
-                                    <select 
-                                        value={filterSettings.manager}
-                                        onChange={(e) => setFilterSettings({ ...filterSettings, manager: e.target.value })}
-                                        className="crm-input text-[11px] font-bold tracking-widest bg-muted/20"
+                                    <Select 
+                                        value={filterSettings.manager} 
+                                        onValueChange={(val) => setFilterSettings({ ...filterSettings, manager: val })}
                                     >
-                                        <option value="ALL">{user?.role === 'MANAGER' ? 'All Reps' : 'All Managers'}</option>
-                                        {(user?.role === 'MANAGER' ? uniqueAgents : uniqueManagers).map((name: string) => (
-                                            <option key={name} value={name}>{name}</option>
-                                        ))}
-                                    </select>
+                                        <SelectTrigger className="text-[11px] font-bold tracking-widest bg-muted/20">
+                                            <SelectValue placeholder={user?.role === 'MANAGER' ? 'ALL REPS' : 'ALL MANAGERS'} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">{user?.role === 'MANAGER' ? 'All Reps' : 'All Managers'}</SelectItem>
+                                            {(user?.role === 'MANAGER' ? uniqueAgents : uniqueManagers).map((name: string) => (
+                                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Value Range (₹)</label>

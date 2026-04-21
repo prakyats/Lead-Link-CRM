@@ -74,11 +74,11 @@ function FloatingIcons() {
 /* ── Screenshot Carousel ── */
 function ScreenshotCarousel() {
   const slides = [
-    { src: '/images/hero-dashboard.png', label: 'Lead Dashboard' },
-    { src: '/images/hero-dashboard.png', label: 'Kanban Pipeline' },
-    { src: '/images/hero-dashboard.png', label: 'Lead Details & Interactions' },
-    { src: '/images/hero-dashboard.png', label: 'Task Management' },
-    { src: '/images/hero-dashboard.png', label: 'Role-Based Views' },
+    { src: '/images/admin_dash1.png', label: 'Admin Dashboard' },
+    { src: '/images/admin_dash2.png', label: 'Admin Dashboard' },
+    { src: '/images/reports.png', label: 'Reports - Admin View' },
+    { src: '/images/sales_dash.png', label: 'Sales Dashboard' },
+    { src: '/images/kanban.png', label: 'Kanban Pipeline' },
   ];
 
   const [current, setCurrent] = useState(0);

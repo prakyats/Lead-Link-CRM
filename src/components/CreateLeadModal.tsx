@@ -3,6 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, User, Mail, Phone, IndianRupee, Activity, Zap } from 'lucide-react';
 import { useModalEffect } from '../hooks/useModalEffect';
 import { validateLeadForm, validateCompany, validateName, validateEmail, validatePhone, type ValidationErrors } from '../utils/validation';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from './ui/select';
 
 interface CreateLeadModalProps {
     isOpen: boolean;
@@ -193,11 +200,19 @@ const CreateLeadModalComponent: React.FC<CreateLeadModalProps> = ({ isOpen, onCl
                             </div>
                             <div className="space-y-3">
                                 <label className="crm-label font-semibold text-xs tracking-wider ml-1">PRIORITY</label>
-                                <select name="priority" className="crm-input !py-4 font-semibold tracking-widest bg-muted/20 border-border/40 cursor-pointer" value={formData.priority} onChange={handleChange}>
-                                    <option value="LOW">Low Priority</option>
-                                    <option value="MEDIUM">Medium Priority</option>
-                                    <option value="HIGH">High Priority</option>
-                                </select>
+                                <Select 
+                                    value={formData.priority} 
+                                    onValueChange={(val) => setFormData(prev => ({ ...prev, priority: val as any }))}
+                                >
+                                    <SelectTrigger className="!h-14 !py-4 font-semibold tracking-widest bg-muted/20 border-border/40">
+                                        <SelectValue placeholder="PRIORITY" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="LOW">Low Priority</SelectItem>
+                                        <SelectItem value="MEDIUM">Medium Priority</SelectItem>
+                                        <SelectItem value="HIGH">High Priority</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </div>

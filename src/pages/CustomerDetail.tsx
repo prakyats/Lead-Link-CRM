@@ -11,6 +11,13 @@ import { Role } from '../utils/roles';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useModalEffect } from '../hooks/useModalEffect';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '../components/ui/select';
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -385,38 +392,40 @@ export default function CustomerDetail() {
                     <div className="space-y-3">
                       <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Vector Type</label>
                       <div className="relative">
-                        <select 
-                          value={form.type}
-                          onChange={(e) => setForm({...form, type: e.target.value})}
-                          className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer"
-                        >
-                          <option value="CALL">VOICE COMMS</option>
-                          <option value="EMAIL">DIGITAL MAIL</option>
-                          <option value="MEETING">DIRECT MISSION</option>
-                          <option value="WHATSAPP">SIGNAL LINK</option>
-                          <option value="OTHER">OTHER ACTIVITIES</option>
-                        </select>
-                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
-                            <Plus size={14} className="rotate-45" />
-                        </div>
+                                       <Select 
+                                         value={form.type} 
+                                         onValueChange={(val) => setForm({...form, type: val})}
+                                       >
+                                         <SelectTrigger className="!h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest">
+                                           <SelectValue placeholder="VECTOR TYPE" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                           <SelectItem value="CALL">VOICE COMMS</SelectItem>
+                                           <SelectItem value="EMAIL">DIGITAL MAIL</SelectItem>
+                                           <SelectItem value="MEETING">DIRECT MISSION</SelectItem>
+                                           <SelectItem value="WHATSAPP">SIGNAL LINK</SelectItem>
+                                           <SelectItem value="OTHER">OTHER ACTIVITIES</SelectItem>
+                                         </SelectContent>
+                                       </Select>
                       </div>
                     </div>
                     <div className="space-y-3">
                       <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Vector Outcome</label>
                       <div className="relative">
-                        <select 
-                          value={form.outcome}
-                          onChange={(e) => setForm({...form, outcome: e.target.value})}
-                          className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer"
-                        >
-                          <option value="Interested">QUALIFIED</option>
-                          <option value="Not Interested">TERMINATED</option>
-                          <option value="Follow-up Required">PENDING SYNC</option>
-                          <option value="No Response">NO RESPONSE</option>
-                        </select>
-                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
-                            <Plus size={14} className="rotate-45" />
-                        </div>
+                                       <Select 
+                                         value={form.outcome} 
+                                         onValueChange={(val) => setForm({...form, outcome: val})}
+                                       >
+                                         <SelectTrigger className="!h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest">
+                                           <SelectValue placeholder="VECTOR OUTCOME" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                           <SelectItem value="Interested">QUALIFIED</SelectItem>
+                                           <SelectItem value="Not Interested">TERMINATED</SelectItem>
+                                           <SelectItem value="Follow-up Required">PENDING SYNC</SelectItem>
+                                           <SelectItem value="No Response">NO RESPONSE</SelectItem>
+                                         </SelectContent>
+                                       </Select>
                       </div>
                     </div>
                   </div>

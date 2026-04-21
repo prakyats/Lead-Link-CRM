@@ -5,6 +5,13 @@ import { validateTaskForm, validateTaskTitle, validateDescription, type Validati
 import { useModalEffect } from '../hooks/useModalEffect';
 import type { User } from '../contexts/AuthContext';
 import { TaskType } from '../api/tasks';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from './ui/select';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -183,20 +190,22 @@ const TaskModalComponent: React.FC<TaskModalProps> = ({
 
                           {assignmentMode === 'REP' && (
                             <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-2">
-                              <select 
-                                required
-                                className={`crm-input !bg-white/5 !border-white/10 !h-12 !px-5 text-[10px] font-bold uppercase tracking-widest appearance-none cursor-pointer ${fieldErrors.assignedToId ? '!border-status-danger/50' : ''}`}
-                                value={formData.assignedToId || ''}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, assignedToId: parseInt(e.target.value) });
-                                    setFieldErrors(prev => ({ ...prev, assignedToId: '' }));
+                              <Select 
+                                value={formData.assignedToId?.toString() || ""} 
+                                onValueChange={(val) => {
+                                  setFormData({ ...formData, assignedToId: parseInt(val) });
+                                  setFieldErrors(prev => ({ ...prev, assignedToId: '' }));
                                 }}
                               >
-                                <option value="">Select Sales Representative</option>
-                                {salesReps.map((rep: any) => (
-                                  <option key={rep.id} value={rep.id}>{rep.name}</option>
-                                ))}
-                              </select>
+                                <SelectTrigger className={`!h-12 !px-5 text-[10px] font-bold uppercase tracking-widest ${fieldErrors.assignedToId ? '!border-status-danger/50' : ''}`}>
+                                  <SelectValue placeholder="SELECT SALES REPRESENTATIVE" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {salesReps.map((rep: any) => (
+                                    <SelectItem key={rep.id} value={rep.id.toString()}>{rep.name.toUpperCase()}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               {fieldErrors.assignedToId && <p className="text-status-danger text-[9px] font-bold uppercase tracking-tighter px-1">{fieldErrors.assignedToId}</p>}
                             </div>
                           )}
@@ -265,17 +274,19 @@ const TaskModalComponent: React.FC<TaskModalProps> = ({
                             {fieldErrors.dueDate && <p className="text-status-danger text-[10px] font-semibold uppercase tracking-widest mt-2">{fieldErrors.dueDate}</p>}
                           </div>
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground/60">Priority</label>
-                            <div className="relative">
-                              <select className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest appearance-none cursor-pointer" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
-                                <option value="LOW">STANDARD PRIORITY</option>
-                                <option value="MEDIUM">STANDARD PRIORITY</option>
-                                <option value="HIGH">HIGH PRIORITY</option>
-                              </select>
-                              <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
-                                <Plus size={14} className="rotate-45" />
-                              </div>
-                            </div>
+                            <Select 
+                              value={formData.priority} 
+                              onValueChange={(val) => setFormData({ ...formData, priority: val as any })}
+                            >
+                              <SelectTrigger className="!h-14 !px-6 text-[10px] font-semibold uppercase tracking-widest">
+                                <SelectValue placeholder="PRIORITY" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="LOW">STANDARD PRIORITY</SelectItem>
+                                <SelectItem value="MEDIUM">STANDARD PRIORITY</SelectItem>
+                                <SelectItem value="HIGH">HIGH PRIORITY</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         </div>
                       </div>

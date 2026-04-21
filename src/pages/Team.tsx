@@ -12,6 +12,13 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import { validateUserForm } from '../utils/validation';
 import { useSearchParams } from 'react-router';
+import { 
+    Select, 
+    SelectContent, 
+    SelectItem, 
+    SelectTrigger, 
+    SelectValue 
+} from '../components/ui/select';
 
 interface SystemUser {
     id: number;
@@ -412,38 +419,40 @@ export default function Team() {
                                             
                                             <div className="space-y-3">
                                                 <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Assigned Unit</label>
-                                                <div className="relative">
-                                                    <select 
-                                                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none disabled:opacity-50"
-                                                        value={formData.role}
-                                                        disabled={user?.role === 'MANAGER'}
-                                                        onChange={(e) => setFormData({...formData, role: e.target.value})}
-                                                    >
-                                                        <option value="SALES">SALES OPERATIONS</option>
-                                                        {user?.role === 'ADMIN' && <option value="MANAGER">COMMAND LEAD (MANAGER)</option>}
-                                                        {user?.role === 'ADMIN' && <option value="ADMIN">ROOT ACCESS (ADMIN)</option>}
-                                                    </select>
-                                                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
-                                                </div>
+                                                <Select 
+                                                    value={formData.role} 
+                                                    onValueChange={(val) => setFormData({...formData, role: val})}
+                                                    disabled={user?.role === 'MANAGER'}
+                                                >
+                                                    <SelectTrigger className="!h-14 !px-6">
+                                                        <SelectValue placeholder="SELECT ROLE" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="SALES">SALES OPERATIONS</SelectItem>
+                                                        {user?.role === 'ADMIN' && <SelectItem value="MANAGER">COMMAND LEAD (MANAGER)</SelectItem>}
+                                                        {user?.role === 'ADMIN' && <SelectItem value="ADMIN">ROOT ACCESS (ADMIN)</SelectItem>}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
 
                                         {user?.role === 'ADMIN' && formData.role === 'SALES' && (
                                             <div className="space-y-3 animate-in slide-in-from-top-4">
                                                 <label className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider ml-2">Reporting Command Center</label>
-                                                <div className="relative">
-                                                    <select 
-                                                        className="crm-input !bg-white/5 !border-white/10 !h-14 !px-6 text-xs font-semibold uppercase tracking-wider appearance-none"
-                                                        value={formData.managerId}
-                                                        onChange={(e) => setFormData({...formData, managerId: e.target.value})}
-                                                    >
-                                                        <option value="">Team Member</option>
+                                                <Select 
+                                                    value={formData.managerId} 
+                                                    onValueChange={(val) => setFormData({...formData, managerId: val})}
+                                                >
+                                                    <SelectTrigger className="!h-14 !px-6">
+                                                        <SelectValue placeholder="TEAM MEMBER" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none" className="opacity-40 italic">Team Member</SelectItem>
                                                         {availableManagers.map(m => (
-                                                            <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
+                                                            <SelectItem key={m.id} value={m.id.toString()}>{m.name.toUpperCase()}</SelectItem>
                                                         ))}
-                                                    </select>
-                                                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 pointer-events-none" />
-                                                </div>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         )}
 
